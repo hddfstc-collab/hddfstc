@@ -126,18 +126,23 @@
         
         const ACTION_OPTIONS = [ {v:'guide', l:'📘 안내형'}, {v:'board', l:'📝 게시판형'}, {v:'notice', l:'📢 공지/자료형'}, {v:'form', l:'📮 폼 제출형'}, {v:'reservation', l:'📅 스마트 예약형'}, {v:'link', l:'🔗 링크형'}, {v:'popup_ext', l:'📞 내장 연결'}, {v:'widget_managers', l:'🧩 위젯: 오늘 근무 영업관리자'}, {v:'widget_notices', l:'🧩 위젯: 실시간 공지사항'} ];
 
-const firebaseConfig = {
-    // 👇 아래 값들은 파이어베이스에서 복사한 본인의 값으로 바꾸세요!
-    apiKey: "AIzaSyA-복사한값",
-    authDomain: "hmood-erp.firebaseapp.com",
-    projectId: "hmood-erp",
-    storageBucket: "hmood-erp.appspot.com",
-    messagingSenderId: "1234567890",
-    appId: "1:1234567890:web:abcdef12345"
-};
-// 우리 회사만의 고유한 DB 폴더 이름 (마음대로 지으셔도 됩니다)
-const appId = 'hmood-erp-our-company';
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCDW2TzDtMDfAVmSRHM7a-IZDhsBlkRMEQ",
+  authDomain: "ware-house-b36d7.firebaseapp.com",
+  projectId: "ware-house-b36d7",
+  storageBucket: "ware-house-b36d7.firebasestorage.app",
+  messagingSenderId: "549765421476",
+  appId: "1:549765421476:web:ef48192ccce302b1c38931"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
         const PART_W = { '영업1파트': 1, '영업2파트': 2, '고객관리파트': 3 };
         const RANK_W = { '부장': 1, '차장': 2, '과장': 3, '대리': 4, '주임': 5, '사원': 6 };
 
