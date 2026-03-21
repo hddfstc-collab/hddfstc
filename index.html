@@ -127,11 +127,11 @@
         const ACTION_OPTIONS = [ {v:'guide', l:'📘 안내형'}, {v:'board', l:'📝 게시판형'}, {v:'notice', l:'📢 공지/자료형'}, {v:'form', l:'📮 폼 제출형'}, {v:'reservation', l:'📅 스마트 예약형'}, {v:'link', l:'🔗 링크형'}, {v:'popup_ext', l:'📞 내장 연결'}, {v:'widget_managers', l:'🧩 위젯: 오늘 근무 영업관리자'}, {v:'widget_notices', l:'🧩 위젯: 실시간 공지사항'} ];
 
 <script type="module">
-  // 1. 파이어베이스 라이브러리 로드
+  // 파이어베이스 모듈 불러오기
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-  // 2. 파이어베이스 설정 (본인의 값 그대로 유지)
+  // 파이어베이스 설정
   const firebaseConfig = {
     apiKey: "AIzaSyCDW2TzDtMDfAVmSRHM7a-IZDhsBlkRMEQ",
     authDomain: "ware-house-b36d7.firebaseapp.com",
@@ -141,9 +141,16 @@
     appId: "1:549765421476:web:ef48192ccce302b1c38931"
   };
 
-  // 3. 파이어베이스 초기화 (딱 한 번만 선언!)
+  // 초기화 (한 번만!)
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+
+  // 여기서부터는 기존에 쓰시던 PART_W, RANK_W 등의 상수를 이어서 적으시면 됩니다.
+  const PART_W = { '영업1파트': 1, '영업2파트': 2, '고객관리파트': 3 };
+  const RANK_W = { '부장': 1, '차장': 2, '과장': 3, '대리': 4, '주임': 5, '사원': 6 };
+  
+  // 나머지 함수들(데이터 불러오기 등)도 이 <script type="module"> 안으로 옮겨주어야 합니다.
+</script>
 
   // 4. 상수 및 설정 변수들
   const ACTION_OPTIONS = [ 
