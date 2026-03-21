@@ -374,6 +374,7 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const [adminSchedForm, setAdminSchedForm] = useState({ empId: '', date: todayStr, status: 'A' });
             const [showExtModal, setShowExtModal] = useState(false);
             const [showProfileEdit, setShowProfileEdit] = useState(false);
+            const [profileTab, setProfileTab] = useState('pw'); // 'pw' | 'info'
             const [profileForm, setProfileForm] = useState({ name: '', part: '', category: '', brands: '', position: '', jobTitle: '', password: '', targetEmpId: '' });
             const [expandedImage, setExpandedImage] = useState(null);
             const [expandedCell, setExpandedCell] = useState(null); // {empId, date, status, rect}
@@ -1198,7 +1199,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                 </button>
                                 {appUser ? (
                                     <div className="flex items-center gap-1.5 bg-white dark:bg-stone-800 px-3 py-1.5 rounded-full border border-stone-200 dark:border-stone-700 shadow-sm">
-                                        <button onClick={(e) => { e.stopPropagation(); setProfileForm({ name: appUser.name, part: appUser.part, category: appUser.category, brands: appUser.brands || '', position: appUser.position, jobTitle: appUser.jobTitle || '일반', password: appUser.password, targetEmpId: appUser.empId }); setShowProfileEdit(true); }} className="flex items-center gap-1 text-[10px] font-black text-stone-600 dark:text-stone-300 hover:text-teal-600 transition-colors btn-press"><span className="underline decoration-stone-300 dark:decoration-stone-600 underline-offset-2">{appUser.name}</span>님</button>
+                                        <button onClick={(e) => { e.stopPropagation(); setProfileForm({ name: appUser.name, part: appUser.part, category: appUser.category, brands: appUser.brands || '', position: appUser.position, jobTitle: appUser.jobTitle || '일반', password: '', targetEmpId: appUser.empId }); setProfileTab('pw'); setShowProfileEdit(true); }} className="flex items-center gap-1 text-[10px] font-black text-stone-600 dark:text-stone-300 hover:text-teal-600 transition-colors btn-press"><span className="underline decoration-stone-300 dark:decoration-stone-600 underline-offset-2">{appUser.name}</span>님</button>
                                         <div className="w-px h-3 bg-stone-200 dark:bg-stone-700 mx-0.5"></div>
                                         <button onClick={() => { setAppUser(null); setView('login'); setCurrentDate(new Date()); }} className="text-stone-400 hover:text-rose-500 transition-colors flex items-center gap-1"><Icon name="logout" size={12}/></button>
                                     </div>
@@ -1419,7 +1420,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                         </div>
                                                         <div className="flex items-center justify-between w-full">
                                                             <div className="flex items-center gap-2 mt-0.5"><span className="text-[11px] font-bold text-stone-600 dark:text-stone-400">{u.part}</span><span className="text-[9px] font-bold text-stone-400 border-l border-stone-200 dark:border-stone-700 pl-2">사번: {u.empId}</span></div>
-                                                            {canEdit && <button onClick={(e) => { e.stopPropagation(); setProfileForm({ name: u.name, part: u.part, category: u.category, brands: u.brands || '', position: u.position, jobTitle: u.jobTitle || '일반', password: u.password, targetEmpId: u.empId }); setShowProfileEdit(true); }} className="text-white bg-teal-500 hover:bg-teal-600 p-1.5 rounded-lg flex items-center justify-center btn-press shadow-sm"><Icon name="edit" size={14}/></button>}
+                                                            {canEdit && <button onClick={(e) => { e.stopPropagation(); setProfileForm({ name: u.name, part: u.part, category: u.category, brands: u.brands || '', position: u.position, jobTitle: u.jobTitle || '일반', password: '', targetEmpId: u.empId }); setProfileTab('info'); setShowProfileEdit(true); }} className="text-white bg-teal-500 hover:bg-teal-600 p-1.5 rounded-lg flex items-center justify-center btn-press shadow-sm"><Icon name="edit" size={14}/></button>}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -2181,22 +2182,62 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                     )}
 
                     {showProfileEdit && (
-                        <ModalWrapper title="정보 수정" icon="user" color="text-teal-500" onClose={() => setShowProfileEdit(false)}>
+                        <ModalWrapper title="내 정보" icon="user" color="text-teal-500" onClose={() => { setShowProfileEdit(false); setProfileTab('pw'); }}>
                             <div className="space-y-4">
-                                <div><label className="text-[10px] font-black text-stone-500 ml-2">비밀번호 변경</label><input type="text" className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="새 비밀번호 입력" value={profileForm.password || ''} onChange={e => setProfileForm({...profileForm, password: e.target.value})} /></div>
-                                <div><label className="text-[10px] font-black text-stone-500 ml-2">성명</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" value={profileForm.name} onChange={e => setProfileForm({...profileForm, name: e.target.value})} /></div>
-                                <div><label className="text-[10px] font-black text-stone-500 ml-2">소속 파트</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" value={profileForm.part} onChange={e => setProfileForm({...profileForm, part: e.target.value})} /></div>
-                                <div><label className="text-[10px] font-black text-stone-500 ml-2">담당 카테고리</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="예: C&P, LTSF, 화장품" value={profileForm.category || ''} onChange={e => setProfileForm({...profileForm, category: e.target.value})} /></div>
-                                <div><label className="text-[10px] font-black text-stone-500 ml-2">담당 브랜드 <span className="text-stone-400 font-bold">(검색 가능)</span></label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="예: 샤넬, 디올, 에스티로더" value={profileForm.brands || ''} onChange={e => setProfileForm({...profileForm, brands: e.target.value})} /></div>
-                                <button onClick={async () => {
-                                    if(!profileForm.password) return showToast('비밀번호는 비워둘 수 없습니다.', true);
-                                    const targetEmpId = profileForm.targetEmpId || appUser.empId; const originalUser = users.find(u => u.empId === targetEmpId);
-                                    const pwHash = await hashPassword(profileForm.password);
-                                    const updatedUser = { ...originalUser, name: profileForm.name, part: profileForm.part, category: profileForm.category, brands: profileForm.brands || '', position: profileForm.position || originalUser.position, jobTitle: profileForm.jobTitle || originalUser.jobTitle, password: pwHash };
-                                    setUsers((users || []).map(u => u.empId === targetEmpId ? updatedUser : u)); saveToIDB('users', updatedUser); setSchedules((schedules || []).map(s => s.empId === targetEmpId ? { ...s, name: profileForm.name, part: profileForm.part } : s));
-                                    if (appUser && appUser.empId === targetEmpId) setAppUser(updatedUser); if(db && fbUser) await db.collection(`artifacts/${appId}/public/data/users`).doc(targetEmpId).set(updatedUser, { merge: true });
-                                    setShowProfileEdit(false); showToast('정보가 저장되었습니다.');
-                                }} className="w-full bg-teal-600 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[13px] mt-2">정보 업데이트</button>
+                                {/* 탭 */}
+                                <div className="flex gap-2 bg-stone-100 dark:bg-stone-800 p-1 rounded-2xl">
+                                    <button onClick={() => setProfileTab('pw')} className={`flex-1 py-2.5 rounded-xl text-[12px] font-black transition-all btn-press ${profileTab === 'pw' ? 'bg-white dark:bg-stone-700 text-teal-600 shadow-sm' : 'text-stone-400'}`}>🔑 비밀번호 변경</button>
+                                    <button onClick={() => setProfileTab('info')} className={`flex-1 py-2.5 rounded-xl text-[12px] font-black transition-all btn-press ${profileTab === 'info' ? 'bg-white dark:bg-stone-700 text-teal-600 shadow-sm' : 'text-stone-400'}`}>👤 내 정보 수정</button>
+                                </div>
+
+                                {/* 비밀번호 변경 탭 */}
+                                {profileTab === 'pw' && (
+                                    <div className="space-y-4 fade-in">
+                                        <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 p-4 rounded-2xl">
+                                            <p className="text-[11px] font-bold text-teal-700 dark:text-teal-300 leading-relaxed">비밀번호는 암호화되어 저장됩니다.<br/>초기 비밀번호는 사번과 동일합니다.</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black text-stone-500 ml-2">새 비밀번호</label>
+                                            <input type="password" className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-teal-500 transition-colors" placeholder="새 비밀번호 입력" value={profileForm.password || ''} onChange={e => setProfileForm({...profileForm, password: e.target.value})} autoFocus />
+                                        </div>
+                                        <button onClick={async () => {
+                                            if (!profileForm.password || profileForm.password.length < 4) return showToast('비밀번호는 4자 이상 입력해주세요.', true);
+                                            const targetEmpId = profileForm.targetEmpId || appUser.empId;
+                                            const originalUser = users.find(u => u.empId === targetEmpId);
+                                            const pwHash = await hashPassword(profileForm.password);
+                                            const updatedUser = { ...originalUser, password: pwHash };
+                                            setUsers((users || []).map(u => u.empId === targetEmpId ? updatedUser : u));
+                                            saveToIDB('users', updatedUser);
+                                            if (appUser && appUser.empId === targetEmpId) setAppUser(updatedUser);
+                                            if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/users`).doc(targetEmpId).set(updatedUser, { merge: true });
+                                            setProfileForm({...profileForm, password: ''});
+                                            setShowProfileEdit(false);
+                                            showToast('비밀번호가 변경되었습니다.');
+                                        }} className="w-full bg-teal-600 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[13px]">비밀번호 변경</button>
+                                    </div>
+                                )}
+
+                                {/* 내 정보 수정 탭 */}
+                                {profileTab === 'info' && (
+                                    <div className="space-y-3 fade-in">
+                                        <div><label className="text-[10px] font-black text-stone-500 ml-2">성명</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" value={profileForm.name} onChange={e => setProfileForm({...profileForm, name: e.target.value})} /></div>
+                                        <div><label className="text-[10px] font-black text-stone-500 ml-2">소속 파트</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" value={profileForm.part} onChange={e => setProfileForm({...profileForm, part: e.target.value})} /></div>
+                                        <div><label className="text-[10px] font-black text-stone-500 ml-2">담당 카테고리</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="예: C&P, LTSF" value={profileForm.category || ''} onChange={e => setProfileForm({...profileForm, category: e.target.value})} /></div>
+                                        <div><label className="text-[10px] font-black text-stone-500 ml-2">담당 브랜드 <span className="text-stone-400 font-bold">(검색 가능)</span></label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="예: 샤넬, 디올, 에스티로더" value={profileForm.brands || ''} onChange={e => setProfileForm({...profileForm, brands: e.target.value})} /></div>
+                                        <button onClick={async () => {
+                                            const targetEmpId = profileForm.targetEmpId || appUser.empId;
+                                            const originalUser = users.find(u => u.empId === targetEmpId);
+                                            const updatedUser = { ...originalUser, name: profileForm.name, part: profileForm.part, category: profileForm.category, brands: profileForm.brands || '', position: profileForm.position || originalUser.position, jobTitle: profileForm.jobTitle || originalUser.jobTitle };
+                                            setUsers((users || []).map(u => u.empId === targetEmpId ? updatedUser : u));
+                                            saveToIDB('users', updatedUser);
+                                            setSchedules((schedules || []).map(s => s.empId === targetEmpId ? { ...s, name: profileForm.name, part: profileForm.part } : s));
+                                            if (appUser && appUser.empId === targetEmpId) setAppUser(updatedUser);
+                                            if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/users`).doc(targetEmpId).set(updatedUser, { merge: true });
+                                            setShowProfileEdit(false);
+                                            showToast('정보가 저장되었습니다.');
+                                        }} className="w-full bg-teal-600 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[13px] mt-1">정보 업데이트</button>
+                                    </div>
+                                )}
                             </div>
                         </ModalWrapper>
                     )}
