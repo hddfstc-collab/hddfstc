@@ -290,7 +290,7 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const [bulkScheduleMonth, setBulkScheduleMonth] = useState(todayStr.slice(0, 7));
             
             const [memberForm, setMemberForm] = useState({ empId: '', name: '', part: '', position: '사원', jobTitle: '일반', category: '', password: '' });
-            const [appManagerForm, setAppManagerForm] = useState({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 1, sortOrder: 99 });
+            const [appManagerForm, setAppManagerForm] = useState({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', notifyTarget: 'none', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 1, sortOrder: 99 });
             const [editingAppId, setEditingAppId] = useState(null);
             const [submitFormState, setSubmitFormState] = useState({ content: '', photo: '', authorName: '' });
 
@@ -656,7 +656,7 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
             const handleEditDynamicApp = (app) => {
                 let mappedType = app.actionType;
                 if (mappedType === 'simple_guide') mappedType = 'guide'; if (mappedType === 'custom_board') mappedType = 'board'; if (mappedType === 'admin_board') mappedType = 'notice'; if (mappedType === 'custom_form') mappedType = 'form'; if (mappedType === 'external_url') mappedType = 'link'; if (mappedType === 'link_ext') mappedType = 'popup_ext';
-                setAppManagerForm({ name: app.name, icon: app.icon, color: app.color, bg: app.bg, isFolder: app.isFolder ? 'true' : 'false', parentId: app.parentId || '', actionType: mappedType || 'guide', url: app.url || '', writePermission: app.writePermission || 'all', guideContent: app.guideContent || '', guideImage: app.guideImage || '', resOperatorId: app.resOperatorId || '', resTimeSlots: app.resTimeSlots || '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: app.resMaxPerSlot || 1, resLeadTimeDays: app.resLeadTimeDays || 0, resLeadTimeHours: app.resLeadTimeHours || 0, sortOrder: app.sortOrder || 99 });
+                setAppManagerForm({ name: app.name, icon: app.icon, color: app.color, bg: app.bg, isFolder: app.isFolder ? 'true' : 'false', parentId: app.parentId || '', actionType: mappedType || 'guide', url: app.url || '', writePermission: app.writePermission || 'all', notifyTarget: app.notifyTarget || 'none', guideContent: app.guideContent || '', guideImage: app.guideImage || '', resOperatorId: app.resOperatorId || '', resTimeSlots: app.resTimeSlots || '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: app.resMaxPerSlot || 1, resLeadTimeDays: app.resLeadTimeDays || 0, resLeadTimeHours: app.resLeadTimeHours || 0, sortOrder: app.sortOrder || 99 });
                 setEditingAppId(app.id); setAdminTab('apps'); window.scrollTo({ top: 0, behavior: 'smooth' });
             };
 
@@ -668,13 +668,13 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                     const newApp = { id, ...appData };
                     setDynamicApps(prev => editingAppId ? prev.map(a => a.id === id ? newApp : a) : [...prev, newApp]); saveToIDB('dynamicApps', newApp);
                     if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_apps`).doc(id).set(newApp, { merge: true });
-                    showToast('저장되었습니다.'); setEditingAppId(null); setAppManagerForm({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 0, sortOrder: 99 }); 
+                    showToast('저장되었습니다.'); setEditingAppId(null); setAppManagerForm({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', notifyTarget: 'none', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 0, sortOrder: 99 }); 
                 } catch(e) { showToast('저장 실패', true); }
             };
 
             const handleCancelEditDynamicApp = () => { 
                 setEditingAppId(null); 
-                setAppManagerForm({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 0, sortOrder: 99 }); 
+                setAppManagerForm({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', notifyTarget: 'none', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 0, sortOrder: 99 }); 
             };
 
             const handleUpdateResApp = async (targetAppId) => {
@@ -692,13 +692,44 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 const isBlacklisted = blacklists.some(b => b.name === resInput.name && b.brand === resInput.brand);
                 if (isBlacklisted) return showToast('해당 정보로는 예약할 수 없습니다. 관리자에게 문의하세요.', true);
 
-                // ✅ 서버 사이드 재검증 (UI 우회 방지)
                 const isResAdmin = isAdminAuth || (appUser && appUser.empId === openedReservationApp?.resOperatorId);
-                if (!isResAdmin) {
-                    const maxPerSlot = openedReservationApp?.resMaxPerSlot || 1;
-                    const slotRes = (dynamicPosts || []).filter(p => p.appId === openedReservationApp?.id && p.type === 'reservation' && p.resDate === resSelectedDate && p.resTime === resPrompt);
-                    if (slotRes.length >= maxPerSlot) return showToast('해당 시간은 이미 마감되었습니다.', true);
 
+                if (!isResAdmin) {
+                    // ✅ 로컬 state 대신 Firestore 직접 조회 (동시 예약 경쟁 방지)
+                    const maxPerSlot = openedReservationApp?.resMaxPerSlot || 1;
+
+                    try {
+                        let liveCount = 0;
+                        if (db && fbUser) {
+                            const snap = await db.collection(`artifacts/${appId}/public/data/dynamic_posts`)
+                                .where('appId', '==', openedReservationApp.id)
+                                .where('type', '==', 'reservation')
+                                .where('resDate', '==', resSelectedDate)
+                                .where('resTime', '==', resPrompt)
+                                .get();
+                            liveCount = snap.size;
+                        } else {
+                            // 오프라인 fallback: 로컬 state 사용
+                            liveCount = (dynamicPosts || []).filter(p =>
+                                p.appId === openedReservationApp?.id &&
+                                p.type === 'reservation' &&
+                                p.resDate === resSelectedDate &&
+                                p.resTime === resPrompt
+                            ).length;
+                        }
+                        if (liveCount >= maxPerSlot) return showToast('방금 마감되었습니다. 다른 시간을 선택해주세요.', true);
+                    } catch(e) {
+                        // 조회 실패 시 로컬 state로 fallback
+                        const localCount = (dynamicPosts || []).filter(p =>
+                            p.appId === openedReservationApp?.id &&
+                            p.type === 'reservation' &&
+                            p.resDate === resSelectedDate &&
+                            p.resTime === resPrompt
+                        ).length;
+                        if (localCount >= maxPerSlot) return showToast('해당 시간은 이미 마감되었습니다.', true);
+                    }
+
+                    // 시간 마감 체크
                     const leadTimeMs = ((openedReservationApp?.resLeadTimeDays || 0) * 24 + (openedReservationApp?.resLeadTimeHours || 0)) * 60 * 60 * 1000;
                     const [y, m, d] = resSelectedDate.split('-');
                     const [hr, min] = resPrompt.split(':');
@@ -1613,6 +1644,14 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                                         <div className="bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 space-y-3 mt-2 shadow-sm">
                                                                             <p className="text-[11px] font-black text-indigo-600 flex items-center gap-1.5"><Icon name="shield" size={14}/> 게시판/폼 관리 권한 부여</p>
                                                                             <select className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-indigo-400" value={appManagerForm.writePermission} onChange={e => setAppManagerForm({...appManagerForm, writePermission: e.target.value})}><option value="all">누구나 권한 있음 (비로그인 파트너스 포함)</option><option value="member">사번으로 로그인 한 직원 전원</option><optgroup label="--- [부서 단위 권한] ---">{uniqueParts.map(p => <option key={p} value={`PART_${p}`}>[{p}] 파트 소속 직원 전용 권한</option>)}</optgroup><optgroup label="--- [개인 단위 권한] ---">{users.map(u => <option key={u.empId} value={`USER_${u.empId}`}>[{u.name}] 개인 1인 전용 권한</option>)}</optgroup></select>
+                                                                            {/* 🔔 제출 시 푸시 알림 대상 */}
+                                                                            <p className="text-[11px] font-black text-amber-600 flex items-center gap-1.5 pt-1"><Icon name="bellRing" size={14}/> 제출 시 푸시 알림 받을 대상</p>
+                                                                            <select className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-amber-400" value={appManagerForm.notifyTarget || 'none'} onChange={e => setAppManagerForm({...appManagerForm, notifyTarget: e.target.value})}>
+                                                                                <option value="none">알림 없음</option>
+                                                                                <option value="all">전체 직원</option>
+                                                                                <optgroup label="--- [파트 단위] ---">{uniqueParts.map(p => <option key={p} value={`PART_${p}`}>[{p}] 파트 전원</option>)}</optgroup>
+                                                                                <optgroup label="--- [개인 지정] ---">{users.map(u => <option key={u.empId} value={`USER_${u.empId}`}>[{u.name}] 개인 알림</option>)}</optgroup>
+                                                                            </select>
                                                                         </div>
                                                                     )}
                                                                 </>
