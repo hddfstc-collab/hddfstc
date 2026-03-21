@@ -1004,7 +1004,31 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                     {todayBirthdays.length > 0 && <div className="bg-gradient-to-r from-rose-400 to-amber-400 rounded-2xl p-4 shadow-lg text-white flex items-center gap-2 animate-bounce"><Icon name="gift" size={18} className="ml-1"/><p className="text-[12px] font-black">오늘 생일: {todayBirthdays.map(u => u.name).join(', ')} 🥳 축하합니다!</p></div>}
                                     <div className="bg-white dark:bg-stone-900 p-3 rounded-2xl border border-stone-200 dark:border-stone-800 flex items-center justify-between shadow-sm max-w-4xl mx-auto relative">
                                         <button onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() - 1); setCurrentDate(d); }} className="p-2 bg-stone-50 dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-all btn-press"><Icon name="chevronLeft" size={20}/></button>
-                                        <div className="text-center leading-tight flex flex-col justify-center items-center"><p className={`text-[10px] tracking-widest font-black mb-1 ${isRedDay(currentDate.getFullYear(), currentDate.getMonth()+1, currentDate.getDate()) ? 'text-rose-500' : 'text-teal-600'}`}>{currentDate.toLocaleDateString('ko-KR', { weekday: 'long' })}</p><div className="flex items-center justify-center gap-2"><p className={`text-xl font-black ${isRedDay(currentDate.getFullYear(), currentDate.getMonth()+1, currentDate.getDate()) ? 'text-rose-600' : 'text-stone-800 dark:text-stone-200'}`}>{todayStr}</p><button onClick={() => setCurrentDate(new Date())} className="p-1.5 bg-stone-50 dark:bg-stone-800 text-teal-600 border border-stone-200 dark:border-stone-700 rounded-lg btn-press"><Icon name="calendarToday" size={16}/></button></div></div>
+                                        <div className="text-center leading-tight flex flex-col justify-center items-center">
+    {/* 요일 표시 부분 */}
+    <p className={`text-[10px] tracking-widest font-black mb-1 ${
+        isRedDay(currentDate.getFullYear(), currentDate.getMonth() + 1, currentDate.getDate()) 
+        ? 'text-rose-500' // 빨간날이면 로즈색
+        : 'text-teal-600'  // 평일이면 테일색
+    }`}>
+        {currentDate.toLocaleDateString('ko-KR', { weekday: 'long' })}
+    </p>
+    
+    <div className="flex items-center justify-center gap-2">
+        {/* 날짜 숫자 부분 (예: 2026-03-02) */}
+        <p className={`text-xl font-black ${
+            isRedDay(currentDate.getFullYear(), currentDate.getMonth() + 1, currentDate.getDate()) 
+            ? 'text-rose-600' 
+            : 'text-stone-800 dark:text-stone-200'
+        }`}>
+            {todayStr}
+        </p>
+        
+        <button onClick={() => setCurrentDate(new Date())} className="p-1.5 bg-stone-50 dark:bg-stone-800 text-teal-600 border border-stone-200 dark:border-stone-700 rounded-lg btn-press">
+            <Icon name="calendarToday" size={16}/>
+        </button>
+    </div>
+</div>
                                         <button onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() + 1); setCurrentDate(d); }} className="p-2 bg-stone-50 dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-all btn-press"><Icon name="chevronRight" size={20}/></button>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-20">
