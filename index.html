@@ -95,7 +95,8 @@
             coffee: <><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></>,
             shoppingBag: <><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></>,
             truck: <><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></>,
-            smile: <><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></>
+            smile: <><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></>,
+            pin: <><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24z"/></>
         };
 
         const Icon = ({ name, size = 20, className = "" }) => (
@@ -270,6 +271,7 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             
             const [noticeForm, setNoticeForm] = useState({ content: '', photos: [], isPinned: false }); 
             const [editingNoticeId, setEditingNoticeId] = useState(null);
+            const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
             
             const [extForm, setExtForm] = useState({ number: '', floor: '', user: '' }); 
             const [editingExtId, setEditingExtId] = useState(null);
@@ -584,7 +586,10 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 });
                 return working.map(s => ({ ...s, user: userMap[s.empId] })).filter(s => s.user && s.user.jobTitle === '영업관리자').sort((a, b) => (a.user.name||'').localeCompare(b.user.name||'')); 
             }, [schedules, todayStr, userMap, statusOptions]);
-            const filteredExtensions = useMemo(() => { if (!extSearch.trim()) return extensions; const q = extSearch.toLowerCase(); return extensions.filter(e => (e?.number || '').toLowerCase().includes(q) || (e?.floor || '').toLowerCase().includes(q) || (e?.user || '').toLowerCase().includes(q)); }, [extensions, extSearch]);
+            const filteredExtensions = useMemo(() => { 
+                const list = !extSearch.trim() ? extensions : (() => { const q = extSearch.toLowerCase(); return extensions.filter(e => (e?.number || '').toLowerCase().includes(q) || (e?.floor || '').toLowerCase().includes(q) || (e?.user || '').toLowerCase().includes(q)); })();
+                return [...list].sort((a, b) => { const aFav = favoriteExts.includes(a.id) ? 0 : 1; const bFav = favoriteExts.includes(b.id) ? 0 : 1; return aFav - bFav; });
+            }, [extensions, extSearch, favoriteExts]);
             const filteredAdminExtensions = useMemo(() => { if (!adminExtSearch.trim()) return extensions; const q = adminExtSearch.toLowerCase(); return extensions.filter(e => (e?.number || '').toLowerCase().includes(q) || (e?.floor || '').toLowerCase().includes(q) || (e?.user || '').toLowerCase().includes(q)); }, [extensions, adminExtSearch]);
 
             const callExtension = (number, name, e) => {
@@ -676,7 +681,7 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 if (isBlacklisted) return showToast('해당 정보로는 예약할 수 없습니다. 관리자에게 문의하세요.', true);
                 const authorName = `${resInput.brand} ${resInput.name}`;
                 const newRes = { id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5), appId: openedReservationApp.id, type: 'reservation', resDate: resSelectedDate, resTime: resPrompt, author: authorName, ext: resInput.ext, content: resInput.note, authorId: appUser ? appUser.empId : `guest_${Date.now()}`, createdAt: new Date().toISOString() };
-                try { setDynamicPosts([newRes, ...(dynamicPosts || [])]); saveToIDB('dynamicPosts', newRes); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newRes.id).set(newRes); showToast(`${resPrompt} 예약이 완료되었습니다!`); setResPrompt(null); setResInput({brand:'', name:'', ext:'', note:''}); } catch(e) { showToast('예약 실패', true); }
+                try { setDynamicPosts([newRes, ...(dynamicPosts || [])]); saveToIDB('dynamicPosts', newRes); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newRes.id).set(newRes); showToast(`✅ ${resSelectedDate} ${resPrompt} 예약 완료!`); setResPrompt(null); setResInput({brand:'', name:'', ext:'', note:''}); } catch(e) { showToast('예약 실패', true); }
             };
             
             const handleGenericPostSubmit = async () => {
@@ -1247,7 +1252,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                             {isAdminAuth ? (
                                                 <div className="space-y-3">{currentEvent.type === 'random' && <button onClick={handleStartDraw} className="w-full bg-amber-500 text-white font-black py-4 rounded-2xl btn-press text-base">당첨자 추첨 시작</button>}<button onClick={handleArchiveEvent} className="w-full bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-4 rounded-2xl btn-press text-xs">이벤트 조기 종료</button></div>
                                             ) : (
-                                                <div className="pt-4">{currentEvent.participants?.includes(appUser?.empId) ? (<div className="w-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 font-black py-5 rounded-2xl border border-teal-200">참여가 접수되었습니다. 대기중...</div>) : true ? (<button onClick={handleParticipateEvent} className={`w-full text-white font-black py-5 rounded-2xl btn-press text-base ${currentEvent.type === 'fcfs' ? 'bg-rose-500 animate-pulse' : 'bg-teal-500'}`}>🙋‍♂️ {currentEvent.type === 'fcfs' ? '지금 바로 선착순 참여!' : '이벤트 참여하기'}</button>) : (<div className="w-full bg-rose-50 dark:bg-rose-900/30 text-rose-500 font-black py-5 rounded-2xl border border-rose-100 dark:border-rose-800 text-[12px]">{currentEvent.target === 'daily' ? '금일 출근자 전용 이벤트입니다.' : '참여 대상자가 아닙니다.'}</div>)}</div>
+                                                <div className="pt-4">{currentEvent.participants?.includes(appUser?.empId) ? (<div className="w-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 font-black py-5 rounded-2xl border border-teal-200">참여가 접수되었습니다. 대기중...</div>) : (currentEvent.target === 'all' || (appUser && scheduleMap[appUser.empId]?.[todayStr])) ? (<button onClick={handleParticipateEvent} className={`w-full text-white font-black py-5 rounded-2xl btn-press text-base ${currentEvent.type === 'fcfs' ? 'bg-rose-500 animate-pulse' : 'bg-teal-500'}`}>🙋‍♂️ {currentEvent.type === 'fcfs' ? '지금 바로 선착순 참여!' : '이벤트 참여하기'}</button>) : (<div className="w-full bg-rose-50 dark:bg-rose-900/30 text-rose-500 font-black py-5 rounded-2xl border border-rose-100 dark:border-rose-800 text-[12px]">{currentEvent.target === 'daily' ? '금일 출근자 전용 이벤트입니다.' : '참여 대상자가 아닙니다.'}</div>)}</div>
                                             )}
                                         </div>
                                     )}
@@ -1685,6 +1690,27 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                 <div className="bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-800 p-4 rounded-2xl mb-4"><p className="text-[10px] font-bold text-rose-600 dark:text-rose-300 leading-relaxed text-center">현장 근무자와 파트너스 전체에 노출되는 공지사항입니다.</p></div>
                                 <textarea className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-5 text-xs font-bold shadow-inner outline-none h-32 resize-none focus:border-rose-400" placeholder="공지할 내용을 입력하세요." value={noticeForm.content} onChange={e => setNoticeForm({...noticeForm, content: e.target.value})}></textarea>
                                 <label className="flex items-center gap-2 text-xs font-black cursor-pointer text-rose-500 px-2"><input type="checkbox" checked={noticeForm.isPinned} onChange={e => setNoticeForm({...noticeForm, isPinned: e.target.checked})} className="w-4 h-4" /> 중요 공지로 상단에 고정</label>
+                                {/* 💡 이미지 첨부 UI (photos 배열 활용) */}
+                                <div className="space-y-2">
+                                    <label className="block text-[10px] font-black text-stone-500 px-2">사진 첨부 (최대 3장)</label>
+                                    {noticeForm.photos.length < 3 && (
+                                        <label className="flex items-center gap-2 cursor-pointer bg-stone-50 dark:bg-stone-800 border border-dashed border-stone-300 dark:border-stone-600 rounded-2xl px-4 py-3 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors btn-press">
+                                            <Icon name="camera" size={16} className="text-stone-400"/>
+                                            <span className="text-[11px] font-bold text-stone-400">사진 추가하기</span>
+                                            <input type="file" accept="image/*" className="hidden" onChange={async (e) => { if(e.target.files[0]) { const b64 = await resizeImage(e.target.files[0]); setNoticeForm(prev => ({...prev, photos: [...(prev.photos||[]), b64]})); e.target.value=''; }}} />
+                                        </label>
+                                    )}
+                                    {noticeForm.photos.length > 0 && (
+                                        <div className="flex gap-2 overflow-x-auto py-1 scrollbar-hide">
+                                            {noticeForm.photos.map((img, idx) => (
+                                                <div key={idx} className="relative w-16 h-16 shrink-0 rounded-xl border border-stone-200 dark:border-stone-700 shadow-sm">
+                                                    <img src={img} className="w-full h-full object-cover rounded-xl" />
+                                                    <button onClick={() => setNoticeForm(prev => ({...prev, photos: prev.photos.filter((_,i)=>i!==idx)}))} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-md text-[10px] font-black">✕</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                                 <div className="flex gap-2 mt-4">
                                     <button onClick={() => { setIsNoticeModalOpen(false); setEditingNoticeId(null); setNoticeForm({content: '', photos: [], isPinned: false}); }} className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-4 rounded-2xl btn-press text-[12px]">취소</button>
                                     <button onClick={handleNoticeSubmit} className="flex-1 bg-rose-500 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[12px]">{editingNoticeId ? '수정 완료' : '등록'}</button>
