@@ -222,6 +222,13 @@ const RANK_W = { '부장': 1, '차장': 2, '과장': 3, '대리': 4, '주임': 5
             { id: 'sopt_9', label: '기념일반반차', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: true },
             { id: 'sopt_10', label: '대체 휴무', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: false }
         ];
+// 🔐 SHA-256 해시 (비밀번호 평문 저장 방지)
+const hashPassword = async (plain) => {
+    const enc = new TextEncoder();
+    const buf = await crypto.subtle.digest('SHA-256', enc.encode(String(plain)));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+};
+
 const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { const store = window.localDB.transaction(storeName, 'readwrite').objectStore(storeName); if (Array.isArray(data)) data.forEach(item => store.put(item)); else store.put(data); } catch (e) {} };
         const deleteFromIDB = (storeName, id) => { if (!window.localDB) return; try { window.localDB.transaction(storeName, 'readwrite').objectStore(storeName).delete(id); } catch (e) {} };
 
@@ -251,7 +258,9 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const [viewMode, setViewMode] = useState('all'); 
             
             const [isAdminAuth, setIsAdminAuth] = useState(false);
-            const [masterPin, setMasterPin] = useState(() => localStorage.getItem('hmood_master_pin') || '6011');
+            // 🔐 PIN은 평문 대신 해시로 localStorage에 저장
+            const [masterPinHash, setMasterPinHash] = useState(() => localStorage.getItem('hmood_master_pin_hash') || null);
+            const DEFAULT_PIN = '6011';
             const [pinInput, setPinInput] = useState('');
             const [currentDate, setCurrentDate] = useState(new Date());
             
@@ -600,10 +609,12 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
 
             const toggleFavExt = (id) => { setFavoriteExts(prev => { const next = prev.includes(id) ? prev.filter(favId => favId !== id) : [...prev, id]; localStorage.setItem('hmood_fav_exts', JSON.stringify(next)); return next; }); };
 
-            const handleLogin = (e) => {
+            const handleLogin = async (e) => {
                 e.preventDefault(); const loginId = String(loginForm.id || '').trim(); const loginPw = String(loginForm.pw || '').trim();
                 if (!loginId || !loginPw) return showToast('사원번호와 비밀번호를 모두 입력해주세요.', true);
-                const f = (users || []).find(u => String(u?.empId) === loginId && String(u?.password) === loginPw);
+                const pwHash = await hashPassword(loginPw);
+                // 해시 비밀번호 우선 비교, 없으면 평문 비교(마이그레이션 호환)
+                const f = (users || []).find(u => String(u?.empId) === loginId && (u?.password === pwHash || u?.password === loginPw));
                 if(f) { if (rememberMe) localStorage.setItem('hmood_empId', loginForm.id); else localStorage.removeItem('hmood_empId'); setAppUser(f); setView('daily'); setCurrentDate(new Date()); showToast(`${f.name}님 환영합니다!`); } else showToast('사원번호 또는 비밀번호가 올바르지 않습니다.', true);
             };
 
@@ -734,7 +745,8 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                         try {
                             const targetUser = users.find(u => u.empId === empId);
                             if (!targetUser) return;
-                            const updatedUser = { ...targetUser, password: targetUser.empId };
+                            const pwHash = await hashPassword(empId);
+                            const updatedUser = { ...targetUser, password: pwHash };
                             setUsers(prev => prev.map(u => u.empId === empId ? updatedUser : u));
                             saveToIDB('users', updatedUser);
                             if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/users`).doc(empId).set(updatedUser, { merge: true });
@@ -776,7 +788,8 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
             };
 
             const handleNoticeSubmit = async (e) => {
-                e.preventDefault(); if (!noticeForm.content) return showToast('내용을 입력해 주세요.', true);
+                if (e && e.preventDefault) e.preventDefault();
+                if (!noticeForm.content) return showToast('내용을 입력해 주세요.', true);
                 try {
                     const id = editingNoticeId || Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5);
                     const newNotice = { id, content: noticeForm.content, photos: noticeForm.photos, isPinned: noticeForm.isPinned, createdAt: editingNoticeId ? notices.find(n=>n.id===id).createdAt : new Date().toISOString(), author: appUser?.name || '관리자', isEdited: !!editingNoticeId, updatedAt: editingNoticeId ? new Date().toISOString() : null };
@@ -787,7 +800,9 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
 
             const handleMemberSubmit = async () => {
                 if (!memberForm.empId || !memberForm.name) return showToast('사번과 이름을 입력해주세요.', true);
-                const newMember = { ...memberForm, id: memberForm.empId, password: memberForm.password || memberForm.empId, birthday: '1990-01-01' };
+                const rawPw = memberForm.password || memberForm.empId;
+                const pwHash = await hashPassword(rawPw);
+                const newMember = { ...memberForm, id: memberForm.empId, password: pwHash, birthday: '1990-01-01' };
                 try { setUsers(prev => { const idx = prev.findIndex(u => u.empId === newMember.empId); if(idx >= 0) { const c=[...prev]; c[idx]=newMember; return c; } return [...prev, newMember]; }); saveToIDB('users', newMember); setMemberForm({ empId: '', name: '', part: '', position: '사원', jobTitle: '일반', category: '', password: '' }); if(db && fbUser) await db.collection(`artifacts/${appId}/public/data/users`).doc(newMember.empId).set(newMember, { merge: true }); showToast('저장되었습니다.'); } catch(e) { showToast('저장 실패', true); }
             };
 
@@ -1263,7 +1278,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                         <div className="bg-white dark:bg-stone-900 p-8 rounded-[3rem] border border-rose-200 dark:border-stone-800 shadow-2xl text-center border-4 fade-in">
                                             <Icon name="partyPopper" size={64} className="mx-auto text-rose-500 mb-4"/><p className="text-xs font-black text-rose-400 tracking-widest mb-4">🎉 축하합니다! 당첨자 발표 ({currentEvent.winners?.length || 0}명) 🎉</p>
                                             <div className="space-y-3 mb-6 max-h-48 overflow-y-auto scrollbar-hide">{(currentEvent.winners || []).map((w, idx) => (<div key={idx} className="bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-800 rounded-2xl p-4 flex justify-between items-center"><div className="flex items-center gap-3"><div className="w-8 h-8 bg-rose-200 text-rose-600 rounded-full flex items-center justify-center font-black text-xs">{idx + 1}</div><div className="text-left"><p className="text-lg font-black text-stone-800 dark:text-stone-200 leading-none">{w.name}</p><p className="text-[10px] font-bold text-stone-500 mt-1">{w.part} · {w.position}</p></div></div><Icon name="gift" size={20} className="text-rose-400" /></div>))}</div>
-                                            <div className="pt-6 border-t border-stone-100 dark:border-stone-700 space-y-4"><button onClick={handleCongratulate} className="w-full bg-rose-500 text-white font-black py-5 rounded-2xl shadow-xl btn-press text-sm tracking-widest flex items-center justify-center gap-2"><Icon name="thumbsUp" size={18}/> 모두 축하해주기 ({currentEvent.congratulations || 0})</button>{isAdminAuth && (<button onClick={handleArchiveEvent} className="w-full bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-4 rounded-2xl btn-press text-xs">이벤트 완전 종료</button>)}</div>
+                                            <div className="pt-6 border-t border-stone-100 dark:border-stone-700 space-y-4"><button onClick={handleCongratulate} className="w-full bg-rose-500 text-white font-black py-5 rounded-2xl shadow-xl btn-press text-sm tracking-widest flex items-center justify-center gap-2"><Icon name="thumbsUp" size={18}/> 모두 축하해주기 ({currentEvent.congratulations || 0})</button>{isAdminAuth && (<div className="flex gap-2"><button onClick={handleArchiveEvent} className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-4 rounded-2xl btn-press text-xs">이벤트 종료 처리</button><button onClick={handleResetEvent} className="flex-1 bg-rose-50 dark:bg-rose-900/30 text-rose-500 font-black py-4 rounded-2xl btn-press text-xs border border-rose-200 dark:border-rose-800">완전 삭제</button></div>)}</div>
                                         </div>
                                     )}
                                 </div>
@@ -1272,16 +1287,16 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                             {/* ADMIN VIEW */}
                             {view === 'admin' && (
                                 <div className="max-w-3xl mx-auto pb-20 fade-in">
-                                    {!isAdminAuth ? (
+                                    {!isAdminAuth && !isHealthOnlyAdmin ? (
                                         <div className="bg-white dark:bg-stone-900 p-10 rounded-[3rem] shadow-2xl border border-stone-200 dark:border-stone-800 text-center mt-10 max-w-sm mx-auto">
                                             <h3 className="text-2xl font-black mb-2 text-stone-800 dark:text-stone-200">시스템 관리자</h3>
-                                            <form onSubmit={e => { e.preventDefault(); if(pinInput === masterPin) setIsAdminAuth(true); else showToast('PIN이 일치하지 않습니다.', true); }}>
+                                            <form onSubmit={async e => { e.preventDefault(); const inputHash = await hashPassword(pinInput); const storedHash = masterPinHash || (await hashPassword(DEFAULT_PIN)); if(inputHash === storedHash) setIsAdminAuth(true); else showToast('PIN이 일치하지 않습니다.', true); }}>
                                                 <input type="password" placeholder="PIN 번호 입력" className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 py-5 rounded-2xl text-center font-black tracking-[0.5em] mb-4 outline-none focus:border-teal-500" value={pinInput} onChange={e => setPinInput(e.target.value)} autoFocus />
                                                 <button className="w-full bg-stone-800 text-white py-4 rounded-2xl font-black shadow-xl tracking-widest text-[13px] btn-press">접속</button>
                                             </form>
                                             {isHealthAdmin && (
                                                 <div className="mt-4 pt-4 border-t border-stone-200 dark:border-stone-800">
-                                                    <button onClick={() => { setIsHealthOnlyAdmin(true); setIsAdminAuth(true); setAdminTab('health'); }} className="w-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 font-black py-3 rounded-xl shadow-sm btn-press text-[12px] border border-teal-200 dark:border-teal-800">🏥 헬스키퍼 관리자 메뉴 접속</button>
+                                                    <button onClick={() => { setIsHealthOnlyAdmin(true); setAdminTab('health'); }} className="w-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 font-black py-3 rounded-xl shadow-sm btn-press text-[12px] border border-teal-200 dark:border-teal-800">🏥 헬스키퍼 관리자 메뉴 접속</button>
                                                 </div>
                                             )}
                                         </div>
@@ -1511,8 +1526,8 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                         <p className="text-[12px] font-black text-rose-600 tracking-widest flex items-center gap-2"><Icon name="shield" size={18}/> 마스터 PIN(비밀번호) 변경</p>
                                                         <input type="password" placeholder="새로운 PIN 입력 (숫자 4자리 권장)" className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-rose-400" id="newPinInput" />
                                                         <div className="grid grid-cols-2 gap-3 mt-4">
-                                                            <button onClick={() => { const val = document.getElementById('newPinInput').value; if(val) { setMasterPin(val); localStorage.setItem('hmood_master_pin', val); showToast('변경되었습니다.'); document.getElementById('newPinInput').value = ''; } else { showToast('입력해주세요.', true); } }} className="w-full bg-stone-800 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[12px]">PIN 변경</button>
-                                                            <button onClick={() => { setMasterPin('6011'); localStorage.removeItem('hmood_master_pin'); showToast('초기화되었습니다.'); }} className="w-full bg-rose-50 dark:bg-rose-900/30 text-rose-500 font-black py-4 rounded-2xl border border-rose-100 dark:border-rose-800 shadow-sm btn-press text-[12px]">공장 초기화 (6011)</button>
+                                                            <button onClick={async () => { const val = document.getElementById('newPinInput').value; if(val) { const h = await hashPassword(val); setMasterPinHash(h); localStorage.setItem('hmood_master_pin_hash', h); localStorage.removeItem('hmood_master_pin'); showToast('변경되었습니다.'); document.getElementById('newPinInput').value = ''; } else { showToast('입력해주세요.', true); } }} className="w-full bg-stone-800 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[12px]">PIN 변경</button>
+                                                            <button onClick={async () => { const h = await hashPassword(DEFAULT_PIN); setMasterPinHash(h); localStorage.setItem('hmood_master_pin_hash', h); localStorage.removeItem('hmood_master_pin'); showToast('초기화되었습니다. (기본: 6011)'); }} className="w-full bg-rose-50 dark:bg-rose-900/30 text-rose-500 font-black py-4 rounded-2xl border border-rose-100 dark:border-rose-800 shadow-sm btn-press text-[12px]">공장 초기화 (6011)</button>
                                                         </div>
                                                     </div>
                                                     <div className="bg-rose-50 dark:bg-rose-900/20 p-7 rounded-[2.5rem] border border-rose-200 dark:border-rose-800 space-y-5 mt-6">
@@ -1760,7 +1775,8 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                 <button onClick={async () => {
                                     if(!profileForm.password) return showToast('비밀번호는 비워둘 수 없습니다.', true);
                                     const targetEmpId = profileForm.targetEmpId || appUser.empId; const originalUser = users.find(u => u.empId === targetEmpId);
-                                    const updatedUser = { ...originalUser, name: profileForm.name, part: profileForm.part, category: profileForm.category, position: profileForm.position || originalUser.position, jobTitle: profileForm.jobTitle || originalUser.jobTitle, password: profileForm.password };
+                                    const pwHash = await hashPassword(profileForm.password);
+                                    const updatedUser = { ...originalUser, name: profileForm.name, part: profileForm.part, category: profileForm.category, position: profileForm.position || originalUser.position, jobTitle: profileForm.jobTitle || originalUser.jobTitle, password: pwHash };
                                     setUsers((users || []).map(u => u.empId === targetEmpId ? updatedUser : u)); saveToIDB('users', updatedUser); setSchedules((schedules || []).map(s => s.empId === targetEmpId ? { ...s, name: profileForm.name, part: profileForm.part } : s));
                                     if (appUser && appUser.empId === targetEmpId) setAppUser(updatedUser); if(db && fbUser) await db.collection(`artifacts/${appId}/public/data/users`).doc(targetEmpId).set(updatedUser, { merge: true });
                                     setShowProfileEdit(false); showToast('정보가 저장되었습니다.');
