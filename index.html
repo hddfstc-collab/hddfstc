@@ -138,7 +138,7 @@ const firebaseConfig = {
 // 🚨🚨🚨 이 한 줄이 핵심입니다! (이게 없어서 뻗었던 거예요) 🚨🚨🚨
 const appId = firebaseConfig.appId;
 
-const PART_W = { '영업1파트': 1, '영업2파트': 2, '고객관리파트': 3 };
+const PART_W = { '영업1파트': 1, '영업2파트': 2, '고객관리파트': 3, '무역센터':4 };
 const RANK_W = { '부장': 1, '차장': 2, '과장': 3, '대리': 4, '주임': 5, '사원': 6 };
 
         const resizeImage = (file, maxWidth = 800) => { return new Promise((resolve) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = (e) => { const img = new Image(); img.src = e.target.result; img.onload = () => { const canvas = document.createElement('canvas'); const scale = img.width > maxWidth ? maxWidth / img.width : 1; canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale); const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); resolve(canvas.toDataURL('image/jpeg', 0.7)); }; }; }); };
