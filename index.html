@@ -126,7 +126,6 @@
         
         const ACTION_OPTIONS = [ {v:'guide', l:'📘 안내형'}, {v:'board', l:'📝 게시판형'}, {v:'notice', l:'📢 공지/자료형'}, {v:'form', l:'📮 폼 제출형'}, {v:'reservation', l:'📅 스마트 예약형'}, {v:'link', l:'🔗 링크형'}, {v:'popup_ext', l:'📞 내장 연결'}, {v:'widget_managers', l:'🧩 위젯: 오늘 근무 영업관리자'}, {v:'widget_notices', l:'🧩 위젯: 실시간 공지사항'} ];
 
-// 🚨 문제가 되던 import문과 app 변수 선언을 싹 지우고 설정값만 남깁니다!
 const firebaseConfig = {
   apiKey: "AIzaSyCDW2TzDtMDfAVmSRHM7a-IZDhsBlkRMEQ",
   authDomain: "ware-house-b36d7.firebaseapp.com",
@@ -135,8 +134,10 @@ const firebaseConfig = {
   messagingSenderId: "549765421476",
   appId: "1:549765421476:web:ef48192ccce302b1c38931"
 };
+
+// 🚨🚨🚨 이 한 줄이 핵심입니다! (이게 없어서 뻗었던 거예요) 🚨🚨🚨
 const appId = firebaseConfig.appId;
-        
+
 const PART_W = { '영업1파트': 1, '영업2파트': 2, '고객관리파트': 3 };
 const RANK_W = { '부장': 1, '차장': 2, '과장': 3, '대리': 4, '주임': 5, '사원': 6 };
 
