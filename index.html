@@ -450,11 +450,29 @@ useEffect(() => {
                         const newOpts = snapshot.docs.map(d => d.data()).sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||''));
                         if(newOpts.length > 0) { setStatusOptions(newOpts); newOpts.forEach(o => saveToIDB('statusOptions', o)); }
                     });
-                const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists`).onSnapshot((snapshot) => {
+const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists`).onSnapshot((snapshot) => {
                         const newBls = snapshot.docs.map(d => d.data());
                         setBlacklists(newBls); newBls.forEach(b => saveToIDB('blacklists', b));
                     });
-                return () => { unsubApps(); unsubEvent(); unsubNotices(); unsubPosts(); unsubStatusOpts(); unsubBlacklists(); };
+
+                // 🌟🌟 [추가된 부분] 직원, 스케줄, 내선번호 데이터를 실시간으로 가져옵니다! 🌟🌟
+                const unsubUsers = db.collection(`artifacts/${appId}/public/data/users`).onSnapshot((snapshot) => {
+                    const newUsers = snapshot.docs.map(d => d.data());
+                    if(newUsers.length > 0) { setUsers(newUsers); newUsers.forEach(u => saveToIDB('users', u)); }
+                });
+                
+                const unsubSchedules = db.collection(`artifacts/${appId}/public/data/schedules`).onSnapshot((snapshot) => {
+                    const newScheds = snapshot.docs.map(d => d.data());
+                    if(newScheds.length > 0) { setSchedules(newScheds); newScheds.forEach(s => saveToIDB('schedules', s)); }
+                });
+                
+                const unsubExtensions = db.collection(`artifacts/${appId}/public/data/extensions`).onSnapshot((snapshot) => {
+                    const newExts = snapshot.docs.map(d => d.data());
+                    if(newExts.length > 0) { setExtensions(newExts); newExts.forEach(e => saveToIDB('extensions', e)); }
+                });
+
+                // 🌟🌟 [수정된 부분] 앱을 끌 때 통신도 깔끔하게 끊어줍니다. 🌟🌟
+                return () => { unsubApps(); unsubEvent(); unsubNotices(); unsubPosts(); unsubStatusOpts(); unsubBlacklists(); unsubUsers(); unsubSchedules(); unsubExtensions(); };
             }, [db, fbUser, isAuthReady]);
             
             const sortedUsers = useMemo(() => {
