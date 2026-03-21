@@ -144,12 +144,33 @@ const RANK_W = { '부장': 1, '차장': 2, '과장': 3, '대리': 4, '주임': 5
         const resizeImage = (file, maxWidth = 800) => { return new Promise((resolve) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = (e) => { const img = new Image(); img.src = e.target.result; img.onload = () => { const canvas = document.createElement('canvas'); const scale = img.width > maxWidth ? maxWidth / img.width : 1; canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale); const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); resolve(canvas.toDataURL('image/jpeg', 0.7)); }; }; }); };
         
         const isRedDay = (year, month, day) => { 
-            const dateObj = new Date(year, month - 1, day); const dayOfWeek = dateObj.getDay(); 
+            const dateObj = new Date(year, month - 1, day); 
+            const dayOfWeek = dateObj.getDay(); 
+            
+            // 1. 주말 (토=6, 일=0)은 무조건 빨간 날
             if (dayOfWeek === 0 || dayOfWeek === 6) return true; 
+            
             const yyyymmdd = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
             const mmdd = `${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`; 
+            
+            // 2. 매년 날짜가 고정된 국경일 (양력)
             const fixedHolidays = ['01-01', '03-01', '05-05', '06-06', '08-15', '10-03', '10-09', '12-25']; 
             if (fixedHolidays.includes(mmdd)) return true;
+            
+            // 🌟 3. 연도별 변동 휴무일 (대체공휴일, 설날, 추석, 선거일 등)
+            // 매년 연말에 내년도 쉬는 날을 여기에 추가해주시면 됩니다!
+            const customHolidays = [
+                // [2026년 예시] (현재 2026년 기준)
+                '2026-02-16', '2026-02-17', '2026-02-18', // 설날 연휴
+                '2026-03-02', // 3.1절 대체공휴일 (3.1이 일요일)
+                '2026-05-24', // 부처님오신날
+                '2026-05-25', // 부처님오신날 대체공휴일 (5.24가 일요일)
+                '2026-06-03', // 전국동시지방선거 (예정)
+                '2026-09-24', '2026-09-25', // 추석 연휴
+                '2026-09-28', // 추석 대체공휴일 (추석 연휴가 토요일과 겹침)
+            ];
+            if (customHolidays.includes(yyyymmdd)) return true;
+            
             return false; 
         };
         const formatLocalTime = (isoString) => { if(!isoString) return ''; try { return new Date(isoString).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute:'2-digit' }).replace(/\./g, '').replace(/\s/g, '-'); } catch(e) { return isoString.slice(0, 10); } };
