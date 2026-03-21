@@ -1,840 +1,3 @@
-
-
-무디2.HTML
-HTML
-
-코드 점검해줘 화면이 안나와..ㅠ
-또, 중복이나 꼬인것 있어?
-추가로 제안할 기능도 있는지 확인해줘
-
-오후 9:24
-
-버그 진단 후 수정안과 기능 제안까지 종합 분석했다
-버그 진단 후 수정안과 기능 제안까지 종합 분석했다
-이제 전체 문제를 파악했습니다. 수정 파일을 만들겠습니다.
-
-
-Copy file for editing
-Copy file for editing
-🔍 코드 점검 결과
-🚨 화면이 안 나오는 원인 (치명적 버그 1개)
-isNoticeModalOpen 상태 선언 누락
-
-javascript
-// ❌ 이 줄이 없음!
-const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
-setIsNoticeModalOpen(true)가 코드 4곳에서 호출되는데, 정작 useState로 선언된 곳이 없습니다. React가 앱을 렌더링할 때 바로 에러가 터져 완전 흰 화면이 됩니다.
-
-수정 위치: 271~272번째 줄 근처 (noticeForm 선언 바로 아래)
-
-javascript
-const [noticeForm, setNoticeForm] = useState({ content: '', photos: [], isPinned: false });
-const [editingNoticeId, setEditingNoticeId] = useState(null);
-// ✅ 이 줄 추가!
-const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
-⚠️ 기타 버그 2개
-1. pin 아이콘 미정의 ICON_PATHS에 pin이 없어서, "📌 중요 공지" 핀 아이콘이 fileText(문서)로 대체 표시됩니다.
-
-javascript
-// ICON_PATHS 객체에 추가:
-pin: <><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24z"/>,
-2. 이벤트 참여 조건 true ? 하드코딩 (1250번째 줄)
-
-javascript
-// ❌ 현재: 항상 버튼 보임 (대상 필터링 무력화)
-} : true ? (<button ...>참여하기</button>)
-
-// ✅ 수정: 실제 대상 체크
-} : (currentEvent.target === 'all' || (scheduleMap[appUser?.empId]?.[todayStr])) ? (<button ...>참여하기</button>)
-🔄 중복/꼬인 코드
-위치	문제
-handleNoticeSubmit (773번째 줄)	e.preventDefault() 사용 → 모달에서는 form 없이 button의 click 이벤트를 받으므로 의미없지만 작동은 됨
-이벤트 뷰 (1248, 1261번째 줄)	handleArchiveEvent 버튼이 waiting 상태와 finished 상태 양쪽에 중복 렌더링됨
-dark 모드 CSS (33번째 줄)	.dark .bg-white 등 일부 CSS selector가 Tailwind dark: prefix와 역할 중복, 우선순위 충돌 가능성
-💡 제안 기능
-공지 이미지 첨부 — noticeForm.photos는 배열로 설계되어 있지만 모달에 이미지 업로드 UI가 빠져 있음
-스케줄 월 복사 — 전월 스케줄을 다음달로 복사하는 버튼
-이벤트 참여 대상 필터링 복구 — 위 버그 수정과 연계
-예약 확정 알림 토스트 강화 — 예약 후 날짜/시간 포함한 확인 메시지
-내선번호 즐겨찾기 상단 고정 — 현재 별표는 되지만 목록 재정렬이 안 됨
-우선 지금 당장 고쳐야 할 것은 isNoticeModalOpen 선언 한 줄 추가입니다. 이것만 추가하면 앱이 정상 렌더링됩니다. 수정된 파일을 만들어 드릴까요? 아니면 위 버그들을 모두 적용해서 드릴까요?
-
-계속
-
-오후 9:29
-
-계획했고 수정사항 적용 준비 완료
-계획했고 수정사항 적용 준비 완료
-이제 공지 이미지 첨부 UI도 추가합니다.
-
-
-파일 조회함, 파일 수정됨
-파일 조회함, 파일 수정됨
-
-Read notice modal to add image upload
-
-Fix 4: Add image upload UI to notice modal
-
-무디2_fixed.HTML
-+24
--3
-완료
-이제 즐겨찾기 내선번호 상단 정렬도 고칩니다.
-
-
-파일 조회함, 파일 수정됨
-파일 조회함, 파일 수정됨
-
-Find filteredExtensions to fix favorite sorting
-
-Fix 5: Sort favorite extensions to top in filteredExtensions
-
-무디2_fixed.HTML
-+4
--1
-완료
-마지막으로 예약 완료 토스트 메시지도 강화합니다.
-
-
-모든 수정사항을 성공적으로 적용했습니다
-모든 수정사항을 성공적으로 적용했습니다
-총 6가지 수정 적용 완료입니다.
-
-✅ 적용된 수정 목록
-#	분류	내용
-1	🚨 치명적 버그	isNoticeModalOpen useState 선언 추가 → 흰 화면 해결
-2	⚠️ 버그	pin 아이콘 ICON_PATHS에 추가 → 중요 공지 핀 아이콘 정상 표시
-3	⚠️ 버그	이벤트 참여 조건 true ? → 실제 출근 여부 체크로 수정
-4	💡 기능 추가	공지 작성 모달에 이미지 첨부 UI 추가 (최대 3장, 삭제 가능)
-5	💡 기능 개선	내선번호 즐겨찾기 상단 자동 정렬
-6	💡 UX 개선	예약 완료 토스트에 날짜+시간 포함 (✅ 2026-03-21 10:00 예약 완료!)
-무디2 fixed
-코드 · HTML 
-에러뿜어
-react-dom.production.min.js:121 ReferenceError: isNoticeModalOpen is not defined
-    at App (<anonymous>:6798:25)
-    at mf (react-dom.production.min.js:105:412)
-    at zf (react-dom.production.min.js:127:55)
-    at Qk (react-dom.production.min.js:251:489)
-    at Ri (react-dom.production.min.js:195:185)
-    at Ok (react-dom.production.min.js:195:116)
-    at Nd (react-dom.production.min.js:194:492)
-    at Qf (react-dom.production.min.js:187:439)
-    at Ni (react-dom.production.min.js:185:400)
-    at S (react.production.min.js:17:25)
-    at MessagePort.U (react.production.min.js:21:229)
-wf @ react-dom.production.min.js:121
-(anonymous) @ react-dom.production.min.js:121
-Hh @ react-dom.production.min.js:103
-Ji @ react-dom.production.min.js:180
-Hi @ react-dom.production.min.js:179
-Hk @ react-dom.production.min.js:178
-Rk @ react-dom.production.min.js:197
-xb @ react-dom.production.min.js:196
-Ni @ react-dom.production.min.js:186
-S @ react.production.min.js:17
-U @ react.production.min.js:21Understand this error
-react-dom.production.min.js:198 Uncaught ReferenceError: isNoticeModalOpen is not defined
-
-더 보기
-오후 9:36
-
-재작성하여 JSX 파싱 오류 제거 중
-재작성하여 JSX 파싱 오류 제거 중
-JSX 파싱 에러가 추가 코드에서 발생한 것 같습니다. 원본에서 다시 깔끔하게 수정합니다.
-
-
-5개 파일 수정됨, 명령 2개 실행함
-5개 파일 수정됨, 명령 2개 실행함
-The problem is that the first fixed file (무디2_fixed.HTML)에 이미지 업로드 JSX 코드를 추가했는데, 그 안의 특수문자(✕)가 Babel 파싱 에러를 일으켜 isNoticeModalOpen 선언이 있어도 전체 컴파일이 실패한 것입니다.
-
-새 파일(무디2_v2.HTML)은 이미지 업로드 코드 없이 5가지 수정만 깔끔하게 적용했습니다.
-
-하지만 제가 결과를 저장하고 다운로드 링크를 제공하지 못했습니다. 대화 길이 제한에 걸렸기 때문입니다. 새 대화를 열어서 이 대화를 이어서 진행해주세요 — 파일을 다시 업로드하고 "수정 완료본 만들어줘" 라고 하면 바로 처리해드리겠습니다. 죄송합니다 😔
-
-계속
-
-오후 9:43
-
-명령 실행함, 파일 읽음
-명령 실행함, 파일 읽음
-이전 파일(무디2_fixed)은 이미지 업로드 UI 안에 ✕ 특수문자가 들어가서 Babel이 전체 파싱을 실패시켰습니다. 이번 v2는 그 코드를 제외하고 안전하게만 적용했습니다.
-
-✅ 이번 파일에 적용된 수정
-#	내용
-1	isNoticeModalOpen useState 선언 추가 → 흰 화면 해결
-2	pin 아이콘 추가 → 중요 공지 핀 아이콘 정상 표시
-3	이벤트 참여 조건 true ? 수정 → 실제 출근자 체크
-4	내선번호 즐겨찾기 상단 정렬
-5	예약 완료 토스트 강화 → [2026-03-21 10:00] 예약이 완료되었습니다!
-무디2 v2
-코드 · HTML 
-생큐
-
-오후 9:46
-
-Endorsed the request enthusiastically
-Endorsed the request enthusiastically
-다행이에요! 잘 작동하길 바랍니다 😊
-
-혹시 추가로 기능 넣거나 다른 버그 생기면 언제든 올려주세요!
-
-불합리한건 없었어?
-
-오후 9:47
-
-여러 보안 및 로직 결함을 발굴했다
-여러 보안 및 로직 결함을 발굴했다
-코드 전체를 보면서 몇 가지 눈에 걸리는 게 있었어요.
-
-🔐 보안 관련 (가장 심각)
-1. 비밀번호 평문 저장 사용자 비밀번호가 Firestore, IndexedDB에 그대로 password: "1726480" 형태로 저장됩니다. 누가 DB를 보면 전직원 비밀번호가 노출돼요.
-
-2. Firebase API 키 하드코딩 HTML 소스 보기만 해도 apiKey, projectId 등이 전부 보입니다.
-
-3. masterPin이 localStorage에 평문 저장 localStorage.getItem('hmood_master_pin') — 개발자 도구로 누구나 PIN 확인 가능합니다.
-
-⚙️ 로직 관련
-4. 헬스키퍼 관리자가 isAdminAuth = true로 설정됨
-
-javascript
-// 1279번째 줄
-onClick={() => { setIsHealthOnlyAdmin(true); setIsAdminAuth(true); ... }}
-헬스 전용 메뉴만 줘야 하는데 isAdminAuth까지 true가 되면 이론상 전체 관리자 권한이 생길 수 있어요.
-
-5. handleNoticeSubmit이 e.preventDefault()를 쓰는데 버튼 onClick에서 호출
-
-javascript
-const handleNoticeSubmit = async (e) => {
-    e.preventDefault(); // ← e가 없는데 호출됨
-모달 버튼에서 onClick={handleNoticeSubmit}으로 호출하면 e가 undefined라 에러 위험이 있어요. 현재는 운 좋게 안 터지는 중.
-
-6. 이벤트 종료 버튼 중복 waiting 상태와 finished 상태 양쪽에 "이벤트 종료" 버튼이 동일하게 렌더링됩니다.
-
-💡 가장 현실적으로 고려할 것
-비밀번호 평문 저장은 사내 시스템이라도 개선하는 게 좋습니다. 간단하게는 SHA-256 해시만 적용해도 훨씬 안전해져요. 원하시면 적용해드릴 수 있어요!
-
-그럼 다 고쳐줄수 있어?
-
-오후 9:49
-
-보안 문제들을 체계적으로 해결하려 검토 중
-보안 문제들을 체계적으로 해결하려 검토 중
-네! 하나씩 다 잡겠습니다. 원본 기준으로 다시 시작할게요.
-
-
-V2 기준으로 v3 작업 시작
-V2 기준으로 v3 작업 시작
-[1] SHA-256 해시 함수 추가 + 비밀번호 저장/비교 수정
-
-
-파일 조회함, 파일 수정됨
-파일 조회함, 파일 수정됨
-[2] 로그인 - 해시 비교
-
-
-파일 조회함, 파일 수정됨
-파일 조회함, 파일 수정됨
-[3] 비밀번호 저장 - 해시로 저장
-
-
-2개의 파일 조회함, 2개 파일 수정됨
-2개의 파일 조회함, 2개 파일 수정됨
-[4] 프로필 수정 - 비밀번호 해시 저장
-
-
-파일 조회함, 파일 수정됨
-파일 조회함, 파일 수정됨
-[5] masterPin - localStorage 평문 저장 제거 + 해시 비교
-
-
-3개 파일 수정됨, 2개의 파일 조회함, 명령 실행함
-3개 파일 수정됨, 2개의 파일 조회함, 명령 실행함
-[6] 헬스키퍼 관리자 - isAdminAuth=true 제거
-
-
-파일 조회함, 파일 수정됨
-파일 조회함, 파일 수정됨
-이제 헬스 전용 관리자가 실제로 관리자 화면에 접근할 수 있도록 isAdminAuth 의존하던 조건을 보완합니다.
-
-
-헬스 전용 관리자 접근 조건 확인
-헬스 전용 관리자 접근 조건 확인
-The issue is isHealthOnlyAdmin이 true일 때 관리자 화면 자체( !isAdminAuth 로직)에 접근이 안 됩니다. render 분기를 수정해야 합니다.
-
-계속
-
-오후 9:54
-
-계속 진행할 준비를 마쳤습니다
-계속 진행할 준비를 마쳤습니다
-[7] handleNoticeSubmit - e.preventDefault() 안전하게 수정
-
-
-파일 조회함, 파일 수정됨
-파일 조회함, 파일 수정됨
-[8] 이벤트 "종료" 버튼 중복 제거 - finished 상태에서만 완전종료 버튼 남기기
-
-
-2개의 파일 조회함
-2개의 파일 조회함
-waiting 상태엔 "추첨 시작 + 조기 종료"가 맞고, finished 상태엔 "완전 종료"가 맞습니다. 역할이 다르므로 중복이 아니라 명칭만 헷갈렸던 것입니다. 대신 handleResetEvent(완전 삭제)와 handleArchiveEvent(종료 처리)를 finished 버튼에서 명확하게 분리합니다.
-
-
-Finished 상태 관리자 버튼 - 완전종료(아카이브)와 삭제 분리
-Finished 상태 관리자 버튼 - 완전종료(아카이브)와 삭제 분리
-최종 검증
-
-
-모든 수정 최종 검증
-모든 수정 최종 검증
-모두 정상 적용 확인. 출력 폴더로 복사합니다.
-
-
-명령 실행함, 파일 읽음
-명령 실행함, 파일 읽음
-모든 수정 완료입니다! 적용된 내용 정리입니다.
-
-✅ v3 적용 내역 (전체)
-#	분류	내용
-1	🔐 보안	SHA-256 해시 함수 추가 (crypto.subtle 네이티브 API 사용)
-2	🔐 보안	로그인 시 해시 비교 (기존 평문 DB도 호환되게 마이그레이션 처리)
-3	🔐 보안	구성원 추가/수정 시 비밀번호 해시로 저장
-4	🔐 보안	비밀번호 초기화 시 해시로 저장
-5	🔐 보안	프로필 수정 시 비밀번호 해시로 저장
-6	🔐 보안	masterPIN — localStorage 평문 제거, 해시로 저장/비교
-7	🔐 보안	헬스 전용 관리자 — isAdminAuth=true 제거, 전체 관리자 권한 차단
-8	⚙️ 로직	헬스 전용 관리자 패널 진입 조건 보완 (!isAdminAuth && !isHealthOnlyAdmin)
-9	⚙️ 로직	handleNoticeSubmit — e가 없어도 에러 안 나게 안전 처리
-10	⚙️ UX	이벤트 finished 버튼 — "종료 처리"와 "완전 삭제" 명확히 분리
-💡 기존 사용자 호환: 로그인 시 해시 비교가 실패하면 평문도 자동 허용되므로, 기존 계정이 끊기지 않습니다. 로그인 성공 후 비밀번호를 한 번 재저장하면 자연스럽게 해시로 마이그레이션됩니다.
-
-무디2 v3
-코드 · HTML 
-피씨버전 월간에서 옆으로 스크롤이 안되
-
-오후 10:43
-
-수평 스크롤 방해하는 CSS 속성들을 진단했습니다
-수평 스크롤 방해하는 CSS 속성들을 진단했습니다
-원인 두 가지 발견했습니다.
-
-외부 래퍼 overflow-hidden → 내부 가로 스크롤을 완전히 막아버림 (1120번 줄)
-테이블 w-full → 컨테이너 너비에 맞춰 압축되어 가로 확장 안 됨 (1133번 줄)
-overflow-x-auto만 있고 overflow-y-auto 명시 없음 → 세로 스크롤 충돌 (1132번 줄)
-
-2개 파일 수정됨, 명령 실행함, 파일 읽음
-2개 파일 수정됨, 명령 실행함, 파일 읽음
-수정 내용 3가지입니다.
-
-위치	변경 전	변경 후
-외부 래퍼	overflow-hidden	제거 — 이게 가로 스크롤 차단의 주범
-테이블 컨테이너	overflow-x-auto	overflow-x-auto overflow-y-auto 명시
-테이블	w-full	minWidth: max-content — 날짜 칸 수만큼 자유롭게 확장
-overflow-hidden이 있으면 자식 요소의 스크롤이 아무리 설정돼 있어도 바깥에서 잘려버려서 스크롤이 동작을 안 합니다.
-
-무디2 v3
-코드 · HTML 
-키보드로 스크롤이 안되 마우스로 긁으면 되긴하는데
-
-오후 10:47
-
-키보드 포커스 추가로 스크롤 문제 해결 방안 도출했다
-키보드 포커스 추가로 스크롤 문제 해결 방안 도출했다
-키보드 화살표 스크롤이 안 되는 이유는 테이블 컨테이너에 포커스가 없기 때문입니다. tabIndex="0"을 추가하면 클릭 후 키보드로 스크롤 가능해집니다.
-
-
-테이블 컨테이너에 tabIndex 추가해 키보드 스크롤 활성화
-테이블 컨테이너에 tabIndex 추가해 키보드 스크롤 활성화
-그런데 tabIndex만으론 월간 뷰 진입 시 자동 포커스가 안 잡혀서 처음엔 여전히 클릭 먼저 해야 합니다. 뷰 전환 시 자동 포커스까지 잡아줍니다.
-
-
-명령 2개 실행함, 2개 파일 수정됨, 파일 조회함
-명령 2개 실행함, 2개 파일 수정됨, 파일 조회함
-월간 뷰로 전환될 때 자동 포커스를 잡는 useEffect를 추가합니다.
-
-
-명령 3개 실행함, 파일 조회함, 파일 수정됨
-명령 3개 실행함, 파일 조회함, 파일 수정됨
-이제 테이블 div에 ref 연결합니다.
-
-
-파일 수정됨, 명령 실행함, 파일 읽음
-파일 수정됨, 명령 실행함, 파일 읽음
-수정 내용입니다.
-
-원인	해결
-테이블 div에 포커스가 없어서 키보드 입력을 못 받음	tabIndex="0" 추가 → 키보드 이벤트 수신 가능
-월간 뷰 진입해도 직접 클릭해야 포커스가 잡힘	useRef + useEffect로 뷰 전환 시 자동 포커스
-focus 시 파란 테두리 생김	focus:outline-none 으로 시각적 변화 없음
-이제 월간 탭 누르는 순간부터 클릭 없이 바로 ←→ 키보드 스크롤이 됩니다.
-
-무디2 v3
-코드 · HTML 
-헬스키퍼 예약인원 제한에 걸리더라도 추가예약이 되고있어
-앱/폴더/위젯 관리에서의 수정이랑 겹치는것같아 여기선 day로 제한 거는 기능이 없어.
-
-오후 10:57
-
-두 가지 버그와 누락된 day 제한 기능을 파악했다
-두 가지 버그와 누락된 day 제한 기능을 파악했다
-원인 두 가지 발견했습니다.
-
-submitCustomRes에서 isFull/마감 서버 검증 없음 — UI에서만 막고 있어서 resPrompt가 세팅된 상태로 다른 방법으로 확정 누르면 통과됨
-앱관리 폼에 resLeadTimeDays 입력 UI가 없음 — hours만 있고 days 필드가 누락됨
-
-앱관리 폼의 예약 설정 UI 확인
-앱관리 폼의 예약 설정 UI 확인
-두 가지 수정합니다.
-
-
-앱관리 폼에 resLeadTimeDays 필드 추가 + 3칸 그리드로 변경
-앱관리 폼에 resLeadTimeDays 필드 추가 + 3칸 그리드로 변경
-이제 submitCustomRes에 서버 사이드 검증을 추가합니다.
-
-
-파일 수정됨, 명령 실행함, 파일 읽음
-파일 수정됨, 명령 실행함, 파일 읽음
-수정 내용입니다.
-
-버그 1 — 인원 제한 우회 가능 기존엔 UI 버튼만 비활성화하고 submitCustomRes 함수 자체엔 검증이 없었습니다. "예약 확정" 버튼을 누르는 시점에 다시 한번 체크하도록 서버 사이드 재검증을 추가했습니다.
-
-슬롯 인원 꽉 참 → 차단
-지난 시간 → 차단
-마감 리드타임 초과 → 차단
-단, 관리자/담당자는 예외 처리 유지
-버그 2 — 앱관리에서 일(Day) 단위 마감 설정 없음 resLeadTimeDays 필드 입력 UI가 없어서 설정이 불가능했습니다. "타임당 인원 / 예약 마감(X일 전) / 예약 마감(X시간 전)" 3칸 그리드로 변경했습니다.
-
-무디2 v3
-코드 · HTML 
-고마워
-
-오후 11:07
-
-감사 인사에 응하기로 결정했다
-감사 인사에 응하기로 결정했다
-천만에요! 😊
-
-버그도 많이 잡고 보안도 강화됐으니 훨씬 안정적인 시스템이 됐을 거예요. 쓰다가 또 이상한 거 발견되면 언제든 올려주세요!
-
-월간 표는 PC화면에서는 와이드하게 보고싶어 지금은 조금 답답하네
-
-오후 11:10
-
-월간 표의 PC 화면 너비 제약을 검토했습니다
-월간 표의 PC 화면 너비 제약을 검토했습니다
-원인이 두 곳입니다. 전체 뷰 래퍼가 max-w-5xl로 제한되고 있어서, 월간 뷰일 때만 풀어줍니다.
-
-
-월간 뷰일 때 max-w 제한 해제
-월간 뷰일 때 max-w 제한 해제
-
-월간 뷰일 때 max-w 제한 해제
-
-무디2_v3.HTML
-+1
--1
-완료
-그리고 main 패딩도 월간일 때 좀더 여유있게 줍니다.
-
-
-파일 조회함, 파일 수정됨
-파일 조회함, 파일 수정됨
-테이블 최대 높이도 PC에선 더 크게 봐야 하므로 늘립니다.
-
-
-파일 수정됨, 명령 실행함, 파일 읽음
-파일 수정됨, 명령 실행함, 파일 읽음
-수정 3가지입니다.
-
-항목	변경 내용
-전체 래퍼	월간 뷰일 때만 max-w-5xl → max-w-full 로 해제
-좌우 패딩	월간 뷰일 때 p-4 → p-2 md:p-3 으로 줄여 화면 끝까지 활용
-테이블 높이	max-h-65vh → PC에서 max-h-78vh 로 세로도 더 넓게
-다른 뷰(일간, 구성원 등)는 그대로 max-w-5xl 유지됩니다.
-
-무디2 v3
-코드 · HTML 
-최고구만...
-
-오후 11:11
-
-0초 동안 생각함
-0초 동안 생각함
-감사합니다! 😄
-
-코드 꽤 복잡한데 잘 버티고 계시네요 👍
-앞으로도 버그 나오면 편하게 올려주세요!
-
-궁굼한게 있는데 특정인 한테 푸시알람이 가게 가능해?
-예를 들어서 보수요청이 들어오면 시설관리소속 사람이 볼수 있게
-
-오후 11:13
-
-푸시 알람 구현 방식들을 비교 검토했습니다
-푸시 알람 구현 방식들을 비교 검토했습니다
-좋은 아이디어입니다! 기술적으로 가능한데, 방식이 두 가지라 상황에 맞는 걸 골라야 해요.
-
-방법 1 — 브라우저 알림 (탭이 열려있을 때)
-구현 난이도 낮음 ⭐
-
-이미 Firestore 실시간 리스너가 있으니, 보수요청 데이터가 들어오는 순간 특정 파트 사람 브라우저에 알림 띄우는 건 비교적 쉽게 추가 가능합니다.
-
-✅ 추가 비용 없음
-✅ 현재 코드에 바로 붙일 수 있음
-❌ 앱(탭)이 열려있어야만 작동
-방법 2 — 진짜 푸시 알림 (앱 꺼져도 옴)
-구현 난이도 높음 ⭐⭐⭐
-
-FCM(Firebase Cloud Messaging) + Service Worker 조합인데, 이미 Firebase를 쓰고 계셔서 연동은 가능합니다. 단 Firebase Blaze 요금제(종량제) 로 업그레이드가 필요하고, Cloud Functions 코드를 별도 서버에 배포해야 해요.
-
-✅ 폰/PC 꺼져도 알림 옴
-✅ 카카오톡처럼 진짜 푸시
-❌ Firebase 유료 전환 필요
-❌ 구현 복잡도 높음
-제 추천
-지금 이 HTML 단일 파일 구조에선 방법 1 (브라우저 알림)이 현실적입니다. 시설관리 담당자가 근무 중 탭 띄워놓는 환경이라면 충분히 실용적이에요.
-
-원하시면 방법 1 바로 붙여드릴 수 있어요 — 보수요청 제출 시 시설관리 파트 소속 직원이 로그인된 브라우저에 알림이 뜨는 방식으로요!
-
-PWA형식으로 가능하다는걸 본적이 있는데 안될까
-
-오후 11:16
-
-PWA 푸시 알림 가능성을 검토하고 제약사항을 파악했다
-PWA 푸시 알림 가능성을 검토하고 제약사항을 파악했다
-가능합니다! 근데 한 가지 제약이 있어요.
-
-PWA 푸시의 구조
-사용자 브라우저       Firebase            담당자 브라우저
-보수요청 제출  →  Firestore 저장  →  Cloud Functions  →  FCM 푸시  →  알림 도착
-PWA 푸시는 Service Worker 라는 백그라운드 스크립트가 필요한데, 이게 별도 .js 파일로 존재해야 합니다. 지금처럼 HTML 단일 파일로는 못 넣어요.
-
-현실적인 방법
-Netlify나 GitHub Pages에 파일 2개만 올리면 됩니다.
-
-📁 배포 폴더
-├── index.html       ← 지금 무디2.HTML
-└── firebase-messaging-sw.js  ← 새로 추가 (푸시 수신용)
-그리고 Firebase Blaze 요금제로 업그레이드 후 Cloud Functions 코드를 작성해야 합니다. 보수요청 저장 시 자동으로 특정 파트에 FCM 푸시를 보내는 트리거 함수요.
-
-비용 현실
-Firebase Blaze는 종량제지만 소규모 사내 시스템이면 사실상 무료 범위 안에 들어올 가능성이 높아요. Cloud Functions 무료 호출 횟수가 월 200만 건이라 웬만한 사내 시스템은 0원입니다.
-
-정리
-항목	내용
-가능 여부	✅ 가능
-추가 파일	firebase-messaging-sw.js 1개
-호스팅 필요	Netlify / GitHub Pages (무료)
-Firebase 요금	Blaze 전환 필요, 실사용은 거의 무료
-구현 난이도	⭐⭐⭐ (복잡하지만 가능)
-진행하고 싶으시면 먼저 Netlify 같은 곳에 호스팅이 되어있는지 여쭤봐도 될까요? 아니면 지금 이 HTML을 어떻게 직원들에게 배포하고 계신지 알면 제일 적합한 방법을 잡아드릴 수 있어요!
-
-지금은 깃허브에 호스팅하고있어
-
-오후 11:17
-완벽합니다! GitHub Pages면 PWA 푸시 구현에 딱 맞아요.
-
-필요한 작업 순서
-1단계 — Firebase Blaze 업그레이드 Firebase 콘솔 → 스파크(무료) → Blaze(종량제) 전환 실사용은 거의 무료지만 카드 등록 필요해요.
-
-2단계 — 파일 구조 변경
-
-📁 GitHub 저장소
-├── index.html                    ← 무디2.HTML 이름 변경
-├── firebase-messaging-sw.js      ← 새로 추가 (푸시 수신)
-└── manifest.json                 ← 새로 추가 (PWA 설정)
-3단계 — Cloud Functions 작성 Firestore에 보수요청이 저장되는 순간 트리거되어 시설관리 파트 직원들에게 FCM 푸시를 보내는 함수입니다.
-
-제가 만들어드릴 수 있는 것
-firebase-messaging-sw.js
-manifest.json
-functions/index.js (Cloud Functions 코드)
-무디 HTML에 추가할 FCM 토큰 등록 코드
-몇 가지만 확인할게요!
-
-답변을 기다리고 있습니다! 위 3가지 항목 선택해주시면 딱 맞게 설계해드릴게요 😊
-
-질문: 푸시 알림을 어떤 앱에서 받길 원하세요?
-답변: 둘 다
-
-질문: 알림 보낼 대상을 어떻게 지정할까요?
-답변: 둘 다 필요
-
-질문: 어떤 액션에서 알림을 보낼까요? (해당하는 항목을 모두 선택)
-답변: 모두 다
-
-오후 11:19
-
-푸시 알림 시스템 아키텍처 설계 및 구현 파일 작성 계획
-푸시 알림 시스템 아키텍처 설계 및 구현 파일 작성 계획
-완벽합니다! 전체 설계를 잡고 파일 4개 만들어드릴게요.
-
-전체 구조
-📁 GitHub 저장소
-├── index.html                  ← 무디 HTML (FCM 코드 추가)
-├── manifest.json               ← PWA 설정
-├── firebase-messaging-sw.js    ← 백그라운드 푸시 수신
-└── functions/
-    ├── index.js                ← Cloud Functions (푸시 발송)
-    └── package.json
-파일 하나씩 만들겠습니다.
-
-
-4개의 파일 생성됨
-4개의 파일 생성됨
-이제 가장 중요한 HTML 수정 — FCM 토큰 등록 + 알림 권한 요청 + 앱 관리에 알림 대상 설정 추가입니다.
-
-
-파일 조회함, 파일 수정됨
-파일 조회함, 파일 수정됨
-이제 VAPID 키 상수와 FCM 초기화 함수를 추가합니다.
-
-
-VAPID 키 상수 + FCM 토큰 등록 함수 추가
-VAPID 키 상수 + FCM 토큰 등록 함수 추가
-로그인 성공 시 FCM 토큰 등록을 호출합니다.
-
-
-파일 조회함, 명령 실행함, 파일 수정됨
-파일 조회함, 명령 실행함, 파일 수정됨
-앱 관리 폼에 알림 대상 설정 필드를 추가합니다.
-
-
-2개의 파일 조회함, 명령 실행함, 파일 수정됨
-2개의 파일 조회함, 명령 실행함, 파일 수정됨
-appManagerForm 초기값과 handleSaveDynamicApp에도 notifyTarget 추가합니다.
-
-
-명령 실행함, 파일 수정됨
-명령 실행함, 파일 수정됨
-이제 handleEditDynamicApp과 handleSaveDynamicApp / handleCancelEditDynamicApp 에도 notifyTarget 반영합니다.
-
-
-명령 2개 실행함, 파일 수정됨
-명령 2개 실행함, 파일 수정됨
-최종 검증 후 파일 정리합니다.
-
-
-전체 검증
-전체 검증
-지금까지 만든 파일들을 정리해드릴게요.
-
-📁 GitHub에 올려야 할 파일 구조
-📁 저장소 루트
-├── index.html                    ← 무디2_v3.HTML (이름 변경)
-├── manifest.json                 ← PWA 설정
-├── firebase-messaging-sw.js      ← 백그라운드 푸시 수신
-└── functions/
-    ├── index.js                  ← Cloud Functions 푸시 발송
-    └── package.json
-⚠️ 배포 전 반드시 할 것 2가지
-1. VAPID 키 교체 index.html 안에 여기에_Firebase_VAPID_키_붙여넣기 부분을 Firebase 콘솔에서 가져와야 합니다.
-
-Firebase 콘솔 → 프로젝트 설정 → 클라우드 메시징 탭 → 웹 푸시 인증서 → 키 쌍 생성 → 복사
-
-2. Cloud Functions 배포
-
-bash
-npm install -g firebase-tools
-firebase login
-cd functions && npm install
-firebase deploy --only functions
-파일들 다운받으시겠어요? 이어서 만들어드릴게요!
-
-계속
-
-오후 11:27
-
-파일 준비 및 다운로드 제공 계획 수립했음
-파일 준비 및 다운로드 제공 계획 수립했음
-5개 파일 모두 준비됐습니다!
-
-📋 GitHub 업로드 체크리스트
-루트에 올릴 파일
-
-무디2_v3.HTML → index.html 로 이름 변경
-manifest.json → 그대로
-firebase-messaging-sw.js → 그대로
-functions 폴더 만들어서 올릴 파일
-
-functions_index.js → functions/index.js
-functions_package.json → functions/package.json
-🔑 VAPID 키 교체 방법
-index.html 열고 여기에_Firebase_VAPID_키_붙여넣기 검색 → 아래에서 복사한 키로 교체
-
-Firebase 콘솔 → ⚙️ 프로젝트 설정 → 클라우드 메시징 탭 → 웹 푸시 인증서 → 키 쌍 생성 클릭 → 공개 키 복사
-
-🚀 Cloud Functions 배포 순서
-bash
-# 1. Firebase CLI 설치 (처음 한 번만)
-npm install -g firebase-tools
-
-# 2. 로그인
-firebase login
-
-# 3. 프로젝트 연결 (저장소 루트에서)
-firebase use ware-house-b36d7
-
-# 4. functions 폴더에서 패키지 설치
-cd functions && npm install
-
-# 5. 배포
-firebase deploy --only functions
-```
-
----
-
-### 🔔 실제 동작 흐름
-```
-보수요청 제출
-    ↓
-Firestore dynamic_posts 저장
-    ↓
-Cloud Functions 트리거 (자동)
-    ↓
-앱 설정의 "알림 대상" 파트/개인 조회
-    ↓
-해당 직원 fcmToken으로 FCM 발송
-    ↓
-브라우저/모바일 푸시 알림 도착 🔔
-막히는 부분 있으면 바로 알려주세요!
-
-무디2 v3
-코드 · HTML 
-Manifest
-코드 · JSON 
-Firebase messaging sw
-JS 
-Functions index
-JS 
-Functions package
-코드 · JSON 
-예약이 꽉차면 추가 예약아 안되도록했는데 계속 예약이 추가되네..
-
-오후 11:35
-
-상태 동기화 문제를 파악하고 데이터베이스 검증 방안을 모색했다
-상태 동기화 문제를 파악하고 데이터베이스 검증 방안을 모색했다
-문제를 찾았습니다. dynamicPosts는 로컬 React 상태라서, 다른 사람이 동시에 예약하면 내 화면의 상태가 아직 업데이트 안 된 상태로 검증이 통과돼버립니다. Firestore에서 직접 최신 데이터를 조회해서 검증해야 합니다.
-
-
-파일 수정됨, 명령 실행함, 파일 읽음
-파일 수정됨, 명령 실행함, 파일 읽음
-원인과 해결책입니다.
-
-왜 뚫렸나
-사용자A  ──→ 예약 모달 열기 (이 시점 슬롯 0/1)
-사용자B  ──→ 예약 모달 열기 (이 시점 슬롯 0/1)
-사용자A  ──→ 확정 클릭 → 로컬 state 검증 통과 → 저장
-사용자B  ──→ 확정 클릭 → 로컬 state 아직 0/1 → 통과 ← 여기가 문제!
-로컬 dynamicPosts 상태는 Firestore 리스너가 업데이트해주지만 수십ms~수백ms 딜레이가 있어서, 동시 요청 시 둘 다 빈 슬롯으로 인식합니다.
-
-해결 방법
-확정 버튼을 누르는 순간 Firestore에 직접 쿼리해서 현재 실제 예약 수를 확인합니다. 로컬 state는 UI 표시용으로만 쓰고, 최종 결정은 항상 DB 기준으로 합니다. 오프라인이거나 쿼리 실패 시에만 로컬 state로 fallback합니다.
-
-무디2 v3
-코드 · HTML 
-아직 푸시알람은 안쓸려고 하는데 지금 보여주는걸로 교체해도 되지?
-
-오후 11:38
-
-2초 동안 생각함
-2초 동안 생각함
-네! FCM 관련 코드만 깔끔하게 제거하겠습니다.
-
-
-3개 파일 수정됨, 명령 2개 실행함
-3개 파일 수정됨, 명령 2개 실행함
-
-FCM 관련 코드 위치 전체 확인
-
-스크립트
-
-FCM SDK 및 PWA 메타태그 제거
-
-무디2_v3.HTML
-+4
--11
-
-VAPID 키 상수 및 registerFCMToken 함수 제거
-
-무디2_v3.HTML
-+1
--23
-
-로그인 시 registerFCMToken 호출 제거
-
-무디2_v3.HTML
-+1
--1
-
-FCM 잔재 없는지 최종 확인
-
-스크립트
-완료
-깔끔하게 제거됐습니다.
-
-
-명령 실행함, 파일 읽음
-명령 실행함, 파일 읽음
-FCM 관련 코드 3곳 모두 제거했습니다.
-
-firebase-messaging-compat.js 스크립트 태그
-PWA 메타태그 (manifest, theme-color, apple-mobile-web-app-*)
-VAPID_KEY 상수 + registerFCMToken 함수 전체
-로그인 시 registerFCMToken 호출
-나중에 푸시 알림 붙이실 때는 만들어둔 파일들(manifest.json, firebase-messaging-sw.js, functions/index.js) 그대로 쓰시면 됩니다 😊
-
-무디2 v3
-코드 · HTML 
-그리고 월간 셀이 들쭉날쭉해 텍스트가 긴건 누르면 보이게끔 할수 있을까?
-
-오후 11:41
-
-고정 너비와 클릭 확장 툴팁으로 셀 일관성 해결 구상했다
-고정 너비와 클릭 확장 툴팁으로 셀 일관성 해결 구상했다
-문제 파악했습니다. "오전 반차", "대체 휴무" 같은 긴 텍스트가 셀 높이를 늘려버리는 게 원인입니다. 셀 고정 크기 + 클릭 시 말풍선 표시로 해결합니다.
-
-
-2개의 파일 조회함, 명령 실행함, 파일 수정됨
-2개의 파일 조회함, 명령 실행함, 파일 수정됨
-이제 셀 렌더링을 수정합니다. 고정 크기 + 텍스트 잘림 + 클릭 시 말풍선.
-
-
-월간 셀 고정 크기 + 클릭 시 말풍선 표시로 수정
-월간 셀 고정 크기 + 클릭 시 말풍선 표시로 수정
-이제 말풍선 팝업 컴포넌트를 렌더 영역 끝부분에 추가합니다.
-
-
-명령 실행함, 파일 수정됨
-명령 실행함, 파일 수정됨
-헤더 날짜 칸도 너비를 고정합니다.
-
-
-파일 수정됨, 명령 실행함, 파일 읽음
-파일 수정됨, 명령 실행함, 파일 읽음
-수정 내용입니다.
-
-항목	변경 내용
-셀 크기 고정	모든 날짜 칸 width: 42px 고정 → 들쭉날쭉 해결
-텍스트 잘림	truncate 적용 → 긴 텍스트는 셀 안에서 잘려서 표시
-클릭 시 말풍선	뷰 전용 셀(수정 불가) 클릭 시 전체 텍스트 말풍선으로 표시
-말풍선 닫기	말풍선 바깥 아무 곳 클릭하면 닫힘
-수정 가능한 셀(본인/관리자)은 기존처럼 select 드롭다운 그대로입니다.
-
-무디2 v3
-코드 · HTML 
-
-
-
-
-
-Claude는 AI이며 실수할 수 있습니다. 응답을 다시 한번 확인해 주세요.
-무디2 v3 · HTML
-복사
-
-코드 크기로 인해 구문 강조가 비활성화되었습니다.
 <!DOCTYPE html>
 <html lang="ko" class="light">
 <head>
@@ -1126,7 +289,7 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const todayStr = `${currentDate.getFullYear()}-${pad(currentDate.getMonth()+1)}-${pad(currentDate.getDate())}`;
             const [bulkScheduleMonth, setBulkScheduleMonth] = useState(todayStr.slice(0, 7));
             
-            const [memberForm, setMemberForm] = useState({ empId: '', name: '', part: '', position: '사원', jobTitle: '일반', category: '', password: '' });
+            const [memberForm, setMemberForm] = useState({ empId: '', name: '', part: '', position: '사원', jobTitle: '일반', category: '', brands: '', password: '' });
             const [appManagerForm, setAppManagerForm] = useState({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', notifyTarget: 'none', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 1, sortOrder: 99 });
             const [editingAppId, setEditingAppId] = useState(null);
             const [submitFormState, setSubmitFormState] = useState({ content: '', photo: '', authorName: '' });
@@ -1153,7 +316,7 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const [adminSchedForm, setAdminSchedForm] = useState({ empId: '', date: todayStr, status: 'A' });
             const [showExtModal, setShowExtModal] = useState(false);
             const [showProfileEdit, setShowProfileEdit] = useState(false);
-            const [profileForm, setProfileForm] = useState({ name: '', part: '', category: '', position: '', jobTitle: '', password: '', targetEmpId: '' });
+            const [profileForm, setProfileForm] = useState({ name: '', part: '', category: '', brands: '', position: '', jobTitle: '', password: '', targetEmpId: '' });
             const [expandedImage, setExpandedImage] = useState(null);
             const [expandedCell, setExpandedCell] = useState(null); // {empId, date, status, rect}
 
@@ -1393,8 +556,8 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
             }, [users]);
 
             const uniqueParts = useMemo(() => Array.from(new Set((users || []).map(u => u?.part).filter(Boolean))).sort((a,b) => (PART_W[a]||99) - (PART_W[b]||99)), [users]);
-            const searchedUsers = useMemo(() => { if (!profileSearch.trim()) return sortedUsers; const q = profileSearch.toLowerCase(); return sortedUsers.filter(u => (u.name || '').toLowerCase().includes(q) || (u.part || '').toLowerCase().includes(q) || (u.empId || '').toLowerCase().includes(q) || (u.category || '').toLowerCase().includes(q)); }, [sortedUsers, profileSearch]);
-            const filteredAdminMembers = useMemo(() => { if (!adminMemberSearch.trim()) return sortedUsers; const q = adminMemberSearch.toLowerCase(); return sortedUsers.filter(u => (u.name || '').toLowerCase().includes(q) || (u.empId || '').toLowerCase().includes(q) || (u.category || '').toLowerCase().includes(q)); }, [sortedUsers, adminMemberSearch]);
+            const searchedUsers = useMemo(() => { if (!profileSearch.trim()) return sortedUsers; const q = profileSearch.toLowerCase(); return sortedUsers.filter(u => (u.name || '').toLowerCase().includes(q) || (u.part || '').toLowerCase().includes(q) || (u.empId || '').toLowerCase().includes(q) || (u.category || '').toLowerCase().includes(q) || (u.brands || '').toLowerCase().includes(q)); }, [sortedUsers, profileSearch]);
+            const filteredAdminMembers = useMemo(() => { if (!adminMemberSearch.trim()) return sortedUsers; const q = adminMemberSearch.toLowerCase(); return sortedUsers.filter(u => (u.name || '').toLowerCase().includes(q) || (u.empId || '').toLowerCase().includes(q) || (u.category || '').toLowerCase().includes(q) || (u.brands || '').toLowerCase().includes(q)); }, [sortedUsers, adminMemberSearch]);
             
             const filteredMonthly = useMemo(() => { return sortedUsers.filter(u => { if (viewMode === 'me') return appUser && u.empId === appUser.empId; if (viewMode === 'admin') return u.jobTitle === '점장' || u.jobTitle === '파트장'; if (viewMode.startsWith('PART_')) return u.part === viewMode.replace('PART_', ''); return true; }); }, [sortedUsers, viewMode, appUser]);
             
@@ -1689,7 +852,7 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 const rawPw = memberForm.password || memberForm.empId;
                 const pwHash = await hashPassword(rawPw);
                 const newMember = { ...memberForm, id: memberForm.empId, password: pwHash, birthday: '1990-01-01' };
-                try { setUsers(prev => { const idx = prev.findIndex(u => u.empId === newMember.empId); if(idx >= 0) { const c=[...prev]; c[idx]=newMember; return c; } return [...prev, newMember]; }); saveToIDB('users', newMember); setMemberForm({ empId: '', name: '', part: '', position: '사원', jobTitle: '일반', category: '', password: '' }); if(db && fbUser) await db.collection(`artifacts/${appId}/public/data/users`).doc(newMember.empId).set(newMember, { merge: true }); showToast('저장되었습니다.'); } catch(e) { showToast('저장 실패', true); }
+                try { setUsers(prev => { const idx = prev.findIndex(u => u.empId === newMember.empId); if(idx >= 0) { const c=[...prev]; c[idx]=newMember; return c; } return [...prev, newMember]; }); saveToIDB('users', newMember); setMemberForm({ empId: '', name: '', part: '', position: '사원', jobTitle: '일반', category: '', brands: '', password: '' }); if(db && fbUser) await db.collection(`artifacts/${appId}/public/data/users`).doc(newMember.empId).set(newMember, { merge: true }); showToast('저장되었습니다.'); } catch(e) { showToast('저장 실패', true); }
             };
 
             const handleClearAllPosts = () => { setConfirmDialog({ isOpen: true, message: '모든 게시글 데이터를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.', onConfirm: async () => { setConfirmDialog({isOpen: false}); setDynamicPosts([]); try { window.localDB.transaction('dynamicPosts', 'readwrite').objectStore('dynamicPosts').clear(); } catch(e){} try { if (db && fbUser) { const snap = await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).get(); const batch = db.batch(); snap.docs.forEach(d => batch.delete(d.ref)); await batch.commit(); } } catch(e){} showToast('초기화 완료'); }, onCancel: () => setConfirmDialog({isOpen: false}) }); };
@@ -1886,7 +1049,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                 </button>
                                 {appUser ? (
                                     <div className="flex items-center gap-1.5 bg-white dark:bg-stone-800 px-3 py-1.5 rounded-full border border-stone-200 dark:border-stone-700 shadow-sm">
-                                        <button onClick={(e) => { e.stopPropagation(); setProfileForm({ name: appUser.name, part: appUser.part, category: appUser.category, position: appUser.position, jobTitle: appUser.jobTitle || '일반', password: appUser.password, targetEmpId: appUser.empId }); setShowProfileEdit(true); }} className="flex items-center gap-1 text-[10px] font-black text-stone-600 dark:text-stone-300 hover:text-teal-600 transition-colors btn-press"><span className="underline decoration-stone-300 dark:decoration-stone-600 underline-offset-2">{appUser.name}</span>님</button>
+                                        <button onClick={(e) => { e.stopPropagation(); setProfileForm({ name: appUser.name, part: appUser.part, category: appUser.category, brands: appUser.brands || '', position: appUser.position, jobTitle: appUser.jobTitle || '일반', password: appUser.password, targetEmpId: appUser.empId }); setShowProfileEdit(true); }} className="flex items-center gap-1 text-[10px] font-black text-stone-600 dark:text-stone-300 hover:text-teal-600 transition-colors btn-press"><span className="underline decoration-stone-300 dark:decoration-stone-600 underline-offset-2">{appUser.name}</span>님</button>
                                         <div className="w-px h-3 bg-stone-200 dark:bg-stone-700 mx-0.5"></div>
                                         <button onClick={() => { setAppUser(null); setView('login'); setCurrentDate(new Date()); }} className="text-stone-400 hover:text-rose-500 transition-colors flex items-center gap-1"><Icon name="logout" size={12}/></button>
                                     </div>
@@ -2028,8 +1191,8 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                             {(() => { const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate(); return (<>
                                             <thead>
                                                 <tr className="bg-stone-100 dark:bg-stone-800 sticky top-0 z-40 font-black text-stone-600 dark:text-stone-300">
-                                                    {monthlyFilters.part && <th className="p-4 text-left min-w-[100px] border-b border-stone-200 dark:border-stone-700">파트</th>}{monthlyFilters.cat && <th className="p-4 text-left min-w-[100px] border-b border-stone-200 dark:border-stone-700">업무</th>}{monthlyFilters.id && <th className="p-4 text-left min-w-[80px] border-b border-stone-200 dark:border-stone-700">사번</th>}
-                                                    <th className="p-4 text-left sticky left-0 bg-stone-100 dark:bg-stone-800 z-50 min-w-[130px] border-b border-stone-200 dark:border-stone-700 shadow-[2px_0_5px_rgba(0,0,0,0.03)]">성명</th>
+                                                    {monthlyFilters.part && <th className="p-2 text-left border-b border-stone-200 dark:border-stone-700" style={{width:'90px',minWidth:'90px',maxWidth:'90px'}}>파트</th>}{monthlyFilters.cat && <th className="p-2 text-left border-b border-stone-200 dark:border-stone-700" style={{width:'90px',minWidth:'90px',maxWidth:'90px'}}>업무</th>}{monthlyFilters.id && <th className="p-2 text-left border-b border-stone-200 dark:border-stone-700" style={{width:'72px',minWidth:'72px',maxWidth:'72px'}}>사번</th>}
+                                                    <th className="p-2 text-left sticky left-0 bg-stone-100 dark:bg-stone-800 z-50 border-b border-stone-200 dark:border-stone-700 shadow-[2px_0_5px_rgba(0,0,0,0.03)]" style={{width:'110px',minWidth:'110px',maxWidth:'110px'}}>성명</th>
                                                   {[...Array(daysInMonth)].map((_, i) => {
     const dayNum = i + 1;
     const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
@@ -2051,8 +1214,8 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                             <tbody>
                                                 {filteredMonthly.map(u => (
                                                     <tr key={u.empId} className="hover:bg-teal-50/40 dark:hover:bg-stone-800 transition-colors group">
-                                                        {monthlyFilters.part && <td className="p-4 border-b border-stone-100 dark:border-stone-800 text-stone-500 dark:text-stone-400 font-bold">{u.part}</td>}{monthlyFilters.cat && <td className="p-4 border-b border-stone-100 dark:border-stone-800 text-teal-600 font-black">{u.category}</td>}{monthlyFilters.id && <td className="p-4 border-b border-stone-100 dark:border-stone-800 text-stone-400 font-black">{u.empId}</td>}
-                                                        <td className="p-4 font-black sticky left-0 bg-white dark:bg-stone-900 group-hover:bg-teal-50/40 dark:group-hover:bg-stone-800 border-b border-stone-100 dark:border-stone-800 text-xs shadow-[2px_0_5px_rgba(0,0,0,0.02)]">{u.name} <br/><span className="text-[9px] text-stone-400 font-bold">{u.jobTitle}</span></td>
+                                                        {monthlyFilters.part && <td className="p-2 border-b border-stone-100 dark:border-stone-800 text-stone-500 dark:text-stone-400 font-bold text-[11px] overflow-hidden" style={{width:'90px',minWidth:'90px',maxWidth:'90px'}}><div className="truncate" title={u.part}>{u.part}</div></td>}{monthlyFilters.cat && <td className="p-2 border-b border-stone-100 dark:border-stone-800 text-teal-600 font-black text-[11px] overflow-hidden" style={{width:'90px',minWidth:'90px',maxWidth:'90px'}}><div className="truncate" title={u.category}>{u.category}</div></td>}{monthlyFilters.id && <td className="p-2 border-b border-stone-100 dark:border-stone-800 text-stone-400 font-black text-[11px] overflow-hidden" style={{width:'72px',minWidth:'72px',maxWidth:'72px'}}><div className="truncate">{u.empId}</div></td>}
+                                                        <td className="p-2 font-black sticky left-0 bg-white dark:bg-stone-900 group-hover:bg-teal-50/40 dark:group-hover:bg-stone-800 border-b border-stone-100 dark:border-stone-800 text-xs shadow-[2px_0_5px_rgba(0,0,0,0.02)] overflow-hidden" style={{width:'110px',minWidth:'110px',maxWidth:'110px'}}><div className="truncate" title={u.name}>{u.name}</div><div className="text-[9px] text-stone-400 font-bold truncate">{u.jobTitle}</div></td>
                                                         {[...Array(daysInMonth)].map((_, i) => { 
                                                             const dStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`; const s = scheduleMap[u.empId]?.[dStr]; const canEdit = canEditProfile(u.empId);
                                                             return (
@@ -2107,11 +1270,15 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                         </div>
                                                         <div className="flex items-center justify-between w-full">
                                                             <div className="flex items-center gap-2 mt-0.5"><span className="text-[11px] font-bold text-stone-600 dark:text-stone-400">{u.part}</span><span className="text-[9px] font-bold text-stone-400 border-l border-stone-200 dark:border-stone-700 pl-2">사번: {u.empId}</span></div>
-                                                            {canEdit && <button onClick={(e) => { e.stopPropagation(); setProfileForm({ name: u.name, part: u.part, category: u.category, position: u.position, jobTitle: u.jobTitle || '일반', password: u.password, targetEmpId: u.empId }); setShowProfileEdit(true); }} className="text-white bg-teal-500 hover:bg-teal-600 p-1.5 rounded-lg flex items-center justify-center btn-press shadow-sm"><Icon name="edit" size={14}/></button>}
+                                                            {canEdit && <button onClick={(e) => { e.stopPropagation(); setProfileForm({ name: u.name, part: u.part, category: u.category, brands: u.brands || '', position: u.position, jobTitle: u.jobTitle || '일반', password: u.password, targetEmpId: u.empId }); setShowProfileEdit(true); }} className="text-white bg-teal-500 hover:bg-teal-600 p-1.5 rounded-lg flex items-center justify-center btn-press shadow-sm"><Icon name="edit" size={14}/></button>}
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="bg-stone-50 dark:bg-stone-800 p-2.5 rounded-xl border border-stone-100 dark:border-stone-700 mt-1"><div className="flex justify-between items-center mb-1"><p className="text-[9px] font-bold text-stone-400">담당업무</p><Icon name={isExpanded ? 'chevronLeft' : 'chevronRight'} size={12} className={`text-stone-300 transform transition-transform ${isExpanded ? '-rotate-90' : 'rotate-90'}`} /></div><p className={`text-[11px] font-black text-stone-700 dark:text-stone-300 leading-snug whitespace-pre-wrap break-words ${isExpanded ? 'line-clamp-none' : 'line-clamp-1'}`}>{u.category || '-'}</p></div>
+                                                <div className="bg-stone-50 dark:bg-stone-800 p-2.5 rounded-xl border border-stone-100 dark:border-stone-700 mt-1 space-y-1.5">
+                                                    <div className="flex justify-between items-center"><p className="text-[9px] font-bold text-stone-400">카테고리</p><Icon name={isExpanded ? 'chevronLeft' : 'chevronRight'} size={12} className={`text-stone-300 transform transition-transform ${isExpanded ? '-rotate-90' : 'rotate-90'}`} /></div>
+                                                    <p className={`text-[11px] font-black text-stone-700 dark:text-stone-300 leading-snug ${isExpanded ? 'line-clamp-none' : 'line-clamp-1'}`}>{u.category || '-'}</p>
+                                                    {(u.brands) && (<><p className="text-[9px] font-bold text-teal-500 mt-1">담당 브랜드</p><p className={`text-[11px] font-black text-teal-700 dark:text-teal-400 leading-snug whitespace-pre-wrap break-words ${isExpanded ? 'line-clamp-none' : 'line-clamp-1'}`}>{u.brands}</p></>)}
+                                                </div>
                                             </div>
                                         )})}
                                     </div>
@@ -2552,7 +1719,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                 <div className="space-y-6 fade-in">
                                                     <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-5">
                                                         <p className="text-[12px] font-black text-indigo-600 tracking-widest flex items-center gap-2"><Icon name="users" size={18}/> 구성원 수동 추가 및 강제 수정</p>
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="사번 (필수)" value={memberForm.empId} onChange={e => setMemberForm({...memberForm, empId: e.target.value})} /><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="성명 (필수)" value={memberForm.name} onChange={e => setMemberForm({...memberForm, name: e.target.value})} /><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="소속 파트" value={memberForm.part} onChange={e => setMemberForm({...memberForm, part: e.target.value})} /><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="직급 (사원, 대리...)" value={memberForm.position} onChange={e => setMemberForm({...memberForm, position: e.target.value})} /><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="담당 업무" value={memberForm.category} onChange={e => setMemberForm({...memberForm, category: e.target.value})} /><select className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-4 text-xs font-bold outline-none focus:border-indigo-400" value={memberForm.jobTitle} onChange={e => setMemberForm({...memberForm, jobTitle: e.target.value})}><option value="일반">일반 사원</option><option value="영업관리자">영업관리자</option><option value="파트장">파트장</option><option value="점장">점장</option></select><input className="col-span-1 sm:col-span-2 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="비밀번호 재설정 (비워둘 시 기존 유지 또는 사번)" value={memberForm.password || ''} onChange={e => setMemberForm({...memberForm, password: e.target.value})} /></div>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="사번 (필수)" value={memberForm.empId} onChange={e => setMemberForm({...memberForm, empId: e.target.value})} /><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="성명 (필수)" value={memberForm.name} onChange={e => setMemberForm({...memberForm, name: e.target.value})} /><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="소속 파트" value={memberForm.part} onChange={e => setMemberForm({...memberForm, part: e.target.value})} /><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="직급 (사원, 대리...)" value={memberForm.position} onChange={e => setMemberForm({...memberForm, position: e.target.value})} /><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="담당 카테고리 (예: C&P, LTSF)" value={memberForm.category} onChange={e => setMemberForm({...memberForm, category: e.target.value})} /><select className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-4 text-xs font-bold outline-none focus:border-indigo-400" value={memberForm.jobTitle} onChange={e => setMemberForm({...memberForm, jobTitle: e.target.value})}><option value="일반">일반 사원</option><option value="영업관리자">영업관리자</option><option value="파트장">파트장</option><option value="점장">점장</option></select><input className="col-span-1 sm:col-span-2 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="담당 브랜드 (예: 샤넬, 디올, 에스티로더)" value={memberForm.brands || ''} onChange={e => setMemberForm({...memberForm, brands: e.target.value})} /><input className="col-span-1 sm:col-span-2 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="비밀번호 재설정 (비워둘 시 기존 유지 또는 사번)" value={memberForm.password || ''} onChange={e => setMemberForm({...memberForm, password: e.target.value})} /></div>
                                                         <button onClick={handleMemberSubmit} className="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-xs">저장</button>
                                                     </div>
                                                     <div className="bg-white dark:bg-stone-900 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-800">
@@ -2566,7 +1733,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                                     </div>
                                                                     <div className="flex gap-2">
                                                                         <button onClick={() => handleResetPassword(u.empId)} className="text-white bg-amber-500 hover:bg-amber-600 p-2 rounded-lg btn-press shadow-sm" title="비밀번호 초기화"><Icon name="wrench" size={16}/></button>
-                                                                        <button onClick={() => { setMemberForm({ empId: u.empId, name: u.name, part: u.part, position: u.position, jobTitle: u.jobTitle, category: u.category, password: u.password }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="text-white bg-teal-500 hover:bg-teal-600 p-2 rounded-lg btn-press shadow-sm" title="수정"><Icon name="edit" size={16}/></button>
+                                                                        <button onClick={() => { setMemberForm({ empId: u.empId, name: u.name, part: u.part, position: u.position, jobTitle: u.jobTitle, category: u.category, brands: u.brands || '', password: u.password }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="text-white bg-teal-500 hover:bg-teal-600 p-2 rounded-lg btn-press shadow-sm" title="수정"><Icon name="edit" size={16}/></button>
                                                                         <button onClick={() => handleDeleteMember(u.empId)} className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg btn-press shadow-sm" title="삭제"><Icon name="trash" size={16}/></button>
                                                                     </div>
                                                                 </div>
@@ -2687,12 +1854,13 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                 <div><label className="text-[10px] font-black text-stone-500 ml-2">비밀번호 변경</label><input type="text" className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="새 비밀번호 입력" value={profileForm.password || ''} onChange={e => setProfileForm({...profileForm, password: e.target.value})} /></div>
                                 <div><label className="text-[10px] font-black text-stone-500 ml-2">성명</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" value={profileForm.name} onChange={e => setProfileForm({...profileForm, name: e.target.value})} /></div>
                                 <div><label className="text-[10px] font-black text-stone-500 ml-2">소속 파트</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" value={profileForm.part} onChange={e => setProfileForm({...profileForm, part: e.target.value})} /></div>
-                                <div><label className="text-[10px] font-black text-stone-500 ml-2">담당 업무</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="예: 화장품, 로컬, 데스크 등" value={profileForm.category || ''} onChange={e => setProfileForm({...profileForm, category: e.target.value})} /></div>
+                                <div><label className="text-[10px] font-black text-stone-500 ml-2">담당 카테고리</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="예: C&P, LTSF, 화장품" value={profileForm.category || ''} onChange={e => setProfileForm({...profileForm, category: e.target.value})} /></div>
+                                <div><label className="text-[10px] font-black text-stone-500 ml-2">담당 브랜드 <span className="text-stone-400 font-bold">(검색 가능)</span></label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="예: 샤넬, 디올, 에스티로더" value={profileForm.brands || ''} onChange={e => setProfileForm({...profileForm, brands: e.target.value})} /></div>
                                 <button onClick={async () => {
                                     if(!profileForm.password) return showToast('비밀번호는 비워둘 수 없습니다.', true);
                                     const targetEmpId = profileForm.targetEmpId || appUser.empId; const originalUser = users.find(u => u.empId === targetEmpId);
                                     const pwHash = await hashPassword(profileForm.password);
-                                    const updatedUser = { ...originalUser, name: profileForm.name, part: profileForm.part, category: profileForm.category, position: profileForm.position || originalUser.position, jobTitle: profileForm.jobTitle || originalUser.jobTitle, password: pwHash };
+                                    const updatedUser = { ...originalUser, name: profileForm.name, part: profileForm.part, category: profileForm.category, brands: profileForm.brands || '', position: profileForm.position || originalUser.position, jobTitle: profileForm.jobTitle || originalUser.jobTitle, password: pwHash };
                                     setUsers((users || []).map(u => u.empId === targetEmpId ? updatedUser : u)); saveToIDB('users', updatedUser); setSchedules((schedules || []).map(s => s.empId === targetEmpId ? { ...s, name: profileForm.name, part: profileForm.part } : s));
                                     if (appUser && appUser.empId === targetEmpId) setAppUser(updatedUser); if(db && fbUser) await db.collection(`artifacts/${appId}/public/data/users`).doc(targetEmpId).set(updatedUser, { merge: true });
                                     setShowProfileEdit(false); showToast('정보가 저장되었습니다.');
@@ -2875,4 +2043,3 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
     </script>
 </body>
 </html>
-
