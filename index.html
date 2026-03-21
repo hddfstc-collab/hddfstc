@@ -229,6 +229,57 @@ const hashPassword = async (plain) => {
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
 };
 
+// ──────────────────────────────────────────
+// 🎉 라이브 이벤트 설정 기본값
+// ──────────────────────────────────────────
+const DEFAULT_EVENT_SETTINGS = {
+    id: 'evtSettings',
+    drawStyle: 'roulette',
+    enabledTypes: ['random', 'fcfs', 'quiz', 'team', 'lunch'],
+    enableWeighted: false,
+    enableHistory: true,
+    lunchMenus: ['한식 🍚', '중식 🥢', '일식 🍱', '양식 🍝', '분식 🍜'],
+};
+const EVENT_TYPE_META = {
+    random: { label: '🎲 랜덤 추첨',      desc: '참여자 중 무작위 당첨' },
+    fcfs:   { label: '⚡ 선착순',           desc: '먼저 참여한 N명 당첨' },
+    quiz:   { label: '📝 오늘의 퀴즈',     desc: '정답자 중 추첨' },
+    team:   { label: '👥 팀 배정 뽑기',    desc: '출근자를 팀으로 랜덤 배정' },
+    lunch:  { label: '🍱 점심 메뉴 뽑기',  desc: '오늘 점심 메뉴 랜덤 결정' },
+};
+
+// 🎡 룰렛 휠 SVG 컴포넌트
+const RouletteWheel = ({ names, rotation }) => {
+    const n = names.length;
+    if (!n) return null;
+    const size = 260, cx = size/2, cy = size/2, r = size/2 - 6;
+    const COLORS = ['#0d9488','#f43f5e','#f59e0b','#6366f1','#10b981','#8b5cf6','#f97316','#06b6d4','#84cc16','#ec4899','#14b8a6','#a855f7'];
+    const angle = (2*Math.PI)/n;
+    const sectors = names.map((name, i) => {
+        const s = i*angle - Math.PI/2, e = s + angle;
+        const x1=cx+r*Math.cos(s), y1=cy+r*Math.sin(s), x2=cx+r*Math.cos(e), y2=cy+r*Math.sin(e);
+        const mid = s + angle/2, tr = r*0.60;
+        return { path:`M${cx},${cy}L${x1},${y1}A${r},${r},0,${angle>Math.PI?1:0},1,${x2},${y2}Z`, color:COLORS[i%COLORS.length], tx:cx+tr*Math.cos(mid), ty:cy+tr*Math.sin(mid), rot:(mid*180/Math.PI)+90, label:name.length>5?name.slice(0,5):name };
+    });
+    return (
+        <div className="relative inline-flex flex-col items-center">
+            <div className="absolute -top-3 left-1/2 z-10 -translate-x-1/2">
+                <div className="w-0 h-0 border-l-[11px] border-r-[11px] border-t-[18px] border-l-transparent border-r-transparent border-t-amber-400 drop-shadow"/>
+            </div>
+            <svg width={size} height={size} style={{transform:`rotate(${rotation}deg)`,transition:'transform 4s cubic-bezier(0.17,0.67,0.12,0.99)'}}>
+                {sectors.map((s,i) => (
+                    <g key={i}>
+                        <path d={s.path} fill={s.color} stroke="rgba(255,255,255,0.4)" strokeWidth="1.5"/>
+                        {n <= 20 && <text x={s.tx} y={s.ty} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize={n>12?7:9} fontWeight="900" transform={`rotate(${s.rot},${s.tx},${s.ty})`}>{s.label}</text>}
+                    </g>
+                ))}
+                <circle cx={cx} cy={cy} r={16} fill="white" stroke="#e2e8f0" strokeWidth="3"/>
+                <circle cx={cx} cy={cy} r={9} fill="#0d9488"/>
+            </svg>
+        </div>
+    );
+};
+
 const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { const store = window.localDB.transaction(storeName, 'readwrite').objectStore(storeName); if (Array.isArray(data)) data.forEach(item => store.put(item)); else store.put(data); } catch (e) {} };
         const deleteFromIDB = (storeName, id) => { if (!window.localDB) return; try { window.localDB.transaction(storeName, 'readwrite').objectStore(storeName).delete(id); } catch (e) {} };
 
@@ -252,8 +303,15 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const [currentEvent, setCurrentEvent] = useState(null); 
             const [blacklists, setBlacklists] = useState([]); 
             
-            const [eventForm, setEventForm] = useState({ title: '', prize: '', target: 'daily', type: 'random', winnerCount: 1 });
+            const [eventForm, setEventForm] = useState({ title: '', prize: '', target: 'daily', type: 'random', winnerCount: 1, quizQuestion: '', quizAnswer: '', teamCount: 2 });
             const [spinDisplay, setSpinDisplay] = useState('');
+            const [wheelRotation, setWheelRotation] = useState(0);
+            const [eventSettings, setEventSettings] = useState(DEFAULT_EVENT_SETTINGS);
+            const [winHistory, setWinHistory] = useState([]);
+            const [lunchPick, setLunchPick] = useState(null);
+            const [lunchMenuInput, setLunchMenuInput] = useState('');
+            const [quizAnswer, setQuizAnswer] = useState('');
+            const [showEventMgmt, setShowEventMgmt] = useState(false);
             const [monthlyFilters, setMonthlyFilters] = useState({ part: true, cat: true, id: true });
             const [viewMode, setViewMode] = useState('all'); 
             
@@ -445,13 +503,13 @@ useEffect(() => {
                     try {
                         const idb = await new Promise((resolve) => {
                             const req = indexedDB.open('HmoodERP_DB_V80', 1); 
-                            req.onupgradeneeded = (e) => { const dbInstance = e.target.result; ['users', 'schedules', 'notices', 'extensions', 'dynamicApps', 'dynamicPosts', 'events', 'statusOptions', 'blacklists'].forEach(store => { if (!dbInstance.objectStoreNames.contains(store)) dbInstance.createObjectStore(store, { keyPath: 'id' }); }); };
+                            req.onupgradeneeded = (e) => { const dbInstance = e.target.result; ['users', 'schedules', 'notices', 'extensions', 'dynamicApps', 'dynamicPosts', 'events', 'statusOptions', 'blacklists', 'evtSettings', 'winHistory'].forEach(store => { if (!dbInstance.objectStoreNames.contains(store)) dbInstance.createObjectStore(store, { keyPath: 'id' }); }); };
                             req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null);
                         });
                         if (idb) {
                             window.localDB = idb;
                             const loadStore = (store) => new Promise(res => { try { const req = idb.transaction(store, 'readonly').objectStore(store).getAll(); req.onsuccess = () => res(req.result); req.onerror = () => res([]); } catch(e) { res([]); } });
-                            const [lUsers, lScheds, lNotices, lExts, lApps, lPosts, lEvents, lStatusOpts, lBlacks] = await Promise.all([loadStore('users'), loadStore('schedules'), loadStore('notices'), loadStore('extensions'), loadStore('dynamicApps'), loadStore('dynamicPosts'), loadStore('events'), loadStore('statusOptions'), loadStore('blacklists')]);
+                            const [lUsers, lScheds, lNotices, lExts, lApps, lPosts, lEvents, lStatusOpts, lBlacks, lEvtSet, lWinHist] = await Promise.all([loadStore('users'), loadStore('schedules'), loadStore('notices'), loadStore('extensions'), loadStore('dynamicApps'), loadStore('dynamicPosts'), loadStore('events'), loadStore('statusOptions'), loadStore('blacklists'), loadStore('evtSettings'), loadStore('winHistory')]);
                             
                             if (lUsers.length > 0) setUsers(lUsers); else { saveToIDB('users', defaultUsers); setUsers(defaultUsers); }
                             if (lScheds.length > 0) setSchedules(lScheds); else { saveToIDB('schedules', defaultSchedules); setSchedules(defaultSchedules); }
@@ -469,6 +527,8 @@ useEffect(() => {
                             if (lPosts.length > 0) setDynamicPosts(lPosts.sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||'')));
                             if (lEvents.length > 0) setCurrentEvent(lEvents.find(e => e.id === 'current' || e.status === 'closed') || null);
                             if (lStatusOpts && lStatusOpts.length > 0) setStatusOptions(lStatusOpts.sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||''))); else { setStatusOptions(defaultStatusOptions); defaultStatusOptions.forEach(o => saveToIDB('statusOptions', o)); }
+                            if (lEvtSet.length > 0) setEventSettings(lEvtSet[0]); else { saveToIDB('evtSettings', DEFAULT_EVENT_SETTINGS); }
+                            if (lWinHist.length > 0) setWinHistory(lWinHist);
                         }
                     } catch (err) {
                         console.error('DB Init Error:', err);
@@ -932,10 +992,17 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 }; reader.readAsBinaryString(file);
             };
 
+            const saveEventSettings = async (newSettings) => {
+                setEventSettings(newSettings);
+                saveToIDB('evtSettings', newSettings);
+                if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/evtSettings`).doc('evtSettings').set(newSettings, { merge: true });
+            };
+
             const handleCreateEvent = async () => {
                 if (!eventForm.title || !eventForm.prize) return showToast('제목과 선물을 입력해주세요.', true);
-                const targetText = eventForm.target === 'daily' ? '금일 출근자 전원' : '부서 전체 직원'; const typeText = eventForm.type === 'fcfs' ? `선착순 ${eventForm.winnerCount}명` : '랜덤 추첨';
-                setConfirmDialog({ isOpen: true, message: `[이벤트 오픈 확인]\n- 제목: ${eventForm.title}\n- 상품: ${eventForm.prize}\n- 대상: ${targetText}\n- 방식: ${typeText}\n오픈하시겠습니까?`, onConfirm: async () => { setConfirmDialog({ isOpen: false }); const newEvent = { id: 'current', ...eventForm, isActive: true, status: 'waiting', participants: [], winners: [], congratulations: 0, createdAt: new Date().toISOString() }; try { setCurrentEvent(newEvent); saveToIDB('events', newEvent); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/events`).doc('current').set(newEvent); showToast('오픈되었습니다!'); } catch(e) { showToast('생성 실패', true); } }, onCancel: () => setConfirmDialog({ isOpen: false }) });
+                if (eventForm.type === 'quiz' && (!eventForm.quizQuestion || !eventForm.quizAnswer)) return showToast('퀴즈 문제와 정답을 입력해주세요.', true);
+                const typeText = EVENT_TYPE_META[eventForm.type]?.label || eventForm.type;
+                setConfirmDialog({ isOpen: true, message: `[이벤트 오픈 확인]\n- 제목: ${eventForm.title}\n- 상품: ${eventForm.prize}\n- 방식: ${typeText}\n오픈하시겠습니까?`, onConfirm: async () => { setConfirmDialog({ isOpen: false }); const newEvent = { id: 'current', ...eventForm, isActive: true, status: 'waiting', participants: [], quizSubmissions: {}, winners: [], congratulations: 0, createdAt: new Date().toISOString() }; try { setCurrentEvent(newEvent); saveToIDB('events', newEvent); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/events`).doc('current').set(newEvent); showToast('오픈되었습니다!'); } catch(e) { showToast('생성 실패', true); } }, onCancel: () => setConfirmDialog({ isOpen: false }) });
             };
 
             const handleParticipateEvent = async () => {
@@ -944,6 +1011,19 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 if (currentEvent.target === 'daily') { const mySched = scheduleMap[appUser.empId]?.[todayStr]; eligible = mySched && ['A', 'B', '당직'].includes(mySched.status); }
                 if (!eligible) return showToast('참여 대상자가 아닙니다.', true);
                 if (currentEvent?.participants?.includes(appUser?.empId)) return showToast('이미 참여하셨습니다.', true);
+                // 퀴즈 타입: 답 검증
+                if (currentEvent.type === 'quiz') {
+                    if (!quizAnswer.trim()) return showToast('정답을 입력해주세요.', true);
+                    const isCorrect = quizAnswer.trim().toLowerCase() === (currentEvent.quizAnswer || '').trim().toLowerCase();
+                    const newSubs = { ...(currentEvent.quizSubmissions || {}), [appUser.empId]: { answer: quizAnswer.trim(), correct: isCorrect } };
+                    const newParticipants = Array.from(new Set([...(currentEvent.participants || []), appUser.empId]));
+                    const updatedEvent = { ...currentEvent, participants: newParticipants, quizSubmissions: newSubs };
+                    setCurrentEvent(updatedEvent); saveToIDB('events', updatedEvent);
+                    if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/events`).doc('current').update({ participants: firebase.firestore.FieldValue.arrayUnion(appUser.empId), [`quizSubmissions.${appUser.empId}`]: { answer: quizAnswer.trim(), correct: isCorrect } });
+                    showToast(isCorrect ? '✅ 정답입니다! 추첨 대기 중...' : '❌ 오답입니다. 아쉽네요!');
+                    setQuizAnswer('');
+                    return;
+                }
                 try {
                     const newParticipants = Array.from(new Set([...(currentEvent.participants || []), appUser.empId])); let updatedEvent = { ...currentEvent, participants: newParticipants };
                     if (updatedEvent.type === 'fcfs' && updatedEvent.status === 'waiting') { if (newParticipants.length >= updatedEvent.winnerCount) { updatedEvent.status = 'finished'; updatedEvent.winners = newParticipants.slice(0, updatedEvent.winnerCount).map(id => userMap[id] || { name: '알 수 없음', position: '-', part: '-' }); showToast('이벤트가 마감되었습니다.'); } else { showToast('접수 완료!'); } } else { showToast('참여 완료!'); }
@@ -952,11 +1032,80 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 } catch(e) { showToast('참여 실패', true); }
             };
 
+            // 팀 배정 뽑기
+            const handleTeamDraw = async () => {
+                const pool = currentEvent?.target === 'daily'
+                    ? (schedules || []).filter(s => s.date === todayStr && (statusOptions.find(o => o.label === s.status)?.isWork !== false)).map(s => s.empId)
+                    : (users || []).map(u => u.empId);
+                if (!pool.length) return showToast('배정할 인원이 없습니다.', true);
+                const tc = currentEvent.teamCount || 2;
+                const shuffled = [...pool].sort(() => Math.random() - 0.5);
+                const teams = Array.from({ length: tc }, (_, i) => ({ name: `팀 ${i+1}`, members: [] }));
+                shuffled.forEach((empId, i) => teams[i % tc].members.push(userMap[empId]?.name || empId));
+                const finishedState = { ...currentEvent, status: 'finished', winners: [], teams };
+                setCurrentEvent(finishedState); saveToIDB('events', finishedState);
+                if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/events`).doc('current').update({ status: 'finished', teams });
+                showToast('팀 배정 완료!');
+            };
+
+            // 당첨 기록 저장
+            const recordWinHistory = async (winnerObjs) => {
+                if (!eventSettings.enableHistory) return;
+                const updated = [...winHistory];
+                winnerObjs.forEach(w => {
+                    const idx = updated.findIndex(h => h.id === w.empId);
+                    if (idx >= 0) { updated[idx] = { ...updated[idx], count: updated[idx].count + 1, lastWon: new Date().toISOString() }; }
+                    else { updated.push({ id: w.empId || w.name, empId: w.empId, name: w.name, count: 1, lastWon: new Date().toISOString() }); }
+                });
+                setWinHistory(updated);
+                updated.forEach(h => saveToIDB('winHistory', h));
+                if (db && fbUser) updated.forEach(h => db.collection(`artifacts/${appId}/public/data/winHistory`).doc(h.id).set(h, { merge: true }));
+            };
+
             const handleStartDraw = async () => {
-                if (!currentEvent || (currentEvent.participants || []).length === 0) return showToast('참여자가 없습니다.', true);
+                if (currentEvent.type === 'team') { handleTeamDraw(); return; }
                 if (currentEvent.type === 'fcfs') return showToast('선착순 이벤트는 자동 마감됩니다.', true);
-                setConfirmDialog({ isOpen: true, message: '추첨을 시작하시겠습니까?', onConfirm: async () => { setConfirmDialog({ isOpen: false }); try { const spinningState = { ...currentEvent, status: 'spinning' }; setCurrentEvent(spinningState); saveToIDB('events', spinningState); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/events`).doc('current').update({ status: 'spinning' }); setTimeout(async () => {
-                        const latestEvent = spinningState; if (!latestEvent || !latestEvent.participants) return; const shuffled = [...latestEvent.participants].sort(() => 0.5 - Math.random()); const selectedIds = shuffled.slice(0, latestEvent.winnerCount); const winnerObjs = selectedIds.map(id => userMap[id] || { name: '알 수 없음', position: '-', part: '-' }); const finishedState = { ...latestEvent, status: 'finished', winners: winnerObjs }; setCurrentEvent(finishedState); saveToIDB('events', finishedState); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/events`).doc('current').update({ status: 'finished', winners: winnerObjs }); }, 3500); } catch(e) { showToast('서버 오류', true); } }, onCancel: () => setConfirmDialog({ isOpen: false }) });
+                // 추첨 풀 결정 (퀴즈는 정답자만)
+                let pool = currentEvent.participants || [];
+                if (currentEvent.type === 'quiz') {
+                    pool = pool.filter(id => currentEvent.quizSubmissions?.[id]?.correct === true);
+                    if (!pool.length) return showToast('정답자가 없습니다.', true);
+                }
+                if (!pool.length) return showToast('참여자가 없습니다.', true);
+                // 가중치 적용
+                let weightedPool = [...pool];
+                if (eventSettings.enableWeighted && winHistory.length > 0) {
+                    const maxCount = Math.max(...winHistory.map(h => h.count), 1);
+                    weightedPool = pool.flatMap(id => {
+                        const hist = winHistory.find(h => h.empId === id);
+                        const weight = hist ? Math.max(1, maxCount - hist.count + 1) : maxCount + 1;
+                        return Array(weight).fill(id);
+                    });
+                }
+                setConfirmDialog({ isOpen: true, message: `추첨 풀: ${pool.length}명\n추첨을 시작하시겠습니까?`, onConfirm: async () => {
+                    setConfirmDialog({ isOpen: false });
+                    try {
+                        const spinningState = { ...currentEvent, status: 'spinning' };
+                        setCurrentEvent(spinningState); saveToIDB('events', spinningState);
+                        if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/events`).doc('current').update({ status: 'spinning' });
+                        // 룰렛: 당첨자 위치 계산 후 회전
+                        const shuffled = [...weightedPool].sort(() => 0.5 - Math.random());
+                        const selectedIds = Array.from(new Set(shuffled)).slice(0, currentEvent.winnerCount);
+                        if (eventSettings.drawStyle === 'roulette' && pool.length > 0) {
+                            const winnerIdx = pool.indexOf(selectedIds[0]);
+                            const sectorDeg = 360 / pool.length;
+                            const targetDeg = 360 - (winnerIdx * sectorDeg + sectorDeg/2);
+                            setWheelRotation(prev => prev + 360*6 + targetDeg);
+                        }
+                        setTimeout(async () => {
+                            const winnerObjs = selectedIds.map(id => ({ ...( userMap[id] || { name: '알 수 없음', position: '-', part: '-' }), empId: id }));
+                            const finishedState = { ...spinningState, status: 'finished', winners: winnerObjs };
+                            setCurrentEvent(finishedState); saveToIDB('events', finishedState);
+                            if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/events`).doc('current').update({ status: 'finished', winners: winnerObjs });
+                            await recordWinHistory(winnerObjs);
+                        }, 4200);
+                    } catch(e) { showToast('서버 오류', true); }
+                }, onCancel: () => setConfirmDialog({ isOpen: false }) });
             };
 
             const handleCongratulate = async () => {
@@ -1304,56 +1453,239 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
 
                             {/* EVENT VIEW */}
                             {view === 'event' && (
-                                <div className="space-y-6 fade-in max-w-2xl mx-auto pb-20">
+                                <div className="space-y-5 fade-in max-w-2xl mx-auto pb-20">
+
+                                    {/* 헤더 배너 */}
+                                    <div className="bg-gradient-to-br from-amber-400 to-orange-500 p-6 rounded-[2.5rem] shadow-lg flex items-center justify-between text-white font-black">
+                                        <div className="flex items-center gap-5"><Icon name="gift" size={44} className="opacity-90"/><div><h2 className="text-xl tracking-tighter">라이브 이벤트</h2><p className="text-xs font-bold text-amber-100 mt-0.5 tracking-widest">실시간 사내 복지 시스템</p></div></div>
+                                        {isAdminAuth && <button onClick={() => setShowEventMgmt(v => !v)} className="bg-white/20 hover:bg-white/30 p-2.5 rounded-xl btn-press transition-colors"><Icon name="settings" size={18}/></button>}
+                                    </div>
+
+                                    {/* 🛠 이벤트 기능 관리 패널 */}
+                                    {showEventMgmt && isAdminAuth && (
+                                        <div className="bg-white dark:bg-stone-900 p-6 rounded-[2.5rem] border border-amber-200 dark:border-stone-700 shadow-lg space-y-5 fade-in">
+                                            <p className="text-[13px] font-black text-amber-600 flex items-center gap-2"><Icon name="settings" size={16}/> 이벤트 기능 관리</p>
+
+                                            {/* 추첨 시각 효과 */}
+                                            <div className="space-y-2">
+                                                <p className="text-[11px] font-black text-stone-500">추첨 시각 효과</p>
+                                                <div className="flex gap-2">
+                                                    {[{v:'roulette',l:'🎡 룰렛'},{v:'slot',l:'🎰 슬롯머신'},{v:'text',l:'💬 기본 텍스트'}].map(({v,l}) => (
+                                                        <button key={v} onClick={() => saveEventSettings({...eventSettings, drawStyle: v})} className={`flex-1 py-2.5 rounded-xl text-[11px] font-black btn-press transition-colors ${eventSettings.drawStyle===v ? 'bg-amber-500 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'}`}>{l}</button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* 이벤트 타입 활성화 */}
+                                            <div className="space-y-2">
+                                                <p className="text-[11px] font-black text-stone-500">이벤트 타입</p>
+                                                <div className="grid grid-cols-1 gap-2">
+                                                    {Object.entries(EVENT_TYPE_META).map(([k,{label,desc}]) => {
+                                                        const on = eventSettings.enabledTypes.includes(k);
+                                                        return (
+                                                            <div key={k} onClick={() => { const t = on ? eventSettings.enabledTypes.filter(x=>x!==k) : [...eventSettings.enabledTypes, k]; saveEventSettings({...eventSettings, enabledTypes: t}); }} className={`flex items-center justify-between p-3 rounded-2xl border cursor-pointer btn-press transition-colors ${on ? 'border-amber-300 bg-amber-50 dark:bg-amber-900/20' : 'border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800'}`}>
+                                                                <div><p className="text-[12px] font-black text-stone-700 dark:text-stone-300">{label}</p><p className="text-[10px] text-stone-400">{desc}</p></div>
+                                                                <div className={`w-10 h-6 rounded-full transition-colors ${on ? 'bg-amber-500' : 'bg-stone-300 dark:bg-stone-600'}`}><div className={`w-4 h-4 bg-white rounded-full mt-1 shadow transition-transform ${on ? 'translate-x-5' : 'translate-x-1'}`}/></div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+
+                                            {/* 추가 기능 */}
+                                            <div className="space-y-2">
+                                                <p className="text-[11px] font-black text-stone-500">추가 기능</p>
+                                                {[{k:'enableWeighted',l:'⚖️ 미당첨 가중치 보정',d:'오래 못 뽑힌 사람 확률 보정'},{k:'enableHistory',l:'🏆 당첨 이력 기록',d:'직원별 누적 당첨 횟수 저장'}].map(({k,l,d}) => (
+                                                    <div key={k} onClick={() => saveEventSettings({...eventSettings, [k]: !eventSettings[k]})} className={`flex items-center justify-between p-3 rounded-2xl border cursor-pointer btn-press transition-colors ${eventSettings[k] ? 'border-amber-300 bg-amber-50 dark:bg-amber-900/20' : 'border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800'}`}>
+                                                        <div><p className="text-[12px] font-black text-stone-700 dark:text-stone-300">{l}</p><p className="text-[10px] text-stone-400">{d}</p></div>
+                                                        <div className={`w-10 h-6 rounded-full transition-colors ${eventSettings[k] ? 'bg-amber-500' : 'bg-stone-300 dark:bg-stone-600'}`}><div className={`w-4 h-4 bg-white rounded-full mt-1 shadow transition-transform ${eventSettings[k] ? 'translate-x-5' : 'translate-x-1'}`}/></div>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {/* 점심 메뉴 관리 */}
+                                            {eventSettings.enabledTypes.includes('lunch') && (
+                                                <div className="space-y-2">
+                                                    <p className="text-[11px] font-black text-stone-500">점심 메뉴 목록</p>
+                                                    <div className="flex gap-2"><input className="flex-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-2.5 text-xs font-bold outline-none" placeholder="메뉴 추가 (예: 한식 🍚)" value={lunchMenuInput} onChange={e => setLunchMenuInput(e.target.value)} onKeyDown={e => { if(e.key==='Enter' && lunchMenuInput.trim()) { saveEventSettings({...eventSettings, lunchMenus:[...eventSettings.lunchMenus, lunchMenuInput.trim()]}); setLunchMenuInput(''); }}} /><button onClick={() => { if(lunchMenuInput.trim()) { saveEventSettings({...eventSettings, lunchMenus:[...eventSettings.lunchMenus, lunchMenuInput.trim()]}); setLunchMenuInput(''); }}} className="bg-amber-500 text-white px-4 rounded-xl text-xs font-black btn-press">추가</button></div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {eventSettings.lunchMenus.map((m,i) => (
+                                                            <div key={i} className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 px-3 py-1.5 rounded-full text-[11px] font-bold text-stone-600 dark:text-stone-300">
+                                                                {m}
+                                                                <button onClick={() => saveEventSettings({...eventSettings, lunchMenus: eventSettings.lunchMenus.filter((_,j)=>j!==i)})} className="text-rose-400 ml-1 font-black">×</button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* 당첨 이력 */}
+                                            {eventSettings.enableHistory && winHistory.length > 0 && (
+                                                <div className="space-y-2">
+                                                    <p className="text-[11px] font-black text-stone-500">당첨 이력</p>
+                                                    <div className="space-y-1.5 max-h-40 overflow-y-auto scrollbar-hide">
+                                                        {[...winHistory].sort((a,b)=>b.count-a.count).map(h => (
+                                                            <div key={h.id} className="flex justify-between items-center bg-stone-50 dark:bg-stone-800 px-4 py-2 rounded-xl text-[11px]">
+                                                                <span className="font-black text-stone-700 dark:text-stone-300">{h.name}</span>
+                                                                <span className="text-amber-500 font-black">🏆 {h.count}회</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <button onClick={() => { setConfirmDialog({isOpen:true, message:'당첨 이력을 전부 초기화하시겠습니까?', onConfirm: async () => { setConfirmDialog({isOpen:false}); setWinHistory([]); try { window.localDB.transaction('winHistory','readwrite').objectStore('winHistory').clear(); } catch(e){} showToast('초기화 완료'); }, onCancel: ()=>setConfirmDialog({isOpen:false})}); }} className="text-[10px] font-black text-rose-400 mt-1">이력 전체 삭제</button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* 🍱 점심 메뉴 뽑기 (이벤트 없을 때도 항상 표시) */}
+                                    {eventSettings.enabledTypes.includes('lunch') && (
+                                        <div className="bg-white dark:bg-stone-900 p-5 rounded-[2rem] border border-stone-200 dark:border-stone-800 shadow-sm space-y-3">
+                                            <p className="text-[12px] font-black text-stone-600 dark:text-stone-300 flex items-center gap-2"><Icon name="coffee" size={16} className="text-amber-500"/> 오늘 점심 메뉴 뽑기</p>
+                                            {lunchPick ? (
+                                                <div className="text-center py-4"><p className="text-3xl font-black text-amber-500 animate-bounce">{lunchPick}</p><p className="text-[10px] text-stone-400 font-bold mt-2">오늘의 점심 메뉴!</p></div>
+                                            ) : (
+                                                <p className="text-[11px] text-stone-400 font-bold text-center py-2">버튼을 눌러 오늘의 점심 메뉴를 결정하세요!</p>
+                                            )}
+                                            <div className="flex gap-2">
+                                                <button onClick={() => { const menus = eventSettings.lunchMenus; if (!menus.length) return showToast('메뉴를 먼저 등록해주세요.', true); setLunchPick(menus[Math.floor(Math.random()*menus.length)]); }} className="flex-1 bg-amber-500 text-white font-black py-3 rounded-2xl btn-press text-[12px]">🎲 메뉴 뽑기</button>
+                                                {lunchPick && <button onClick={() => setLunchPick(null)} className="bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-3 px-4 rounded-2xl btn-press text-[12px]">다시</button>}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 최근 종료 이벤트 */}
                                     {currentEvent?.status === 'closed' && (
-                                        <div className="bg-white dark:bg-stone-900 p-8 rounded-[2.5rem] border border-stone-200 dark:border-stone-800 shadow-sm space-y-4 mb-4">
-                                            <div className="flex items-center justify-between"><h3 className="text-lg font-black text-stone-800 dark:text-stone-200 flex items-center gap-2"><Icon name="partyPopper" size={20} className="text-rose-500"/> 최근 종료된 이벤트</h3>{isAdminAuth && <button onClick={handleResetEvent} className="text-white bg-rose-500 p-2 rounded-lg btn-press"><Icon name="trash" size={16}/></button>}</div>
+                                        <div className="bg-white dark:bg-stone-900 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-800 shadow-sm space-y-3">
+                                            <div className="flex items-center justify-between"><h3 className="text-sm font-black text-stone-800 dark:text-stone-200 flex items-center gap-2"><Icon name="partyPopper" size={18} className="text-rose-500"/> 최근 종료된 이벤트</h3>{isAdminAuth && <button onClick={handleResetEvent} className="text-white bg-rose-500 p-2 rounded-lg btn-press"><Icon name="trash" size={16}/></button>}</div>
                                             <div className="bg-stone-50 dark:bg-stone-800 p-4 rounded-xl border border-stone-100 dark:border-stone-700"><p className="text-sm font-black text-stone-800 dark:text-stone-200 mb-1">{currentEvent.title}</p><p className="text-xs text-rose-500 font-bold mb-3">상품: {currentEvent.prize}</p>
                                                 <div className="space-y-2">{(currentEvent.winners || []).map((w, idx) => (<div key={idx} className="flex justify-between items-center text-xs font-bold text-stone-600 dark:text-stone-300 bg-white dark:bg-stone-900 p-2 rounded-lg border border-stone-100 dark:border-stone-700"><span>🏆 {w.name}</span><span className="text-[10px] text-stone-400">{w.part}</span></div>))}</div>
                                             </div>
                                         </div>
                                     )}
-                                    <div className="bg-gradient-to-br from-amber-400 to-orange-500 p-8 rounded-[2.5rem] shadow-lg flex items-center gap-6 text-white font-black"><Icon name="gift" size={48} className="opacity-90"/><div><h2 className="text-2xl tracking-tighter">라이브 이벤트</h2><p className="text-sm font-bold text-amber-100 mt-1 tracking-widest">실시간 사내 복지 시스템</p></div></div>
+
+                                    {/* 이벤트 생성 폼 */}
                                     {(!currentEvent || currentEvent?.status === 'closed') && isAdminAuth && (
-                                        <div className="bg-white dark:bg-stone-900 p-8 rounded-[2.5rem] border border-stone-200 dark:border-stone-800 shadow-sm space-y-6">
-                                            <h3 className="text-lg font-black text-stone-800 dark:text-stone-200 flex items-center gap-2"><Icon name="settings" size={20} className="text-stone-400"/> 이벤트 오픈 (관리자 전용)</h3>
-                                            <div className="space-y-4">
-                                                <div><label className="text-xs font-black text-stone-500 ml-2">이벤트 제목</label><input className="w-full mt-2 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-amber-400" placeholder="예: 금일 깜짝 커피 이벤트!" value={eventForm.title} onChange={e => setEventForm({...eventForm, title: e.target.value})} /></div>
-                                                <div><label className="text-xs font-black text-stone-500 ml-2">상품 (선물)</label><input className="w-full mt-2 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-amber-400" placeholder="예: 스타벅스 아메리카노 1잔" value={eventForm.prize} onChange={e => setEventForm({...eventForm, prize: e.target.value})} /></div>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <div><label className="text-xs font-black text-stone-500 ml-2">참여 대상 지정</label><select className="w-full mt-2 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-amber-400" value={eventForm.target} onChange={e => setEventForm({...eventForm, target: e.target.value})}><option value="daily">금일 출근자 전원</option><option value="all">부서 전체 직원</option></select></div>
-                                                    <div><label className="text-xs font-black text-stone-500 ml-2">이벤트 방식</label><select className="w-full mt-2 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-amber-400" value={eventForm.type} onChange={e => setEventForm({...eventForm, type: e.target.value})}><option value="random">랜덤 추첨</option><option value="fcfs">선착순 당첨</option></select></div>
-                                                </div>
-                                                <div><label className="text-xs font-black text-stone-500 ml-2">당첨 인원</label><input type="number" min="1" className="w-full mt-2 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-amber-400" value={eventForm.winnerCount} onChange={e => setEventForm({...eventForm, winnerCount: parseInt(e.target.value) || 1})} /></div>
-                                                <button onClick={handleCreateEvent} className="w-full bg-amber-500 text-white font-black py-5 rounded-2xl shadow-xl btn-press text-sm mt-4">이벤트 오픈하기</button>
+                                        <div className="bg-white dark:bg-stone-900 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-800 shadow-sm space-y-5">
+                                            <h3 className="text-base font-black text-stone-800 dark:text-stone-200 flex items-center gap-2"><Icon name="zap" size={18} className="text-amber-400"/> 이벤트 오픈</h3>
+                                            <div><label className="text-xs font-black text-stone-500 ml-2">이벤트 제목</label><input className="w-full mt-2 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-amber-400" placeholder="예: 오늘의 깜짝 이벤트!" value={eventForm.title} onChange={e => setEventForm({...eventForm, title: e.target.value})} /></div>
+                                            <div><label className="text-xs font-black text-stone-500 ml-2">상품</label><input className="w-full mt-2 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-amber-400" placeholder="예: 스타벅스 아메리카노" value={eventForm.prize} onChange={e => setEventForm({...eventForm, prize: e.target.value})} /></div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div><label className="text-xs font-black text-stone-500 ml-2">참여 대상</label><select className="w-full mt-2 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-4 py-4 text-sm font-bold outline-none focus:border-amber-400" value={eventForm.target} onChange={e => setEventForm({...eventForm, target: e.target.value})}><option value="daily">금일 출근자</option><option value="all">전체 직원</option></select></div>
+                                                <div><label className="text-xs font-black text-stone-500 ml-2">이벤트 방식</label><select className="w-full mt-2 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-4 py-4 text-sm font-bold outline-none focus:border-amber-400" value={eventForm.type} onChange={e => setEventForm({...eventForm, type: e.target.value})}>
+                                                    {eventSettings.enabledTypes.filter(t => t !== 'lunch').map(t => <option key={t} value={t}>{EVENT_TYPE_META[t]?.label || t}</option>)}
+                                                </select></div>
                                             </div>
+                                            {(eventForm.type === 'random' || eventForm.type === 'fcfs') && <div><label className="text-xs font-black text-stone-500 ml-2">당첨 인원</label><input type="number" min="1" className="w-full mt-2 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-amber-400" value={eventForm.winnerCount} onChange={e => setEventForm({...eventForm, winnerCount: parseInt(e.target.value)||1})} /></div>}
+                                            {eventForm.type === 'quiz' && (<div className="space-y-3 bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-800"><p className="text-[11px] font-black text-indigo-600">📝 퀴즈 설정</p><input className="w-full bg-white dark:bg-stone-900 border border-indigo-200 dark:border-indigo-700 rounded-xl px-4 py-3 text-xs font-bold outline-none" placeholder="퀴즈 문제" value={eventForm.quizQuestion} onChange={e => setEventForm({...eventForm, quizQuestion: e.target.value})} /><input className="w-full bg-white dark:bg-stone-900 border border-indigo-200 dark:border-indigo-700 rounded-xl px-4 py-3 text-xs font-bold outline-none" placeholder="정답 (대소문자 무시)" value={eventForm.quizAnswer} onChange={e => setEventForm({...eventForm, quizAnswer: e.target.value})} /><div><label className="text-[10px] font-black text-stone-500 ml-1">정답자 중 당첨 인원</label><input type="number" min="1" className="w-full mt-1 bg-white dark:bg-stone-900 border border-indigo-200 dark:border-indigo-700 rounded-xl px-4 py-3 text-xs font-bold outline-none" value={eventForm.winnerCount} onChange={e => setEventForm({...eventForm, winnerCount: parseInt(e.target.value)||1})} /></div></div>)}
+                                            {eventForm.type === 'team' && (<div className="bg-teal-50 dark:bg-teal-900/20 p-4 rounded-2xl border border-teal-100 dark:border-teal-800"><p className="text-[11px] font-black text-teal-600 mb-2">👥 팀 배정 설정</p><label className="text-[10px] font-black text-stone-500 ml-1">팀 수</label><input type="number" min="2" max="10" className="w-full mt-1 bg-white dark:bg-stone-900 border border-teal-200 dark:border-teal-700 rounded-xl px-4 py-3 text-xs font-bold outline-none" value={eventForm.teamCount} onChange={e => setEventForm({...eventForm, teamCount: parseInt(e.target.value)||2})} /></div>)}
+                                            <button onClick={handleCreateEvent} className="w-full bg-amber-500 text-white font-black py-5 rounded-2xl shadow-xl btn-press text-sm">이벤트 오픈하기 🚀</button>
                                         </div>
                                     )}
                                     {(!currentEvent || currentEvent?.status === 'closed') && !isAdminAuth && (
-                                        <div className="bg-white dark:bg-stone-900 p-12 rounded-[2.5rem] border border-stone-200 dark:border-stone-800 shadow-sm text-center"><Icon name="dices" size={48} className="mx-auto text-stone-300 mb-4" /><p className="text-stone-500 font-black">현재 진행 중인 이벤트가 없습니다.</p></div>
+                                        <div className="bg-white dark:bg-stone-900 p-12 rounded-[2.5rem] border border-stone-200 dark:border-stone-800 shadow-sm text-center"><Icon name="dices" size={48} className="mx-auto text-stone-300 mb-4"/><p className="text-stone-500 font-black">현재 진행 중인 이벤트가 없습니다.</p></div>
                                     )}
+
+                                    {/* 대기 중 이벤트 */}
                                     {currentEvent?.status === 'waiting' && (
-                                        <div className="bg-white dark:bg-stone-900 p-8 rounded-[2.5rem] border border-amber-200 shadow-lg text-center border-4 relative overflow-hidden">
-                                            {currentEvent.type === 'fcfs' && <div className="absolute top-0 left-0 w-full h-1.5 bg-rose-500 animate-pulse"></div>}
-                                            <span className={`text-[10px] font-black px-3 py-1 rounded-full tracking-widest ${currentEvent.type === 'fcfs' ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'}`}>{currentEvent.type === 'fcfs' ? '🚨 선착순 진행 중 🚨' : 'EVENT OPEN'}</span>
+                                        <div className="bg-white dark:bg-stone-900 p-7 rounded-[2.5rem] border-4 border-amber-200 shadow-lg text-center relative overflow-hidden">
+                                            {currentEvent.type === 'fcfs' && <div className="absolute top-0 left-0 w-full h-1.5 bg-rose-500 animate-pulse"/>}
+                                            <span className={`text-[10px] font-black px-3 py-1 rounded-full tracking-widest ${currentEvent.type==='fcfs'?'bg-rose-100 text-rose-600':'bg-amber-100 text-amber-600'}`}>{EVENT_TYPE_META[currentEvent.type]?.label || 'EVENT OPEN'}</span>
                                             <h3 className="text-2xl font-black text-stone-800 dark:text-stone-200 mt-4">{currentEvent.title}</h3>
-                                            <div className="bg-stone-50 dark:bg-stone-800 p-6 rounded-2xl border border-stone-100 dark:border-stone-700 my-4"><p className="text-lg font-black text-rose-500">{currentEvent.prize}</p></div>
-                                            <p className="font-black text-stone-600 dark:text-stone-400 mb-4">현재 참여자: {(currentEvent.participants || []).length}명 <span className="text-stone-400">/ 당첨인원: {currentEvent.winnerCount}명</span></p>
+                                            <div className="bg-stone-50 dark:bg-stone-800 p-5 rounded-2xl border border-stone-100 dark:border-stone-700 my-4"><p className="text-lg font-black text-rose-500">{currentEvent.prize}</p></div>
+                                            {currentEvent.type === 'quiz' && <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-800 mb-4 text-left"><p className="text-[12px] font-black text-indigo-700 dark:text-indigo-300 mb-3">📝 {currentEvent.quizQuestion}</p><input className="w-full bg-white dark:bg-stone-900 border border-indigo-200 dark:border-indigo-700 rounded-xl px-4 py-3 text-sm font-bold outline-none mb-2" placeholder="정답 입력..." value={quizAnswer} onChange={e => setQuizAnswer(e.target.value)} /><p className="text-[10px] text-indigo-500 font-bold">참여자: {(currentEvent.participants||[]).length}명 / 정답자: {Object.values(currentEvent.quizSubmissions||{}).filter(s=>s.correct).length}명</p></div>}
+                                            {currentEvent.type !== 'quiz' && <p className="font-black text-stone-600 dark:text-stone-400 mb-4">참여자: {(currentEvent.participants||[]).length}명 {currentEvent.type==='random'&&<span className="text-stone-400">/ 당첨: {currentEvent.winnerCount}명</span>}</p>}
                                             {isAdminAuth ? (
-                                                <div className="space-y-3">{currentEvent.type === 'random' && <button onClick={handleStartDraw} className="w-full bg-amber-500 text-white font-black py-4 rounded-2xl btn-press text-base">당첨자 추첨 시작</button>}<button onClick={handleArchiveEvent} className="w-full bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-4 rounded-2xl btn-press text-xs">이벤트 조기 종료</button></div>
+                                                <div className="space-y-2">
+                                                    {(currentEvent.type==='random'||currentEvent.type==='quiz'||currentEvent.type==='team') && <button onClick={handleStartDraw} className="w-full bg-amber-500 text-white font-black py-4 rounded-2xl btn-press text-base">{currentEvent.type==='team'?'팀 배정 시작':'추첨 시작'}</button>}
+                                                    <button onClick={handleArchiveEvent} className="w-full bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-3 rounded-2xl btn-press text-xs">이벤트 조기 종료</button>
+                                                </div>
                                             ) : (
-                                                <div className="pt-4">{currentEvent.participants?.includes(appUser?.empId) ? (<div className="w-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 font-black py-5 rounded-2xl border border-teal-200">참여가 접수되었습니다. 대기중...</div>) : (currentEvent.target === 'all' || (appUser && scheduleMap[appUser.empId]?.[todayStr])) ? (<button onClick={handleParticipateEvent} className={`w-full text-white font-black py-5 rounded-2xl btn-press text-base ${currentEvent.type === 'fcfs' ? 'bg-rose-500 animate-pulse' : 'bg-teal-500'}`}>&#x1F64B;&#x200D;&#x2642;&#xFE0F; {currentEvent.type === 'fcfs' ? '지금 바로 선착순 참여!' : '이벤트 참여하기'}</button>) : (<div className="w-full bg-rose-50 dark:bg-rose-900/30 text-rose-500 font-black py-5 rounded-2xl border border-rose-100 dark:border-rose-800 text-[12px]">{currentEvent.target === 'daily' ? '금일 출근자 전용 이벤트입니다.' : '참여 대상자가 아닙니다.'}</div>)}</div>
+                                                <div className="pt-2">
+                                                    {currentEvent.type==='quiz' && appUser && !currentEvent.participants?.includes(appUser.empId) && (
+                                                        <button onClick={handleParticipateEvent} className="w-full bg-indigo-500 text-white font-black py-5 rounded-2xl btn-press text-base">📝 정답 제출하기</button>
+                                                    )}
+                                                    {currentEvent.type==='quiz' && appUser && currentEvent.participants?.includes(appUser.empId) && (
+                                                        <div className="w-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 font-black py-5 rounded-2xl border border-indigo-200">
+                                                            {currentEvent.quizSubmissions?.[appUser.empId]?.correct ? '✅ 정답! 추첨 대기 중...' : '❌ 오답 제출됨'}
+                                                        </div>
+                                                    )}
+                                                    {(currentEvent.type==='random'||currentEvent.type==='fcfs') && (
+                                                        <>
+                                                            {currentEvent.participants?.includes(appUser?.empId) ? (<div className="w-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 font-black py-5 rounded-2xl border border-teal-200">참여가 접수되었습니다. 대기중...</div>)
+                                                            : (currentEvent.target==='all' || (appUser && scheduleMap[appUser.empId]?.[todayStr]))
+                                                            ? (<button onClick={handleParticipateEvent} className={`w-full text-white font-black py-5 rounded-2xl btn-press text-base ${currentEvent.type==='fcfs'?'bg-rose-500 animate-pulse':'bg-teal-500'}`}>{currentEvent.type==='fcfs'?'⚡ 지금 바로 선착순 참여!':'🙋 이벤트 참여하기'}</button>)
+                                                            : (<div className="w-full bg-rose-50 text-rose-500 font-black py-5 rounded-2xl border border-rose-100 text-[12px]">참여 대상자가 아닙니다.</div>)}
+                                                        </>
+                                                    )}
+                                                    {currentEvent.type==='team' && <div className="w-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 font-black py-5 rounded-2xl border border-teal-200 text-[12px]">관리자가 팀을 배정 중입니다...</div>}
+                                                </div>
                                             )}
                                         </div>
                                     )}
+
+                                    {/* 추첨 중 */}
                                     {currentEvent?.status === 'spinning' && (
-                                        <div className="bg-stone-800 p-12 rounded-[3rem] shadow-2xl text-center"><p className="text-amber-400 font-black tracking-widest animate-pulse mb-4">두구두구두구두구...</p><div className="bg-white/10 h-48 rounded-[2rem] flex items-center justify-center border border-white/20"><p className="text-5xl text-white font-black">{spinDisplay || '추첨중'}</p></div></div>
+                                        <div className="bg-stone-800 p-10 rounded-[3rem] shadow-2xl text-center space-y-6">
+                                            <p className="text-amber-400 font-black tracking-widest animate-pulse">두구두구두구두구...</p>
+                                            {eventSettings.drawStyle === 'roulette' && (
+                                                <div className="flex justify-center pt-2">
+                                                    <RouletteWheel names={(currentEvent.participants||[]).map(id=>userMap[id]?.name||'?')} rotation={wheelRotation}/>
+                                                </div>
+                                            )}
+                                            {eventSettings.drawStyle === 'slot' && (
+                                                <div className="relative overflow-hidden rounded-2xl border-4 border-amber-400 mx-auto" style={{height:'120px',maxWidth:'240px'}}>
+                                                    <div className="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between">
+                                                        <div className="h-8 bg-gradient-to-b from-stone-800 to-transparent"/>
+                                                        <div className="h-8 bg-gradient-to-t from-stone-800 to-transparent"/>
+                                                    </div>
+                                                    <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-10 border-y-2 border-amber-400/50"/>
+                                                    <div className="flex items-center justify-center h-full">
+                                                        <p className="text-4xl font-black text-white">{spinDisplay||'?'}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {eventSettings.drawStyle === 'text' && (
+                                                <div className="bg-white/10 h-36 rounded-[2rem] flex items-center justify-center border border-white/20">
+                                                    <p className="text-5xl text-white font-black">{spinDisplay||'추첨중'}</p>
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
+
+                                    {/* 결과 */}
                                     {currentEvent?.status === 'finished' && (
-                                        <div className="bg-white dark:bg-stone-900 p-8 rounded-[3rem] border border-rose-200 dark:border-stone-800 shadow-2xl text-center border-4 fade-in">
-                                            <Icon name="partyPopper" size={64} className="mx-auto text-rose-500 mb-4"/><p className="text-xs font-black text-rose-400 tracking-widest mb-4">🎉 축하합니다! 당첨자 발표 ({currentEvent.winners?.length || 0}명) 🎉</p>
-                                            <div className="space-y-3 mb-6 max-h-48 overflow-y-auto scrollbar-hide">{(currentEvent.winners || []).map((w, idx) => (<div key={idx} className="bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-800 rounded-2xl p-4 flex justify-between items-center"><div className="flex items-center gap-3"><div className="w-8 h-8 bg-rose-200 text-rose-600 rounded-full flex items-center justify-center font-black text-xs">{idx + 1}</div><div className="text-left"><p className="text-lg font-black text-stone-800 dark:text-stone-200 leading-none">{w.name}</p><p className="text-[10px] font-bold text-stone-500 mt-1">{w.part} · {w.position}</p></div></div><Icon name="gift" size={20} className="text-rose-400" /></div>))}</div>
-                                            <div className="pt-6 border-t border-stone-100 dark:border-stone-700 space-y-4"><button onClick={handleCongratulate} className="w-full bg-rose-500 text-white font-black py-5 rounded-2xl shadow-xl btn-press text-sm tracking-widest flex items-center justify-center gap-2"><Icon name="thumbsUp" size={18}/> 모두 축하해주기 ({currentEvent.congratulations || 0})</button>{isAdminAuth && (<div className="flex gap-2"><button onClick={handleArchiveEvent} className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-4 rounded-2xl btn-press text-xs">이벤트 종료 처리</button><button onClick={handleResetEvent} className="flex-1 bg-rose-50 dark:bg-rose-900/30 text-rose-500 font-black py-4 rounded-2xl btn-press text-xs border border-rose-200 dark:border-rose-800">완전 삭제</button></div>)}</div>
+                                        <div className="bg-white dark:bg-stone-900 p-8 rounded-[3rem] border-4 border-rose-200 dark:border-stone-800 shadow-2xl text-center fade-in">
+                                            {/* 팀 배정 결과 */}
+                                            {currentEvent.type === 'team' && currentEvent.teams ? (
+                                                <div className="space-y-4">
+                                                    <p className="text-xs font-black text-teal-500 tracking-widest mb-4">👥 팀 배정 완료!</p>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        {currentEvent.teams.map((team, i) => (
+                                                            <div key={i} className="bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-2xl p-4 text-left">
+                                                                <p className="text-[12px] font-black text-teal-600 mb-2">{team.name}</p>
+                                                                {team.members.map((m,j) => <p key={j} className="text-[11px] font-bold text-stone-700 dark:text-stone-300">{m}</p>)}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <Icon name="partyPopper" size={64} className="mx-auto text-rose-500 mb-4"/>
+                                                    <p className="text-xs font-black text-rose-400 tracking-widest mb-4">🎉 당첨자 발표 ({currentEvent.winners?.length||0}명) 🎉</p>
+                                                    <div className="space-y-3 mb-6 max-h-48 overflow-y-auto scrollbar-hide">
+                                                        {(currentEvent.winners||[]).map((w,idx) => (
+                                                            <div key={idx} className="bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-800 rounded-2xl p-4 flex justify-between items-center">
+                                                                <div className="flex items-center gap-3"><div className="w-8 h-8 bg-rose-200 text-rose-600 rounded-full flex items-center justify-center font-black text-xs">{idx+1}</div><div className="text-left"><p className="text-lg font-black text-stone-800 dark:text-stone-200 leading-none">{w.name}</p><p className="text-[10px] font-bold text-stone-500 mt-1">{w.part} · {w.position}</p></div></div>
+                                                                <Icon name="gift" size={20} className="text-rose-400"/>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+                                            <div className="pt-5 border-t border-stone-100 dark:border-stone-700 space-y-3">
+                                                {currentEvent.type !== 'team' && <button onClick={handleCongratulate} className="w-full bg-rose-500 text-white font-black py-5 rounded-2xl shadow-xl btn-press text-sm flex items-center justify-center gap-2"><Icon name="thumbsUp" size={18}/> 축하해주기 ({currentEvent.congratulations||0})</button>}
+                                                {isAdminAuth && <div className="flex gap-2"><button onClick={handleArchiveEvent} className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-4 rounded-2xl btn-press text-xs">종료 처리</button><button onClick={handleResetEvent} className="flex-1 bg-rose-50 dark:bg-rose-900/30 text-rose-500 font-black py-4 rounded-2xl btn-press text-xs border border-rose-200 dark:border-rose-800">완전 삭제</button></div>}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
