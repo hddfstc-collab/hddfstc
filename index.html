@@ -1946,7 +1946,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                 ))}
                                                 <button onClick={async () => { const pw = prompt('관리자 PIN'); if(pw) { const h = await hashPassword(pw); const sh = masterPinHash || await hashPassword(DEFAULT_PIN); if(h===sh) setIsAdminAuth(true); else showToast('PIN 오류', true); } }} className="snap-center px-4 py-3 rounded-[1.2rem] font-black text-[11px] whitespace-nowrap bg-stone-50 dark:bg-stone-800 text-stone-400 border border-stone-200 dark:border-stone-700 shrink-0">🔐 관리자</button>
                                             </div>
-                                            {currentAdminTab === 'content' && (
+                                            {currentAdminTab === 'apps' && (
                                                 <div className="space-y-5 fade-in">
                                                     <p className="text-[12px] font-black text-teal-600 flex items-center gap-2"><Icon name="edit" size={16}/> 권한 부여된 콘텐츠 작성/관리</p>
                                                     {(dynamicApps || []).filter(a => ['board','form','notice','widget_board'].includes(a.actionType) && canWrite(a)).length === 0 ? (
