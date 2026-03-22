@@ -348,7 +348,7 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const [bulkScheduleMonth, setBulkScheduleMonth] = useState(todayStr.slice(0, 7));
             
             const [memberForm, setMemberForm] = useState({ empId: '', name: '', part: '', position: '사원', jobTitle: '일반', category: '', brands: '', password: '' });
-            const [appManagerForm, setAppManagerForm] = useState({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', notifyTarget: 'none', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 1, sortOrder: 99 });
+            const [appManagerForm, setAppManagerForm] = useState({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', viewPermission: 'admin', notifyTarget: 'none', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 1, sortOrder: 99 });
             const [editingAppId, setEditingAppId] = useState(null);
             const [submitFormState, setSubmitFormState] = useState({ content: '', photo: '', authorName: '' });
 
@@ -375,7 +375,7 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const [showExtModal, setShowExtModal] = useState(false);
             const [showProfileEdit, setShowProfileEdit] = useState(false);
             const [profileTab, setProfileTab] = useState('pw'); // 'pw' | 'info'
-            const [profileForm, setProfileForm] = useState({ name: '', part: '', category: '', brands: '', position: '', jobTitle: '', password: '', targetEmpId: '' });
+            const [profileForm, setProfileForm] = useState({ name: '', part: '', category: '', brands: '', extNumber: '', position: '', jobTitle: '', password: '', targetEmpId: '' });
             const [expandedImage, setExpandedImage] = useState(null);
             const [expandedCell, setExpandedCell] = useState(null);
             const [dailySearch, setDailySearch] = useState(''); // 일간 검색
@@ -427,15 +427,15 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const AVAILABLE_TABS = useMemo(() => {
                 return [ 
                     { id: 'health', name: '🏥 헬스키퍼 관리', show: isHealthOnlyAdmin || isAdminAuth || isHealthAdmin }, 
-                    { id: 'apps', name: '앱/폴더/위젯 관리', show: isAdminAuth && !isHealthOnlyAdmin }, 
+                    { id: 'content', name: '📝 콘텐츠 관리', show: !isAdminAuth && !isHealthOnlyAdmin && appUser && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장') },
+                    { id: 'apps', name: '앱/공지 관리', show: isAdminAuth && !isHealthOnlyAdmin }, 
                     { id: 'members', name: '구성원/조직 관리', show: isAdminAuth && !isHealthOnlyAdmin }, 
                     { id: 'schedules', name: '스케줄 관리', show: isAdminAuth && !isHealthOnlyAdmin }, 
-                    { id: 'notices', name: '공지사항', show: isAdminAuth && !isHealthOnlyAdmin }, 
                     { id: 'extensions', name: '내선번호', show: isAdminAuth && !isHealthOnlyAdmin }, 
-                    { id: 'posts', name: '제출 데이터', show: isAdminAuth && !isHealthOnlyAdmin }, 
+                    { id: 'posts', name: '제출 데이터', show: (isAdminAuth && !isHealthOnlyAdmin) || (appUser && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) }, 
                     { id: 'security', name: '보안 설정', show: isAdminAuth && !isHealthOnlyAdmin } 
                 ].filter(t => t.show);
-            }, [isHealthOnlyAdmin, isAdminAuth, isHealthAdmin]);
+            }, [isHealthOnlyAdmin, isAdminAuth, isHealthAdmin, appUser]);
 
             const currentAdminTab = useMemo(() => {
                 if (AVAILABLE_TABS.find(t => t.id === adminTab)) return adminTab;
@@ -454,6 +454,19 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const canEditProfile = useCallback((targetEmpId) => { return (appUser && appUser.empId === targetEmpId) || isAdminAuth; }, [appUser, isAdminAuth]);
             const showToast = (m, isError = false) => { setToast(m); setToastError(isError); setTimeout(() => { setToast(''); setToastError(false); }, 3000); };
             const showConfirm = (options) => { setConfirmDialog({ ...options, isOpen: true }); };
+
+            // 제출 데이터 열람 권한
+            const canViewPosts = useCallback((appItem) => {
+                if (!appItem) return false;
+                if (isAdminAuth) return true;
+                if (!appUser) return false;
+                const vp = appItem.viewPermission || 'admin';
+                if (vp === 'admin') return false;
+                if (vp === 'manager') return appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장';
+                if (vp === 'member') return true;
+                if (vp.startsWith('PART_')) return appUser.part === vp.replace('PART_', '');
+                return false;
+            }, [appUser, isAdminAuth]);
 
             const canWrite = useCallback((appItem) => {
                 if (!appItem) return false;
@@ -780,7 +793,7 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
             const handleEditDynamicApp = (app) => {
                 let mappedType = app.actionType;
                 if (mappedType === 'simple_guide') mappedType = 'guide'; if (mappedType === 'custom_board') mappedType = 'board'; if (mappedType === 'admin_board') mappedType = 'notice'; if (mappedType === 'custom_form') mappedType = 'form'; if (mappedType === 'external_url') mappedType = 'link'; if (mappedType === 'link_ext') mappedType = 'popup_ext';
-                setAppManagerForm({ name: app.name, icon: app.icon, color: app.color, bg: app.bg, isFolder: app.isFolder ? 'true' : 'false', parentId: app.parentId || '', actionType: mappedType || 'guide', url: app.url || '', writePermission: app.writePermission || 'all', notifyTarget: app.notifyTarget || 'none', guideContent: app.guideContent || '', guideImage: app.guideImage || '', resOperatorId: app.resOperatorId || '', resTimeSlots: app.resTimeSlots || '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: app.resMaxPerSlot || 1, resLeadTimeDays: app.resLeadTimeDays || 0, resLeadTimeHours: app.resLeadTimeHours || 0, sortOrder: app.sortOrder || 99 });
+                setAppManagerForm({ name: app.name, icon: app.icon, color: app.color, bg: app.bg, isFolder: app.isFolder ? 'true' : 'false', parentId: app.parentId || '', actionType: mappedType || 'guide', url: app.url || '', writePermission: app.writePermission || 'all', viewPermission: app.viewPermission || 'admin', notifyTarget: app.notifyTarget || 'none', guideContent: app.guideContent || '', guideImage: app.guideImage || '', resOperatorId: app.resOperatorId || '', resTimeSlots: app.resTimeSlots || '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: app.resMaxPerSlot || 1, resLeadTimeDays: app.resLeadTimeDays || 0, resLeadTimeHours: app.resLeadTimeHours || 0, sortOrder: app.sortOrder || 99 });
                 setEditingAppId(app.id); setAdminTab('apps'); window.scrollTo({ top: 0, behavior: 'smooth' });
             };
 
@@ -1358,7 +1371,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                 </button>
                                 {appUser ? (
                                     <div className="flex items-center gap-1.5 bg-white dark:bg-stone-800 px-3 py-1.5 rounded-full border border-stone-200 dark:border-stone-700 shadow-sm">
-                                        <button onClick={(e) => { e.stopPropagation(); setProfileForm({ name: appUser.name, part: appUser.part, category: appUser.category, brands: appUser.brands || '', position: appUser.position, jobTitle: appUser.jobTitle || '일반', password: '', targetEmpId: appUser.empId }); setProfileTab('pw'); setShowProfileEdit(true); }} className="flex items-center gap-1 text-[10px] font-black text-stone-600 dark:text-stone-300 hover:text-teal-600 transition-colors btn-press"><span className="underline decoration-stone-300 dark:decoration-stone-600 underline-offset-2">{appUser.name}</span>님</button>
+                                        <button onClick={(e) => { e.stopPropagation(); setProfileForm({ name: appUser.name, part: appUser.part, category: appUser.category, brands: appUser.brands || '', extNumber: appUser.extNumber || '', position: appUser.position, jobTitle: appUser.jobTitle || '일반', password: '', targetEmpId: appUser.empId }); setProfileTab('pw'); setShowProfileEdit(true); }} className="flex items-center gap-1 text-[10px] font-black text-stone-600 dark:text-stone-300 hover:text-teal-600 transition-colors btn-press"><span className="underline decoration-stone-300 dark:decoration-stone-600 underline-offset-2">{appUser.name}</span>님</button>
                                         <div className="w-px h-3 bg-stone-200 dark:bg-stone-700 mx-0.5"></div>
                                         <button onClick={() => { setAppUser(null); localStorage.removeItem('hmood_session'); setView('login'); setCurrentDate(new Date()); }} className="text-stone-400 hover:text-rose-500 transition-colors flex items-center gap-1"><Icon name="logout" size={12}/></button>
                                     </div>
@@ -1400,6 +1413,9 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                         </div>
                                     </div>
                                     
+                                    {/* 위젯 렌더링 - sortOrder < 100 이면 퀵메뉴 위에 표시 */}
+                                    {(dynamicApps || []).filter(a => !a.parentId && a.actionType?.startsWith('widget_') && (a.sortOrder||99) < 100).sort((a,b)=>(a.sortOrder||99)-(b.sortOrder||99)).map(app => app.actionType === 'widget_board' ? renderWidgetBoard(app) : renderWidget(app))}
+
                                     <div className="bg-white dark:bg-stone-900 rounded-[2rem] p-5 sm:p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 mt-4">
                                         <h3 className="text-xs font-black flex items-center gap-2 text-stone-700 dark:text-stone-300 mb-4">채널 퀵 메뉴</h3>
                                         <div className="grid grid-cols-4 sm:grid-cols-5 gap-3 sm:gap-4 w-full">
@@ -1411,7 +1427,6 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                     <div className={`w-14 h-14 sm:w-16 sm:h-16 ${app.bg} ${app.color} rounded-[1.2rem] shadow-sm flex items-center justify-center transition-all group-hover:shadow-md relative`}>
                                                         <Icon name={app.icon} size={26} className="transition-colors"/>
                                                         {app.isFolder && <div className="absolute top-0 right-0 w-3.5 h-3.5 bg-white border border-stone-200 rounded-full flex items-center justify-center"><div className="w-1.5 h-1.5 bg-stone-300 rounded-full"/></div>}
-                                                        {/* 미읽음 배지: widget_notices 타입이거나 notice 타입일 때 */}
                                                         {(app.actionType === 'widget_notices' || app.actionType === 'notice') && (() => { const unread = (notices||[]).filter(n => !readNoticeIds.includes(n.id)).length; return unread > 0 ? <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-black rounded-full min-w-[17px] h-[17px] flex items-center justify-center px-1 shadow">{unread > 9 ? '9+' : unread}</span> : null; })()}
                                                     </div>
                                                     <span className="text-[10px] sm:text-[11px] font-black text-stone-600 tracking-tighter whitespace-nowrap overflow-hidden text-ellipsis w-full text-center">{app.name}</span>
@@ -1420,8 +1435,8 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                         </div>
                                     </div>
 
-                                    {/* 위젯 렌더링 호출 */}
-                                    {(dynamicApps || []).filter(a => !a.parentId && a.actionType?.startsWith('widget_')).sort((a,b)=> (a.sortOrder||99)-(b.sortOrder||99)).map(app => app.actionType === 'widget_board' ? renderWidgetBoard(app) : renderWidget(app))}
+                                    {/* 위젯 렌더링 - sortOrder >= 100 이면 퀵메뉴 아래 표시 */}
+                                    {(dynamicApps || []).filter(a => !a.parentId && a.actionType?.startsWith('widget_') && (a.sortOrder||99) >= 100).sort((a,b)=>(a.sortOrder||99)-(b.sortOrder||99)).map(app => app.actionType === 'widget_board' ? renderWidgetBoard(app) : renderWidget(app))}
                                 </div>
                             )}
 
@@ -1496,14 +1511,16 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                                             </div>
                                                                         )}
                                                                     </div>
-                                                                    {canEdit ? (
-                                                                        <div className="flex flex-col gap-1 items-end shrink-0">
+                                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                                        {/* 개인 내선번호 전화 아이콘 */}
+                                                                        {(() => { const extNum = u?.extNumber || (extensions||[]).find(e => e?.user?.includes(m.name))?.number; return extNum ? <button onClick={e => { e.stopPropagation(); callExtension(extNum, m.name, e); }} className="text-white bg-teal-500 hover:bg-teal-600 p-1.5 rounded-full btn-press shadow-sm" title={`내선 ${extNum}`}><Icon name="phoneCall" size={13}/></button> : null; })()}
+                                                                        {canEdit ? (
                                                                             <select className="text-[11px] font-black bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-2 py-1.5 outline-none focus:border-teal-500 cursor-pointer shadow-sm" value={m.status} onChange={(e) => handleUpdateDuty(m.empId, todayStr, e.target.value, isAdminAuth)}>
                                                                                 <option value="" disabled className="bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300">-</option>
                                                                                 {SCHED_STATUS_OPTIONS.map(opt => <option key={opt} value={opt} className="bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300">{opt}</option>)}
                                                                             </select>
-                                                                        </div>
-                                                                    ) : (<div className={`px-3 py-1.5 rounded-lg text-[10px] font-black shadow-sm shrink-0 ${STATUS_THEME[m.status] || 'bg-stone-100 text-stone-400'}`}>{m.status}</div>)}
+                                                                        ) : (<div className={`px-3 py-1.5 rounded-lg text-[10px] font-black shadow-sm ${STATUS_THEME[m.status] || 'bg-stone-100 text-stone-400'}`}>{m.status}</div>)}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         )
@@ -1614,7 +1631,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                         </div>
                                                         <div className="flex items-center justify-between w-full">
                                                             <div className="flex items-center gap-2 mt-0.5"><span className="text-[11px] font-bold text-stone-600 dark:text-stone-400">{u.part}</span><span className="text-[9px] font-bold text-stone-400 border-l border-stone-200 dark:border-stone-700 pl-2">사번: {u.empId}</span></div>
-                                                            {canEdit && <button onClick={(e) => { e.stopPropagation(); setProfileForm({ name: u.name, part: u.part, category: u.category, brands: u.brands || '', position: u.position, jobTitle: u.jobTitle || '일반', password: '', targetEmpId: u.empId }); setProfileTab('info'); setShowProfileEdit(true); }} className="text-white bg-teal-500 hover:bg-teal-600 p-1.5 rounded-lg flex items-center justify-center btn-press shadow-sm"><Icon name="edit" size={14}/></button>}
+                                                            {canEdit && <button onClick={(e) => { e.stopPropagation(); setProfileForm({ name: u.name, part: u.part, category: u.category, brands: u.brands || '', extNumber: u.extNumber || '', position: u.position, jobTitle: u.jobTitle || '일반', password: '', targetEmpId: u.empId }); setProfileTab('info'); setShowProfileEdit(true); }} className="text-white bg-teal-500 hover:bg-teal-600 p-1.5 rounded-lg flex items-center justify-center btn-press shadow-sm"><Icon name="edit" size={14}/></button>}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1889,7 +1906,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                             {/* ADMIN VIEW */}
                             {view === 'admin' && (
                                 <div className="max-w-3xl mx-auto pb-20 fade-in">
-                                    {!isAdminAuth && !isHealthOnlyAdmin ? (
+                                    {!isAdminAuth && !isHealthOnlyAdmin && AVAILABLE_TABS.length === 0 ? (
                                         <div className="bg-white dark:bg-stone-900 p-10 rounded-[3rem] shadow-2xl border border-stone-200 dark:border-stone-800 text-center mt-10 max-w-sm mx-auto">
                                             <h3 className="text-2xl font-black mb-2 text-stone-800 dark:text-stone-200">시스템 관리자</h3>
                                             <form onSubmit={async e => { e.preventDefault(); const inputHash = await hashPassword(pinInput); const storedHash = masterPinHash || (await hashPassword(DEFAULT_PIN)); if(inputHash === storedHash) setIsAdminAuth(true); else showToast('PIN이 일치하지 않습니다.', true); }}>
@@ -1899,6 +1916,48 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                             {isHealthAdmin && (
                                                 <div className="mt-4 pt-4 border-t border-stone-200 dark:border-stone-800">
                                                     <button onClick={() => { setIsHealthOnlyAdmin(true); setAdminTab('health'); }} className="w-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 font-black py-3 rounded-xl shadow-sm btn-press text-[12px] border border-teal-200 dark:border-teal-800">🏥 헬스키퍼 관리자 메뉴 접속</button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : !isAdminAuth && !isHealthOnlyAdmin && AVAILABLE_TABS.length > 0 ? (
+                                        // 영업관리자/파트장: PIN 없이 바로 탭 표시
+                                        <div className="bg-white dark:bg-stone-900 p-6 md:p-8 rounded-[3.5rem] shadow-2xl border border-stone-200 dark:border-stone-800 space-y-6 fade-in">
+                                            <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide border-b border-stone-100 dark:border-stone-700 snap-x">
+                                                {AVAILABLE_TABS.map(tab => (
+                                                    <button key={tab.id} onClick={() => setAdminTab(tab.id)} className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${currentAdminTab === tab.id ? 'bg-stone-800 text-white shadow-md' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'}`}>{tab.name}</button>
+                                                ))}
+                                                {/* PIN 입력 버튼 - 시스템 관리자 접속용 */}
+                                                <button onClick={() => { if(pinInput) { hashPassword(pinInput).then(h => { const storedHash = masterPinHash || hashPassword(DEFAULT_PIN); storedHash.then ? storedHash.then(sh => { if(h===sh) setIsAdminAuth(true); else showToast('PIN 오류', true); }) : (h === storedHash ? setIsAdminAuth(true) : showToast('PIN 오류', true)); }); } else { const pw = prompt('관리자 PIN 입력'); if(pw) hashPassword(pw).then(async h => { const sh = masterPinHash || await hashPassword(DEFAULT_PIN); if(h===sh) setIsAdminAuth(true); else showToast('PIN이 일치하지 않습니다.', true); }); } }} className="snap-center px-4 py-3 rounded-[1.2rem] font-black text-[11px] whitespace-nowrap bg-stone-50 dark:bg-stone-800 text-stone-400 border border-stone-200 dark:border-stone-700">🔐 관리자</button>
+                                            </div>
+                                            {currentAdminTab === 'content' && (
+                                                <div className="space-y-5 fade-in">
+                                                    <p className="text-[12px] font-black text-teal-600 flex items-center gap-2"><Icon name="edit" size={16}/> 권한 부여된 콘텐츠 작성/관리</p>
+                                                    {/* 쓰기 권한이 있는 앱 목록 */}
+                                                    {(dynamicApps || []).filter(a => (a.actionType === 'board' || a.actionType === 'form' || a.actionType === 'notice' || a.actionType === 'widget_board') && canWrite(a)).length === 0 ? (
+                                                        <div className="text-center py-12 text-stone-400 font-bold text-sm">작성 권한이 부여된 앱이 없습니다.<br/><span className="text-[11px]">관리자에게 권한을 요청하세요.</span></div>
+                                                    ) : (dynamicApps || []).filter(a => (a.actionType === 'board' || a.actionType === 'form' || a.actionType === 'notice' || a.actionType === 'widget_board') && canWrite(a)).map(app => (
+                                                        <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2rem] p-5 border border-stone-200 dark:border-stone-800 shadow-sm space-y-3">
+                                                            <div className="flex items-center justify-between">
+                                                                <h3 className={`text-[13px] font-black flex items-center gap-2 ${app.color}`}><Icon name={app.icon} size={16}/> {app.name}</h3>
+                                                                <span className="text-[9px] text-stone-400 font-bold">{app.actionType === 'widget_board' ? '파트너스 게시판' : app.actionType === 'notice' ? '공지/자료' : '게시판'}</span>
+                                                            </div>
+                                                            {/* 공지형 */}
+                                                            {app.actionType === 'notice' && (
+                                                                <div className="space-y-2">
+                                                                    <input className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-500" placeholder="제목" value={adminBoardForm.title} onChange={e => setAdminBoardForm({...adminBoardForm, title: e.target.value})}/>
+                                                                    <textarea className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl p-3 text-xs font-bold h-20 resize-none outline-none focus:border-teal-500" placeholder="내용" value={adminBoardForm.content} onChange={e => setAdminBoardForm({...adminBoardForm, content: e.target.value})}/>
+                                                                    <div className="flex gap-2">
+                                                                        <button onClick={() => { setOpenedAdminBoard(app); setSelectedAdminPost(null); }} className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-600 font-black py-2.5 rounded-xl btn-press text-xs">기존 글 보기</button>
+                                                                        <button onClick={() => handleAdminBoardPost()} className="flex-1 bg-teal-600 text-white font-black py-2.5 rounded-xl btn-press text-xs shadow-md">등록</button>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            {/* 게시판/위젯 게시판형 */}
+                                                            {(app.actionType === 'board' || app.actionType === 'widget_board') && (
+                                                                <button onClick={() => { if(app.actionType === 'widget_board') { setWBoardOpenId(app.id); setWBoardForm({title:'',content:'',photo:''}); setWBoardEditId(null); } else { setOpenedDynamicApp(app); } }} className="w-full bg-teal-50 dark:bg-teal-900/20 text-teal-600 font-black py-3 rounded-xl btn-press text-xs border border-teal-200 dark:border-teal-800">게시판 열기 / 글쓰기</button>
+                                                            )}
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             )}
                                         </div>
@@ -2059,24 +2118,28 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                 </div>
                                             )}
 
-                                            {currentAdminTab === 'notices' && (
-                                                <div className="space-y-6 fade-in">
-                                                    <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-5"><p className="text-[12px] font-black text-rose-500 tracking-widest flex items-center gap-2"><Icon name="bellRing" size={18}/> 현장 전체 공지 등록/수정</p><textarea className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-3xl p-6 text-sm font-bold h-32 shadow-inner outline-none focus:border-rose-400" placeholder="내용 입력" value={noticeForm.content} onChange={e => setNoticeForm({...noticeForm, content: e.target.value})} /><div className="flex items-center justify-between"><label className="flex items-center gap-2 text-xs font-black cursor-pointer text-rose-500"><input type="checkbox" checked={noticeForm.isPinned} onChange={e => setNoticeForm({...noticeForm, isPinned: e.target.checked})} className="w-4 h-4" /> 상단 고정</label>
-                                                    <div className="flex gap-2">
-                                                        {editingNoticeId && <button onClick={() => { setEditingNoticeId(null); setNoticeForm({ content: '', photos: [], isPinned: false }); }} className="bg-stone-200 text-stone-600 font-black px-6 py-3 rounded-2xl shadow-md btn-press text-xs">취소</button>}
-                                                        <button onClick={handleNoticeSubmit} className="bg-stone-800 text-white font-black px-6 py-3 rounded-2xl shadow-md btn-press text-xs">{editingNoticeId ? '수정 완료' : '등록'}</button>
+                                            {(currentAdminTab === 'notices' || currentAdminTab === 'apps') && currentAdminTab === 'apps' && (
+                                                <div className="space-y-5 fade-in">
+                                                    {/* 공지사항 관리 섹션 */}
+                                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-5 rounded-[2rem] border border-rose-100 dark:border-rose-900 space-y-4">
+                                                        <p className="text-[12px] font-black text-rose-600 tracking-widest flex items-center gap-2"><Icon name="bellRing" size={16}/> 공지사항 관리</p>
+                                                        <textarea className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold h-24 shadow-inner outline-none focus:border-rose-400 resize-none" placeholder="공지 내용 입력" value={noticeForm.content} onChange={e => setNoticeForm({...noticeForm, content: e.target.value})} />
+                                                        <div className="flex items-center justify-between">
+                                                            <label className="flex items-center gap-2 text-xs font-black cursor-pointer text-rose-500"><input type="checkbox" checked={noticeForm.isPinned} onChange={e => setNoticeForm({...noticeForm, isPinned: e.target.checked})} className="w-4 h-4" /> 상단 고정</label>
+                                                            <div className="flex gap-2">
+                                                                {editingNoticeId && <button onClick={() => { setEditingNoticeId(null); setNoticeForm({ content: '', photos: [], isPinned: false }); }} className="bg-stone-200 dark:bg-stone-700 text-stone-600 font-black px-4 py-2 rounded-xl btn-press text-xs">취소</button>}
+                                                                <button onClick={handleNoticeSubmit} className="bg-rose-600 text-white font-black px-4 py-2 rounded-xl btn-press text-xs">{editingNoticeId ? '수정 완료' : '등록'}</button>
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-hide">
+                                                            {notices.map(n => (
+                                                                <div key={n.id} className="bg-white dark:bg-stone-900 p-3 rounded-2xl border border-stone-100 dark:border-stone-700 flex justify-between items-center gap-2">
+                                                                    <div className="flex items-center gap-2 min-w-0"><div className={`w-1.5 h-1.5 rounded-full shrink-0 ${n.isPinned ? 'bg-rose-500' : 'bg-stone-300'}`}/><span className="text-[11px] font-bold text-stone-700 dark:text-stone-200 truncate">{n.content}</span></div>
+                                                                    <div className="flex gap-1 shrink-0"><button onClick={() => { setNoticeForm({ content: n.content, photos: n.photos || [], isPinned: !!n.isPinned }); setEditingNoticeId(n.id); }} className="text-white bg-teal-500 p-1.5 rounded-lg btn-press"><Icon name="edit" size={13}/></button><button onClick={() => handleDeleteNotice(n.id)} className="text-white bg-rose-400 p-1.5 rounded-lg btn-press"><Icon name="trash" size={13}/></button></div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
                                                     </div>
-                                                    </div></div>
-                                                    <div className="bg-white dark:bg-stone-900 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-800"><p className="text-[11px] font-black text-stone-500 mb-4">공지사항 목록</p><div className="space-y-3 max-h-64 overflow-y-auto scrollbar-hide">{notices.map(n => (<div key={n.id} className="bg-stone-50 dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 flex justify-between items-center"><div className="flex flex-col"><span className="text-[12px] font-bold text-stone-700 dark:text-stone-200 line-clamp-1">{n.content}</span></div>
-                                                    <div className="flex gap-2">
-                                                        <button onClick={() => { setNoticeForm({ content: n.content, photos: n.photos || [], isPinned: !!n.isPinned }); setEditingNoticeId(n.id); }} className="text-white bg-teal-500 hover:bg-teal-600 p-2 rounded-lg btn-press shadow-sm"><Icon name="edit" size={16}/></button>
-                                                        <button onClick={() => handleDeleteNotice(n.id)} className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg btn-press shadow-sm"><Icon name="trash" size={16}/></button>
-                                                    </div>
-                                                    </div>))}</div></div>
-                                                </div>
-                                            )}
-
-                                            {currentAdminTab === 'extensions' && (
                                                 <div className="space-y-6 fade-in">
                                                     <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-5">
                                                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-stone-200 dark:border-stone-700 pb-4 gap-4">
@@ -2091,22 +2154,27 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                             <p className="text-[12px] font-black text-teal-600 tracking-widest flex items-center gap-2"><Icon name="edit" size={18}/> 개별 수동 추가 / 수정</p>
                                                             {editingExtId && <span className="bg-amber-100 text-amber-600 text-[10px] font-black px-3 py-1 rounded-full shadow-sm">수정 모드</span>}
                                                         </div>
-                                                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                                                            <input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="번호" value={extForm.number} onChange={e => setExtForm({...extForm, number: e.target.value})} />
-                                                            <input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="층수" value={extForm.floor} onChange={e => setExtForm({...extForm, floor: e.target.value})} />
-                                                            <input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="사용자명" value={extForm.user} onChange={e => setExtForm({...extForm, user: e.target.value})} />
+                                                        <div className="grid grid-cols-1 gap-3">
+                                                            <div className="grid grid-cols-2 gap-3">
+                                                                <input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-500" placeholder="번호 (예: 6011)" value={extForm.number} onChange={e => setExtForm({...extForm, number: e.target.value})} />
+                                                                <input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-500" placeholder="층수 (예: 8F)" value={extForm.floor} onChange={e => setExtForm({...extForm, floor: e.target.value})} />
+                                                            </div>
+                                                            <input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-500" placeholder="사용자명 (예: 홍길동 매장)" value={extForm.user} onChange={e => setExtForm({...extForm, user: e.target.value})} />
                                                             {editingExtId ? (
                                                                 <div className="flex gap-2">
-                                                                    <button onClick={handleCancelEditExt} className="flex-1 bg-stone-200 text-stone-600 font-black rounded-2xl text-xs btn-press">취소</button>
-                                                                    <button onClick={handleSaveExt} className="flex-1 bg-teal-600 text-white font-black rounded-2xl text-xs btn-press shadow-md">수정</button>
+                                                                    <button onClick={handleCancelEditExt} className="flex-1 bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 font-black py-3 rounded-2xl text-xs btn-press">취소</button>
+                                                                    <button onClick={handleSaveExt} className="flex-1 bg-teal-600 text-white font-black py-3 rounded-2xl text-xs btn-press shadow-md">수정 완료</button>
                                                                 </div>
                                                             ) : (
-                                                                <button onClick={handleSaveExt} className="bg-stone-800 text-white font-black rounded-2xl text-xs btn-press shadow-md">추가</button>
+                                                                <button onClick={handleSaveExt} className="w-full bg-stone-800 text-white font-black py-3 rounded-2xl text-xs btn-press shadow-md">추가</button>
                                                             )}
                                                         </div>
                                                     </div>
                                                     <div className="bg-white dark:bg-stone-900 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-800">
-                                                        <div className="flex justify-between items-center mb-4"><p className="text-[11px] font-black text-stone-500">내선번호 목록</p><input type="text" placeholder="검색" value={adminExtSearch} onChange={e => setAdminExtSearch(e.target.value)} className="bg-stone-50 dark:bg-stone-800 px-3 py-1.5 rounded-xl border border-stone-100 dark:border-stone-700 text-[11px] font-bold outline-none focus:border-teal-400" /></div>
+                                                        <div className="flex justify-between items-center mb-4">
+                                                            <p className="text-[11px] font-black text-stone-500">내선번호 목록 ({filteredAdminExtensions.length}개)</p>
+                                                            <input type="text" placeholder="번호 / 층 / 이름 검색" value={adminExtSearch} onChange={e => setAdminExtSearch(e.target.value)} className="bg-stone-50 dark:bg-stone-800 px-3 py-1.5 rounded-xl border border-stone-100 dark:border-stone-700 text-[11px] font-bold outline-none focus:border-teal-400 w-40" />
+                                                        </div>
                                                         <div className="space-y-3 max-h-64 overflow-y-auto scrollbar-hide">
                                                             {filteredAdminExtensions.map(ext => (
                                                                 <div className="flex justify-between items-center bg-stone-50 dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm" key={ext.id}>
@@ -2141,17 +2209,17 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                             )}
 
                                             {currentAdminTab === 'apps' && (
-                                                <div className="space-y-6 fade-in">
-                                                    <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-5">
-                                                        <div className="flex items-center justify-between"><p className="text-[12px] font-black text-indigo-600 tracking-widest flex items-center gap-2"><Icon name="smartphone" size={18}/> 아이콘 및 위젯 생성/수정</p>{editingAppId && <span className="bg-amber-100 text-amber-600 text-[10px] font-black px-3 py-1 rounded-full shadow-sm">수정 모드</span>}</div>
-                                                        <div className="space-y-4">
-                                                            <select className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold shadow-inner" value={appManagerForm.isFolder} onChange={e => setAppManagerForm({...appManagerForm, isFolder: e.target.value})}><option value="false">단일 아이콘(또는 위젯) 생성</option><option value="true">하위 폴더 그룹 생성</option></select>
-                                                            <input className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold shadow-inner outline-none focus:border-teal-500" placeholder="표시될 아이콘(위젯) 이름" value={appManagerForm.name} onChange={e => setAppManagerForm({...appManagerForm, name: e.target.value})} />
-                                                            <input type="number" className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold shadow-inner outline-none focus:border-teal-500" placeholder="정렬 순서 (숫자가 작을수록 앞에 배치됨, 기본 99)" value={appManagerForm.sortOrder} onChange={e => setAppManagerForm({...appManagerForm, sortOrder: parseInt(e.target.value) || 99})} />
+                                                <div className="space-y-5 fade-in">
+                                                    <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-5 rounded-[2rem] border border-stone-200 dark:border-stone-700 space-y-4">
+                                                        <div className="flex items-center justify-between"><p className="text-[12px] font-black text-indigo-600 tracking-widest flex items-center gap-2"><Icon name="smartphone" size={16}/> 아이콘/위젯 생성</p>{editingAppId && <span className="bg-amber-100 text-amber-600 text-[10px] font-black px-3 py-1 rounded-full shadow-sm">수정 모드</span>}</div>
+                                                        <div className="space-y-3">
+                                                            <select className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold shadow-inner" value={appManagerForm.isFolder} onChange={e => setAppManagerForm({...appManagerForm, isFolder: e.target.value})}><option value="false">단일 아이콘(또는 위젯) 생성</option><option value="true">하위 폴더 그룹 생성</option></select>
+                                                            <input className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-teal-500" placeholder="표시될 이름" value={appManagerForm.name} onChange={e => setAppManagerForm({...appManagerForm, name: e.target.value})} />
+                                                            <input type="number" className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-teal-500" placeholder="정렬 순서 (기본 99)" value={appManagerForm.sortOrder} onChange={e => setAppManagerForm({...appManagerForm, sortOrder: parseInt(e.target.value) || 99})} />
 
                                                             <div className="flex gap-2">
-                                                                <select className="flex-1 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-4 text-xs font-bold shadow-inner outline-none focus:border-teal-500" value={appManagerForm.icon} onChange={e => setAppManagerForm({...appManagerForm, icon: e.target.value})}>{ICON_OPTIONS.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}</select>
-                                                                <select className="flex-1 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-4 text-xs font-bold shadow-inner outline-none focus:border-teal-500" value={`${appManagerForm.color}|${appManagerForm.bg}`} onChange={e => { const [color, bg] = e.target.value.split('|'); setAppManagerForm({...appManagerForm, color, bg}); }}>{COLOR_OPTIONS.map(o => <option key={o.v} value={`${o.t}|${o.b}`}>{o.l}</option>)}</select>
+                                                                <select className="flex-1 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-3 py-3 text-xs font-bold shadow-inner outline-none focus:border-teal-500" value={appManagerForm.icon} onChange={e => setAppManagerForm({...appManagerForm, icon: e.target.value})}>{ICON_OPTIONS.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}</select>
+                                                                <select className="flex-1 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-3 py-3 text-xs font-bold shadow-inner outline-none focus:border-teal-500" value={`${appManagerForm.color}|${appManagerForm.bg}`} onChange={e => { const [color, bg] = e.target.value.split('|'); setAppManagerForm({...appManagerForm, color, bg}); }}>{COLOR_OPTIONS.map(o => <option key={o.v} value={`${o.t}|${o.b}`}>{o.l}</option>)}</select>
                                                             </div>
 
                                                             {appManagerForm.isFolder === 'false' && (
@@ -2219,6 +2287,14 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                                                 <select className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-indigo-400" value={Array.isArray(appManagerForm.writePermission) ? 'all' : appManagerForm.writePermission} onChange={e => setAppManagerForm({...appManagerForm, writePermission: e.target.value})}><option value="all">누구나 권한 있음 (비로그인 파트너스 포함)</option><option value="member">사번으로 로그인 한 직원 전원</option><optgroup label="--- [부서 단위 권한] ---">{uniqueParts.map(p => <option key={p} value={`PART_${p}`}>[{p}] 파트 소속 직원 전용 권한</option>)}</optgroup><optgroup label="--- [개인 단위 권한] ---">{users.map(u => <option key={u.empId} value={`USER_${u.empId}`}>[{u.name}] 개인 1인 전용 권한</option>)}</optgroup></select>
                                                                             )}
                                                                             {/* 🔔 제출 시 푸시 알림 대상 */}
+                                                                            {/* 제출 데이터 열람 권한 */}
+                                                                            <p className="text-[11px] font-black text-teal-600 flex items-center gap-1.5 pt-1"><Icon name="fileText" size={14}/> 제출 데이터 열람 권한</p>
+                                                                            <select className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-teal-400" value={appManagerForm.viewPermission || 'admin'} onChange={e => setAppManagerForm({...appManagerForm, viewPermission: e.target.value})}>
+                                                                                <option value="admin">관리자만</option>
+                                                                                <option value="manager">영업관리자 이상</option>
+                                                                                <option value="member">전체 직원</option>
+                                                                                {uniqueParts.map(p => <option key={p} value={`PART_${p}`}>[{p}] 파트만</option>)}
+                                                                            </select>
                                                                             <p className="text-[11px] font-black text-amber-600 flex items-center gap-1.5 pt-1"><Icon name="bellRing" size={14}/> 제출 시 푸시 알림 받을 대상</p>
                                                                             <select className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-amber-400" value={appManagerForm.notifyTarget || 'none'} onChange={e => setAppManagerForm({...appManagerForm, notifyTarget: e.target.value})}>
                                                                                 <option value="none">알림 없음</option>
@@ -2277,7 +2353,10 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                         <button onClick={handleMemberSubmit} className="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-xs">저장</button>
                                                     </div>
                                                     <div className="bg-white dark:bg-stone-900 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-800">
-                                                        <div className="flex justify-between items-center mb-4"><p className="text-[11px] font-black text-stone-500">구성원 목록</p><input type="text" placeholder="검색" value={adminMemberSearch} onChange={e => setAdminMemberSearch(e.target.value)} className="bg-stone-50 dark:bg-stone-800 px-3 py-1.5 rounded-xl border border-stone-100 dark:border-stone-700 text-[11px] font-bold outline-none focus:border-indigo-400" /></div>
+                                                        <div className="flex justify-between items-center mb-4">
+                                                            <p className="text-[11px] font-black text-stone-500">구성원 목록 ({filteredAdminMembers.length}명)</p>
+                                                            <input type="text" placeholder="이름 / 사번 검색" value={adminMemberSearch} onChange={e => setAdminMemberSearch(e.target.value)} className="bg-stone-50 dark:bg-stone-800 px-3 py-1.5 rounded-xl border border-stone-100 dark:border-stone-700 text-[11px] font-bold outline-none focus:border-indigo-400 w-36" />
+                                                        </div>
                                                         <div className="space-y-3 max-h-64 overflow-y-auto scrollbar-hide">
                                                             {filteredAdminMembers.map(u => (
                                                                 <div key={u.empId} className="flex justify-between items-center bg-stone-50 dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm group">
@@ -2299,19 +2378,21 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
 
                                             {currentAdminTab === 'posts' && (
                                                 <div className="space-y-6 fade-in">
-                                                    <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-4 text-center">
-                                                        <p className="text-[12px] font-black text-indigo-600 tracking-widest flex items-center justify-center gap-2"><Icon name="clipboardList" size={18}/> 게시판/폼 데이터 관리</p>
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left pt-4 border-t border-stone-200 dark:border-stone-700">
+                                                    <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-4">
+                                                        <p className="text-[12px] font-black text-indigo-600 tracking-widest flex items-center gap-2"><Icon name="clipboardList" size={18}/> 게시판/폼 데이터 조회</p>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                             {(dynamicApps || []).filter(a => a.actionType === 'board' || a.actionType === 'form' || a.actionType === 'notice' || a.actionType === 'reservation').map(app => {
                                                                 const postsCount = (dynamicPosts || []).filter(p => p.appId === app.id).length;
+                                                                const canView = canViewPosts(app);
                                                                 return (
-                                                                    <div key={app.id} className="bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm flex items-center justify-between cursor-pointer btn-press hover:border-indigo-300" onClick={() => { if (app.actionType === 'notice') { setOpenedAdminBoard(app); setSelectedAdminPost(null); } else if (app.actionType === 'reservation') { setOpenedReservationApp(app); setResSelectedDate(todayStr); setResConfigMode(false); } else { setOpenedDynamicApp(app); } }}>
-                                                                        <div className="flex items-center gap-3"><div className={`w-10 h-10 ${app.bg} ${app.color} rounded-xl flex items-center justify-center`}><Icon name={app.icon} size={18}/></div><div className="flex flex-col"><span className="text-xs font-black text-stone-800 dark:text-stone-200">{app.name}</span><span className="text-[9px] font-bold text-stone-400">{app.actionType === 'form' ? '폼 데이터' : app.actionType === 'reservation' ? '예약 데이터' : '게시판 데이터'}</span></div></div><span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 font-black text-[10px] px-3 py-1 rounded-full">{postsCount}건</span>
+                                                                    <div key={app.id} className={`bg-white dark:bg-stone-900 p-4 rounded-2xl border shadow-sm flex items-center justify-between transition-colors ${canView ? 'border-stone-200 dark:border-stone-700 cursor-pointer btn-press hover:border-indigo-300' : 'border-stone-100 dark:border-stone-800 opacity-50'}`} onClick={() => { if (!canView) return showToast('열람 권한이 없습니다.', true); if (app.actionType === 'notice') { setOpenedAdminBoard(app); setSelectedAdminPost(null); } else if (app.actionType === 'reservation') { setOpenedReservationApp(app); setResSelectedDate(todayStr); setResConfigMode(false); } else { setOpenedDynamicApp(app); } }}>
+                                                                        <div className="flex items-center gap-3"><div className={`w-9 h-9 ${app.bg} ${app.color} rounded-xl flex items-center justify-center`}><Icon name={app.icon} size={16}/></div><div className="flex flex-col"><span className="text-xs font-black text-stone-800 dark:text-stone-200">{app.name}</span><span className="text-[9px] font-bold text-stone-400">{app.actionType === 'form' ? '폼' : app.actionType === 'reservation' ? '예약' : '게시판'} · {canView ? `${postsCount}건` : '🔒 열람 제한'}</span></div></div>
+                                                                        {canView && <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 font-black text-[10px] px-2.5 py-1 rounded-full shrink-0">{postsCount}건</span>}
                                                                     </div>
                                                                 );
                                                             })}
                                                         </div>
-                                                        <div className="pt-6 border-t border-stone-200 dark:border-stone-700 mt-6"><button onClick={handleClearAllPosts} className="bg-rose-50 dark:bg-rose-900/30 text-rose-500 font-black px-6 py-3 rounded-2xl mt-2 flex items-center justify-center gap-2 mx-auto btn-press"><Icon name="trash" size={16}/> 모든 데이터 영구 삭제</button></div>
+                                                        {isAdminAuth && <div className="pt-4 border-t border-stone-200 dark:border-stone-700"><button onClick={handleClearAllPosts} className="bg-rose-50 dark:bg-rose-900/30 text-rose-500 font-black px-5 py-2.5 rounded-2xl flex items-center justify-center gap-2 mx-auto btn-press text-xs"><Icon name="trash" size={14}/> 모든 데이터 영구 삭제</button></div>}
                                                     </div>
                                                 </div>
                                             )}
@@ -2445,10 +2526,11 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                         <div><label className="text-[10px] font-black text-stone-500 ml-2">소속 파트</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" value={profileForm.part} onChange={e => setProfileForm({...profileForm, part: e.target.value})} /></div>
                                         <div><label className="text-[10px] font-black text-stone-500 ml-2">담당 카테고리</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="예: C&P, LTSF" value={profileForm.category || ''} onChange={e => setProfileForm({...profileForm, category: e.target.value})} /></div>
                                         <div><label className="text-[10px] font-black text-stone-500 ml-2">담당 브랜드 <span className="text-stone-400 font-bold">(검색 가능)</span></label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="예: 샤넬, 디올, 에스티로더" value={profileForm.brands || ''} onChange={e => setProfileForm({...profileForm, brands: e.target.value})} /></div>
+                                        <div><label className="text-[10px] font-black text-stone-500 ml-2">개인 내선번호</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="예: 6011" value={profileForm.extNumber || ''} onChange={e => setProfileForm({...profileForm, extNumber: e.target.value})} /></div>
                                         <button onClick={async () => {
                                             const targetEmpId = profileForm.targetEmpId || appUser.empId;
                                             const originalUser = users.find(u => u.empId === targetEmpId);
-                                            const updatedUser = { ...originalUser, name: profileForm.name, part: profileForm.part, category: profileForm.category, brands: profileForm.brands || '', position: profileForm.position || originalUser.position, jobTitle: profileForm.jobTitle || originalUser.jobTitle };
+                                            const updatedUser = { ...originalUser, name: profileForm.name, part: profileForm.part, category: profileForm.category, brands: profileForm.brands || '', extNumber: profileForm.extNumber || '', position: profileForm.position || originalUser.position, jobTitle: profileForm.jobTitle || originalUser.jobTitle };
                                             setUsers((users || []).map(u => u.empId === targetEmpId ? updatedUser : u));
                                             saveToIDB('users', updatedUser);
                                             setSchedules((schedules || []).map(s => s.empId === targetEmpId ? { ...s, name: profileForm.name, part: profileForm.part } : s));
