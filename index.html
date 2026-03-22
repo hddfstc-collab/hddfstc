@@ -1906,9 +1906,10 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                             )}
 
                             {/* ADMIN VIEW */}
+                            {/* ADMIN VIEW */}
                             {view === 'admin' && (
                                 <div className="max-w-3xl mx-auto pb-20 fade-in">
-                                    {!isAdminAuth && !isHealthOnlyAdmin && AVAILABLE_TABS.length === 0 ? (
+                                    {!isAdminAuth && !isHealthOnlyAdmin && !appUser ? (
                                         <div className="bg-white dark:bg-stone-900 p-10 rounded-[3rem] shadow-2xl border border-stone-200 dark:border-stone-800 text-center mt-10 max-w-sm mx-auto">
                                             <h3 className="text-2xl font-black mb-2 text-stone-800 dark:text-stone-200">시스템 관리자</h3>
                                             <form onSubmit={async e => { e.preventDefault(); const inputHash = await hashPassword(pinInput); const storedHash = masterPinHash || (await hashPassword(DEFAULT_PIN)); if(inputHash === storedHash) setIsAdminAuth(true); else showToast('PIN이 일치하지 않습니다.', true); }}>
@@ -1921,28 +1922,25 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                 </div>
                                             )}
                                         </div>
-                                    ) : !isAdminAuth && !isHealthOnlyAdmin && AVAILABLE_TABS.length > 0 ? (
+                                    ) : !isAdminAuth && !isHealthOnlyAdmin && appUser ? (
                                         <div className="bg-white dark:bg-stone-900 p-6 md:p-8 rounded-[3.5rem] shadow-2xl border border-stone-200 dark:border-stone-800 space-y-6 fade-in">
                                             <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide border-b border-stone-100 dark:border-stone-700 snap-x">
                                                 {AVAILABLE_TABS.map(tab => (
                                                     <button key={tab.id} onClick={() => setAdminTab(tab.id)} className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${currentAdminTab === tab.id ? 'bg-stone-800 text-white shadow-md' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'}`}>{tab.name}</button>
                                                 ))}
-                                                {/* PIN 입력 버튼 - 시스템 관리자 접속용 */}
-                                                <button onClick={() => { if(pinInput) { hashPassword(pinInput).then(h => { const storedHash = masterPinHash || hashPassword(DEFAULT_PIN); storedHash.then ? storedHash.then(sh => { if(h===sh) setIsAdminAuth(true); else showToast('PIN 오류', true); }) : (h === storedHash ? setIsAdminAuth(true) : showToast('PIN 오류', true)); }); } else { const pw = prompt('관리자 PIN 입력'); if(pw) hashPassword(pw).then(async h => { const sh = masterPinHash || await hashPassword(DEFAULT_PIN); if(h===sh) setIsAdminAuth(true); else showToast('PIN이 일치하지 않습니다.', true); }); } }} className="snap-center px-4 py-3 rounded-[1.2rem] font-black text-[11px] whitespace-nowrap bg-stone-50 dark:bg-stone-800 text-stone-400 border border-stone-200 dark:border-stone-700">🔐 관리자</button>
+                                                <button onClick={async () => { const pw = prompt('관리자 PIN'); if(pw) { const h = await hashPassword(pw); const sh = masterPinHash || await hashPassword(DEFAULT_PIN); if(h===sh) setIsAdminAuth(true); else showToast('PIN 오류', true); } }} className="snap-center px-4 py-3 rounded-[1.2rem] font-black text-[11px] whitespace-nowrap bg-stone-50 dark:bg-stone-800 text-stone-400 border border-stone-200 dark:border-stone-700 shrink-0">🔐 관리자</button>
                                             </div>
                                             {currentAdminTab === 'content' && (
                                                 <div className="space-y-5 fade-in">
                                                     <p className="text-[12px] font-black text-teal-600 flex items-center gap-2"><Icon name="edit" size={16}/> 권한 부여된 콘텐츠 작성/관리</p>
-                                                    {/* 쓰기 권한이 있는 앱 목록 */}
-                                                    {(dynamicApps || []).filter(a => (a.actionType === 'board' || a.actionType === 'form' || a.actionType === 'notice' || a.actionType === 'widget_board') && canWrite(a)).length === 0 ? (
-                                                        <div className="text-center py-12 text-stone-400 font-bold text-sm">작성 권한이 부여된 앱이 없습니다.<br/><span className="text-[11px]">관리자에게 권한을 요청하세요.</span></div>
-                                                    ) : (dynamicApps || []).filter(a => (a.actionType === 'board' || a.actionType === 'form' || a.actionType === 'notice' || a.actionType === 'widget_board') && canWrite(a)).map(app => (
+                                                    {(dynamicApps || []).filter(a => ['board','form','notice','widget_board'].includes(a.actionType) && canWrite(a)).length === 0 ? (
+                                                        <div className="text-center py-12 text-stone-400 font-bold text-sm">작성 권한이 부여된 앱이 없습니다.</div>
+                                                    ) : (dynamicApps || []).filter(a => ['board','form','notice','widget_board'].includes(a.actionType) && canWrite(a)).map(app => (
                                                         <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2rem] p-5 border border-stone-200 dark:border-stone-800 shadow-sm space-y-3">
                                                             <div className="flex items-center justify-between">
                                                                 <h3 className={`text-[13px] font-black flex items-center gap-2 ${app.color}`}><Icon name={app.icon} size={16}/> {app.name}</h3>
                                                                 <span className="text-[9px] text-stone-400 font-bold">{app.actionType === 'widget_board' ? '파트너스 게시판' : app.actionType === 'notice' ? '공지/자료' : '게시판'}</span>
                                                             </div>
-                                                            {/* 공지형 */}
                                                             {app.actionType === 'notice' && (
                                                                 <div className="space-y-2">
                                                                     <input className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-500" placeholder="제목" value={adminBoardForm.title} onChange={e => setAdminBoardForm({...adminBoardForm, title: e.target.value})}/>
@@ -1953,12 +1951,30 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                                     </div>
                                                                 </div>
                                                             )}
-                                                            {/* 게시판/위젯 게시판형 */}
                                                             {(app.actionType === 'board' || app.actionType === 'widget_board') && (
                                                                 <button onClick={() => { if(app.actionType === 'widget_board') { setWBoardOpenId(app.id); setWBoardForm({title:'',content:'',photo:''}); setWBoardEditId(null); } else { setOpenedDynamicApp(app); } }} className="w-full bg-teal-50 dark:bg-teal-900/20 text-teal-600 font-black py-3 rounded-xl btn-press text-xs border border-teal-200 dark:border-teal-800">게시판 열기 / 글쓰기</button>
                                                             )}
                                                         </div>
                                                     ))}
+                                                </div>
+                                            )}
+                                            {currentAdminTab === 'posts' && (
+                                                <div className="space-y-6 fade-in">
+                                                    <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-4">
+                                                        <p className="text-[12px] font-black text-indigo-600 tracking-widest flex items-center gap-2"><Icon name="clipboardList" size={18}/> 게시판/폼 데이터 조회</p>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                            {(dynamicApps || []).filter(a => ['board','form','notice','reservation'].includes(a.actionType)).map(app => {
+                                                                const postsCount = (dynamicPosts || []).filter(p => p.appId === app.id).length;
+                                                                const canView = canViewPosts(app);
+                                                                return (
+                                                                    <div key={app.id} className={`bg-white dark:bg-stone-900 p-4 rounded-2xl border shadow-sm flex items-center justify-between transition-colors ${canView ? 'border-stone-200 dark:border-stone-700 cursor-pointer btn-press hover:border-indigo-300' : 'border-stone-100 dark:border-stone-800 opacity-50'}`} onClick={() => { if (!canView) return showToast('열람 권한이 없습니다.', true); if (app.actionType === 'notice') { setOpenedAdminBoard(app); setSelectedAdminPost(null); } else if (app.actionType === 'reservation') { setOpenedReservationApp(app); setResSelectedDate(todayStr); setResConfigMode(false); } else { setOpenedDynamicApp(app); } }}>
+                                                                        <div className="flex items-center gap-3"><div className={`w-9 h-9 ${app.bg} ${app.color} rounded-xl flex items-center justify-center`}><Icon name={app.icon} size={16}/></div><div className="flex flex-col"><span className="text-xs font-black text-stone-800 dark:text-stone-200">{app.name}</span><span className="text-[9px] font-bold text-stone-400">{canView ? `${postsCount}건` : '🔒 열람 제한'}</span></div></div>
+                                                                        {canView && <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 font-black text-[10px] px-2.5 py-1 rounded-full shrink-0">{postsCount}건</span>}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
@@ -2260,10 +2276,11 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                     </div>
                                                 </div>
                                             )}
-                                        </div>
+                        </div>
                                     )}
                                 </div>
                             )}
+
                         </div>
                     </main>
 
