@@ -130,7 +130,7 @@
             {v:'cyan', l:'시안색', t:'text-cyan-500', b:'bg-cyan-50'} 
         ];
         
-        const ACTION_OPTIONS = [ {v:'guide', l:'📘 안내형'}, {v:'board', l:'📝 게시판형'}, {v:'notice', l:'📢 공지/자료형'}, {v:'form', l:'📮 폼 제출형'}, {v:'reservation', l:'📅 스마트 예약형'}, {v:'link', l:'🔗 링크형'}, {v:'popup_ext', l:'📞 내장 연결'}, {v:'widget_managers', l:'🧩 위젯: 오늘 근무 영업관리자'}, {v:'widget_notices', l:'🧩 위젯: 실시간 공지사항'} ];
+        const ACTION_OPTIONS = [ {v:'guide', l:'📘 안내형'}, {v:'board', l:'📝 게시판형'}, {v:'notice', l:'📢 공지/자료형'}, {v:'form', l:'📮 폼 제출형'}, {v:'reservation', l:'📅 스마트 예약형'}, {v:'link', l:'🔗 링크형'}, {v:'popup_ext', l:'📞 내장 연결'}, {v:'widget_managers', l:'🧩 위젯: 오늘 근무 영업관리자'}, {v:'widget_notices', l:'🧩 위젯: 실시간 공지사항'}, {v:'widget_board', l:'🧩 위젯: 파트너스 게시판'} ];
 
 const firebaseConfig = {
   apiKey: "AIzaSyCDW2TzDtMDfAVmSRHM7a-IZDhsBlkRMEQ",
@@ -377,7 +377,11 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const [profileTab, setProfileTab] = useState('pw'); // 'pw' | 'info'
             const [profileForm, setProfileForm] = useState({ name: '', part: '', category: '', brands: '', position: '', jobTitle: '', password: '', targetEmpId: '' });
             const [expandedImage, setExpandedImage] = useState(null);
-            const [expandedCell, setExpandedCell] = useState(null); // {empId, date, status, rect}
+            const [expandedCell, setExpandedCell] = useState(null);
+            // 미읽은 공지 추적
+            const [readNoticeIds, setReadNoticeIds] = useState(() => {
+                try { return JSON.parse(localStorage.getItem('hmood_read_notices') || '[]'); } catch(e) { return []; }
+            });
 
             const [statusOptions, setStatusOptions] = useState([]);
             const [statusForm, setStatusForm] = useState({ label: '', bg: 'bg-stone-700 dark:bg-stone-600', text: 'text-white', isWork: 'true' });
@@ -452,13 +456,23 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const canWrite = useCallback((appItem) => {
                 if (!appItem) return false;
                 const p = appItem.writePermission;
+                // 배열인 경우 (notice 타입 다중 선택)
+                if (Array.isArray(p)) {
+                    if (p.includes('admin')) { if (isAdminAuth) return true; }
+                    if (!appUser) return false;
+                    if (p.includes('manager') && appUser.jobTitle === '영업관리자') return true;
+                    if (p.includes('member')) return true;
+                    if (p.some(x => x.startsWith('PART_') && appUser.part === x.replace('PART_', ''))) return true;
+                    if (p.some(x => x.startsWith('USER_') && appUser.empId === x.replace('USER_', ''))) return true;
+                    return false;
+                }
                 if (p === 'all') return true;
                 if (!appUser) return false;
                 if (p === 'member') return true;
                 if (p.startsWith('PART_')) return appUser.part === p.replace('PART_', '');
                 if (p.startsWith('USER_')) return appUser.empId === p.replace('USER_', '');
                 return false;
-            }, [appUser]);
+            }, [appUser, isAdminAuth]);
 
             const writeBlockedMsg = useCallback((appItem) => {
                 if (!appItem) return '권한이 없습니다.';
@@ -498,6 +512,23 @@ useEffect(() => {
                 if (savedEmpId) { setLoginForm(prev => ({ ...prev, id: savedEmpId })); setRememberMe(true); }
                 if (new URLSearchParams(window.location.search).get('mode') === 'shared') { setView('shared'); setShowSharedPopup(true); }
             }, []);
+
+            // 새로고침 후 자동 로그인 복원 (users 로딩 완료 후 실행)
+            useEffect(() => {
+                if (!users || users.length === 0) return;
+                const savedSession = localStorage.getItem('hmood_session');
+                if (!savedSession) return;
+                try {
+                    const { empId } = JSON.parse(savedSession);
+                    if (!empId) return;
+                    const found = users.find(u => u.empId === empId);
+                    if (found && !appUser) {
+                        setAppUser(found);
+                        const mode = new URLSearchParams(window.location.search).get('mode');
+                        if (mode !== 'shared') setView('daily');
+                    }
+                } catch(e) { localStorage.removeItem('hmood_session'); }
+            }, [users]);
 
             useEffect(() => {
                 const initLocalDB = async () => {
@@ -620,7 +651,28 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
             const searchedUsers = useMemo(() => { if (!profileSearch.trim()) return sortedUsers; const q = profileSearch.toLowerCase(); return sortedUsers.filter(u => (u.name || '').toLowerCase().includes(q) || (u.part || '').toLowerCase().includes(q) || (u.empId || '').toLowerCase().includes(q) || (u.category || '').toLowerCase().includes(q) || (u.brands || '').toLowerCase().includes(q)); }, [sortedUsers, profileSearch]);
             const filteredAdminMembers = useMemo(() => { if (!adminMemberSearch.trim()) return sortedUsers; const q = adminMemberSearch.toLowerCase(); return sortedUsers.filter(u => (u.name || '').toLowerCase().includes(q) || (u.empId || '').toLowerCase().includes(q) || (u.category || '').toLowerCase().includes(q) || (u.brands || '').toLowerCase().includes(q)); }, [sortedUsers, adminMemberSearch]);
             
-            const filteredMonthly = useMemo(() => { return sortedUsers.filter(u => { if (viewMode === 'me') return appUser && u.empId === appUser.empId; if (viewMode === 'admin') return u.jobTitle === '점장' || u.jobTitle === '파트장'; if (viewMode.startsWith('PART_')) return u.part === viewMode.replace('PART_', ''); return true; }); }, [sortedUsers, viewMode, appUser]);
+            const filteredMonthly = useMemo(() => {
+                return sortedUsers.filter(u => {
+                    if (viewMode === 'me') return appUser && u.empId === appUser.empId;
+                    if (viewMode === 'admin') return u.jobTitle === '점장' || u.jobTitle === '파트장';
+                    if (viewMode.startsWith('PART_')) return u.part === viewMode.replace('PART_', '');
+                    return true;
+                }).sort((a, b) => {
+                    // 파트 순서 우선
+                    const wA = PART_W[a.part||''] || 99; const wB = PART_W[b.part||''] || 99;
+                    if (wA !== wB) return wA - wB;
+                    // 점장 최상위
+                    if (a.jobTitle === '점장' && b.jobTitle !== '점장') return -1;
+                    if (a.jobTitle !== '점장' && b.jobTitle === '점장') return 1;
+                    // 파트장 최상위
+                    if (a.jobTitle === '파트장' && b.jobTitle !== '파트장') return -1;
+                    if (a.jobTitle !== '파트장' && b.jobTitle === '파트장') return 1;
+                    // 동일 카테고리 묶기 (가나다순)
+                    const cA = a.category || ''; const cB = b.category || '';
+                    if (cA !== cB) return cA.localeCompare(cB, 'ko');
+                    return (a.name||'').localeCompare(b.name||'', 'ko');
+                });
+            }, [sortedUsers, viewMode, appUser]);
             
             const dailyGroups = useMemo(() => { 
                 const act = (schedules || []).filter(s => {
@@ -634,16 +686,24 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
 
             const sortedDailyGroups = useMemo(() => {
                 return Object.entries(dailyGroups).sort(([pA], [pB]) => {
-                    const hasManagerA = dailyGroups[pA].some(m => userMap[m.empId]?.jobTitle === '점장'); const hasManagerB = dailyGroups[pB].some(m => userMap[m.empId]?.jobTitle === '점장');
+                    const hasManagerA = dailyGroups[pA].some(m => userMap[m.empId]?.jobTitle === '점장');
+                    const hasManagerB = dailyGroups[pB].some(m => userMap[m.empId]?.jobTitle === '점장');
                     if (hasManagerA && !hasManagerB) return -1; if (!hasManagerA && hasManagerB) return 1;
                     return (PART_W[pA] || 99) - (PART_W[pB] || 99);
                 }).map(([part, members]) => {
-                    return [part, [...members].sort((a, b) => {
+                    const sorted = [...members].sort((a, b) => {
                         const uA = userMap[a.empId]; const uB = userMap[b.empId];
-                        if (uA?.jobTitle === '점장' && uB?.jobTitle !== '점장') return -1; if (uA?.jobTitle !== '점장' && uB?.jobTitle === '점장') return 1;
-                        if (uA?.jobTitle === '파트장' && uB?.jobTitle !== '파트장') return -1; if (uA?.jobTitle !== '파트장' && uB?.jobTitle === '파트장') return 1;
-                        return (a.name||'').localeCompare(b.name||'');
-                    })];
+                        // 파트장 최상위
+                        if (uA?.jobTitle === '점장' && uB?.jobTitle !== '점장') return -1;
+                        if (uA?.jobTitle !== '점장' && uB?.jobTitle === '점장') return 1;
+                        if (uA?.jobTitle === '파트장' && uB?.jobTitle !== '파트장') return -1;
+                        if (uA?.jobTitle !== '파트장' && uB?.jobTitle === '파트장') return 1;
+                        // 동일 카테고리끼리 묶기 (가나다순)
+                        const cA = uA?.category || ''; const cB = uB?.category || '';
+                        if (cA !== cB) return cA.localeCompare(cB, 'ko');
+                        return (a.name || '').localeCompare(b.name || '', 'ko');
+                    });
+                    return [part, sorted];
                 });
             }, [dailyGroups, userMap]);
 
@@ -678,7 +738,7 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 const pwHash = await hashPassword(loginPw);
                 // 해시 비밀번호 우선 비교, 없으면 평문 비교(마이그레이션 호환)
                 const f = (users || []).find(u => String(u?.empId) === loginId && (u?.password === pwHash || u?.password === loginPw));
-                if(f) { if (rememberMe) localStorage.setItem('hmood_empId', loginForm.id); else localStorage.removeItem('hmood_empId'); setAppUser(f); setView('daily'); setCurrentDate(new Date()); showToast(`${f.name}님 환영합니다!`); } else showToast('사원번호 또는 비밀번호가 올바르지 않습니다.', true);
+                if(f) { if (rememberMe) localStorage.setItem('hmood_empId', loginForm.id); else localStorage.removeItem('hmood_empId'); localStorage.setItem('hmood_session', JSON.stringify({ empId: f.empId })); setAppUser(f); setView('daily'); setCurrentDate(new Date()); showToast(`${f.name}님 환영합니다!`); } else showToast('사원번호 또는 비밀번호가 올바르지 않습니다.', true);
             };
 
             const handleUpdateDuty = async (empId, dateStr, newStatus, isAdminOverride = false) => {
@@ -904,6 +964,9 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                     const id = editingNoticeId || Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5);
                     const newNotice = { id, content: noticeForm.content, photos: noticeForm.photos, isPinned: noticeForm.isPinned, createdAt: editingNoticeId ? notices.find(n=>n.id===id).createdAt : new Date().toISOString(), author: appUser?.name || '관리자', isEdited: !!editingNoticeId, updatedAt: editingNoticeId ? new Date().toISOString() : null };
                     setNotices(prev => { const n = editingNoticeId ? prev.map(x=>x.id===id?newNotice:x) : [newNotice, ...prev]; return n.sort((a,b) => { if (a.isPinned && !b.isPinned) return -1; if (!a.isPinned && b.isPinned) return 1; return (b.createdAt||'').localeCompare(a.createdAt||''); }); });
+                    // 수정된 공지는 미읽음으로 리셋
+                    const nextRead = readNoticeIds.filter(rid => rid !== id);
+                    setReadNoticeIds(nextRead); localStorage.setItem('hmood_read_notices', JSON.stringify(nextRead));
                     saveToIDB('notices', newNotice); setEditingNoticeId(null); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/notices`).doc(id).set(newNotice, { merge: true }); showToast('저장되었습니다.'); setNoticeForm({ content: '', photos: [], isPinned: false });
                 } catch (err) { showToast('저장 실패', true); }
             };
@@ -1155,10 +1218,10 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                                 </div>
                             </div>
                             <div className="space-y-4">
-                                {(notices || []).length === 0 ? <p className="text-center py-10 text-stone-300 font-bold text-[11px]">공지사항이 없습니다.</p> : notices.slice(0, 5).map(n => { const images = n.photos || (n.photo ? [n.photo] : []); return (
-                                    <div key={n.id} className={`p-5 rounded-3xl border space-y-4 shadow-sm ${n.isPinned ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800' : 'bg-stone-50 dark:bg-stone-800 border-stone-100 dark:border-stone-700'}`}>
+                                {(notices || []).length === 0 ? <p className="text-center py-10 text-stone-300 font-bold text-[11px]">공지사항이 없습니다.</p> : notices.slice(0, 5).map(n => { const images = n.photos || (n.photo ? [n.photo] : []); const isUnread = !readNoticeIds.includes(n.id); return (
+                                    <div key={n.id} className={`p-5 rounded-3xl border space-y-4 shadow-sm relative ${n.isPinned ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800' : 'bg-stone-50 dark:bg-stone-800 border-stone-100 dark:border-stone-700'}`} onClick={() => { if(isUnread) { const next = [...readNoticeIds, n.id]; setReadNoticeIds(next); localStorage.setItem('hmood_read_notices', JSON.stringify(next)); } }}>
                                         <div className="flex items-center justify-between mb-2">
-                                            <div>{n.isPinned && <div className="text-[10px] font-black text-rose-500 flex items-center gap-1"><Icon name="pin" size={14}/> <span>중요 공지</span></div>}</div>
+                                            <div className="flex items-center gap-2">{n.isPinned && <div className="text-[10px] font-black text-rose-500 flex items-center gap-1"><Icon name="pin" size={14}/> <span>중요 공지</span></div>}{isUnread && <div className="w-2 h-2 bg-rose-500 rounded-full"/>}</div>
                                             {canManageNotice && (
                                                 <div className="flex gap-2">
                                                     <button onClick={() => { setNoticeForm({ content: n.content, photos: n.photos || [], isPinned: !!n.isPinned }); setEditingNoticeId(n.id); setIsNoticeModalOpen(true); }} className="text-stone-400 hover:text-teal-500 btn-press"><Icon name="edit" size={14}/></button>
@@ -1177,6 +1240,94 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 }
                 return null;
             };
+
+            // 파트너스 게시판 위젯 전용 상태
+            const [wBoardForm, setWBoardForm] = useState({ title: '', content: '', photo: '' });
+            const [wBoardEditId, setWBoardEditId] = useState(null);
+            const [wBoardOpenId, setWBoardOpenId] = useState(null); // 열린 위젯 appId
+            const [wBoardSelectedPost, setWBoardSelectedPost] = useState(null);
+
+            const canManageWidgetBoard = useMemo(() => isAdminAuth || (appUser && appUser.jobTitle === '영업관리자'), [isAdminAuth, appUser]);
+
+            const handleSaveWidgetPost = async (appId_) => {
+                if (!wBoardForm.title || !wBoardForm.content) return showToast('제목과 내용을 입력해주세요.', true);
+                const id = wBoardEditId || Date.now().toString() + '_' + Math.random().toString(36).substr(2,5);
+                const post = { id, appId: appId_, title: wBoardForm.title, content: wBoardForm.content, photo: wBoardForm.photo || '', author: appUser?.name || '관리자', authorId: appUser?.empId || '', createdAt: wBoardEditId ? (dynamicPosts.find(p=>p.id===wBoardEditId)?.createdAt || new Date().toISOString()) : new Date().toISOString(), isEdited: !!wBoardEditId, updatedAt: wBoardEditId ? new Date().toISOString() : null };
+                setDynamicPosts(prev => wBoardEditId ? prev.map(p => p.id===id ? post : p) : [post, ...prev]);
+                saveToIDB('dynamicPosts', post);
+                if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(id).set(post, { merge: true });
+                setWBoardForm({ title: '', content: '', photo: '' }); setWBoardEditId(null);
+                showToast(wBoardEditId ? '수정되었습니다.' : '등록되었습니다.');
+            };
+
+            const handleDeleteWidgetPost = (postId) => {
+                setConfirmDialog({ isOpen: true, message: '이 게시글을 삭제하시겠습니까?', onConfirm: async () => {
+                    setConfirmDialog({ isOpen: false });
+                    setDynamicPosts(prev => prev.filter(p => p.id !== postId));
+                    setWBoardSelectedPost(null);
+                    deleteFromIDB('dynamicPosts', postId);
+                    if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(postId).delete();
+                    showToast('삭제되었습니다.');
+                }, onCancel: () => setConfirmDialog({ isOpen: false }) });
+            };
+
+            const renderWidgetBoard = (app) => {
+                const posts = (dynamicPosts || []).filter(p => p.appId === app.id).sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||''));
+                return (
+                    <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in">
+                        <div className="flex items-center justify-between">
+                            <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}><Icon name={app.icon} size={16}/> {app.name}</h3>
+                            <div className="flex gap-2">
+                                {canManageWidgetBoard && <button onClick={() => { setWBoardForm({ title:'', content:'', photo:'' }); setWBoardEditId(null); setWBoardOpenId(wBoardOpenId === app.id ? null : app.id); }} className="text-[10px] font-black text-teal-600 bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 px-3 py-1.5 rounded-lg btn-press transition-colors">{wBoardOpenId===app.id?'닫기':'글쓰기'}</button>}
+                                {isAdminAuth && <button onClick={() => handleEditDynamicApp(app)} className="text-stone-400 hover:text-teal-500"><Icon name="edit" size={14}/></button>}
+                                {isAdminAuth && <button onClick={() => handleDeleteDynamicApp(app.id)} className="text-stone-400 hover:text-rose-500"><Icon name="trash" size={14}/></button>}
+                            </div>
+                        </div>
+                        {/* 작성/수정 폼 */}
+                        {wBoardOpenId === app.id && canManageWidgetBoard && (
+                            <div className="bg-stone-50 dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 space-y-3 fade-in">
+                                <input className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-400" placeholder="제목" value={wBoardForm.title} onChange={e => setWBoardForm({...wBoardForm, title: e.target.value})}/>
+                                <textarea className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-400 h-24 resize-none" placeholder="내용" value={wBoardForm.content} onChange={e => setWBoardForm({...wBoardForm, content: e.target.value})}/>
+                                <label className="flex items-center gap-2 cursor-pointer bg-white dark:bg-stone-900 border border-dashed border-stone-300 dark:border-stone-600 rounded-xl px-4 py-2.5 btn-press hover:bg-stone-50 transition-colors">
+                                    <Icon name="camera" size={14} className="text-stone-400"/><span className="text-[11px] font-bold text-stone-400">{wBoardForm.photo ? '사진 변경' : '사진 첨부 (선택)'}</span>
+                                    <input type="file" accept="image/*" className="hidden" onChange={async e => { if(e.target.files[0]) { const b64 = await resizeImage(e.target.files[0]); setWBoardForm(prev => ({...prev, photo: b64})); e.target.value=''; }}}/>
+                                </label>
+                                {wBoardForm.photo && <div className="relative w-16 h-16"><img src={wBoardForm.photo} className="w-full h-full object-cover rounded-xl border"/><button onClick={() => setWBoardForm(p=>({...p,photo:''}))} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">×</button></div>}
+                                <div className="flex gap-2">
+                                    <button onClick={() => { setWBoardOpenId(null); setWBoardEditId(null); setWBoardForm({title:'',content:'',photo:''}); }} className="flex-1 bg-stone-200 dark:bg-stone-700 text-stone-500 font-black py-2.5 rounded-xl btn-press text-xs">취소</button>
+                                    <button onClick={() => handleSaveWidgetPost(app.id)} className="flex-1 bg-teal-600 text-white font-black py-2.5 rounded-xl btn-press text-xs">{wBoardEditId ? '수정 완료' : '등록'}</button>
+                                </div>
+                            </div>
+                        )}
+                        {/* 게시글 목록 */}
+                        <div className="space-y-3">
+                            {posts.length === 0 && <p className="text-center py-8 text-stone-300 font-bold text-[11px]">등록된 게시글이 없습니다.</p>}
+                            {posts.map(post => (
+                                <div key={post.id} className="bg-stone-50 dark:bg-stone-800 rounded-2xl border border-stone-100 dark:border-stone-700 overflow-hidden">
+                                    <button onClick={() => setWBoardSelectedPost(wBoardSelectedPost?.id === post.id ? null : post)} className="w-full text-left p-4 btn-press">
+                                        <div className="flex justify-between items-start gap-2">
+                                            <p className="text-[13px] font-black text-stone-800 dark:text-stone-200 truncate flex-1">{post.title}</p>
+                                            {canManageWidgetBoard && (
+                                                <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                                                    <button onClick={() => { setWBoardForm({ title: post.title, content: post.content, photo: post.photo||'' }); setWBoardEditId(post.id); setWBoardOpenId(app.id); }} className="text-stone-400 hover:text-teal-500 p-1"><Icon name="edit" size={13}/></button>
+                                                    <button onClick={() => handleDeleteWidgetPost(post.id)} className="text-stone-400 hover:text-rose-500 p-1"><Icon name="trash" size={13}/></button>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <p className="text-[10px] text-stone-400 font-bold mt-1">{post.author} · {formatLocalTime(post.createdAt)}</p>
+                                    </button>
+                                    {wBoardSelectedPost?.id === post.id && (
+                                        <div className="px-4 pb-4 pt-2 border-t border-stone-200 dark:border-stone-700 space-y-3 fade-in">
+                                            {post.photo && <img src={post.photo} className="w-full rounded-xl object-cover cursor-pointer" onClick={() => setExpandedImage(post.photo)}/>}
+                                            <p className="text-[13px] font-bold text-stone-700 dark:text-stone-300 whitespace-pre-wrap leading-relaxed">{post.content}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            };
 if (loading) return <div className="h-screen w-full flex items-center justify-center bg-[#EBE9E4] dark:bg-stone-950"><div className="text-center animate-pulse"><div className="w-16 h-16 bg-teal-600 rounded-[2rem] mx-auto mb-6 flex items-center justify-center text-white shadow-2xl"><Icon name="shield" size={32}/></div><p className="text-stone-400 font-black uppercase tracking-[0.3em] text-[11px]">로딩 중...</p></div></div>;
             
             return (
@@ -1189,7 +1340,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                 <div className="flex items-center gap-2 overflow-hidden">
                                     <h1 className="text-[14px] font-black text-stone-800 dark:text-stone-200 tracking-tighter truncate">H무디</h1>
                                     <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-stone-200 dark:border-stone-700">
-                                        <button onClick={() => { setView('shared'); setCurrentDate(new Date()); }} className="flex items-center gap-1 px-2.5 py-1.5 text-stone-500 hover:text-teal-600 transition-colors bg-white dark:bg-stone-800 rounded-full shadow-sm text-[9px] font-black btn-press whitespace-nowrap"><Icon name="externalLink" size={12}/> 파트너스 채널</button>
+                                        <button onClick={() => { setView('shared'); setCurrentDate(new Date()); }} className="relative flex items-center gap-1 px-2.5 py-1.5 text-stone-500 hover:text-teal-600 transition-colors bg-white dark:bg-stone-800 rounded-full shadow-sm text-[9px] font-black btn-press whitespace-nowrap"><Icon name="externalLink" size={12}/> 파트너스 채널{(() => { const unread = (notices||[]).filter(n => !readNoticeIds.includes(n.id)).length; return unread > 0 ? <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-black rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 shadow">{unread > 9 ? '9+' : unread}</span> : null; })()}</button>
                                     </div>
                                 </div>
                             </div>
@@ -1201,7 +1352,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                     <div className="flex items-center gap-1.5 bg-white dark:bg-stone-800 px-3 py-1.5 rounded-full border border-stone-200 dark:border-stone-700 shadow-sm">
                                         <button onClick={(e) => { e.stopPropagation(); setProfileForm({ name: appUser.name, part: appUser.part, category: appUser.category, brands: appUser.brands || '', position: appUser.position, jobTitle: appUser.jobTitle || '일반', password: '', targetEmpId: appUser.empId }); setProfileTab('pw'); setShowProfileEdit(true); }} className="flex items-center gap-1 text-[10px] font-black text-stone-600 dark:text-stone-300 hover:text-teal-600 transition-colors btn-press"><span className="underline decoration-stone-300 dark:decoration-stone-600 underline-offset-2">{appUser.name}</span>님</button>
                                         <div className="w-px h-3 bg-stone-200 dark:bg-stone-700 mx-0.5"></div>
-                                        <button onClick={() => { setAppUser(null); setView('login'); setCurrentDate(new Date()); }} className="text-stone-400 hover:text-rose-500 transition-colors flex items-center gap-1"><Icon name="logout" size={12}/></button>
+                                        <button onClick={() => { setAppUser(null); localStorage.removeItem('hmood_session'); setView('login'); setCurrentDate(new Date()); }} className="text-stone-400 hover:text-rose-500 transition-colors flex items-center gap-1"><Icon name="logout" size={12}/></button>
                                     </div>
                                 ) : (
                                     <button onClick={() => setView('login')} className="bg-stone-800 text-white text-[10px] px-3 py-2 rounded-full font-black active:scale-95 transition-transform shadow-md">직원 로그인</button>
@@ -1256,7 +1407,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                     </div>
 
                                     {/* 위젯 렌더링 호출 */}
-                                    {(dynamicApps || []).filter(a => !a.parentId && a.actionType?.startsWith('widget_')).sort((a,b)=> (a.sortOrder||99)-(b.sortOrder||99)).map(renderWidget)}
+                                    {(dynamicApps || []).filter(a => !a.parentId && a.actionType?.startsWith('widget_')).sort((a,b)=> (a.sortOrder||99)-(b.sortOrder||99)).map(app => app.actionType === 'widget_board' ? renderWidgetBoard(app) : renderWidget(app))}
                                 </div>
                             )}
 
@@ -1300,17 +1451,32 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                 <div className="space-y-2">
                                                     {members.map(m => {
                                                         const u = userMap[m.empId]; const canEdit = canEditProfile(m.empId);
+                                                        const hasDetail = u?.category || u?.brands;
                                                         return (
-                                                            <div key={m.empId} className={`bg-white dark:bg-stone-900 p-4 rounded-[1.2rem] shadow-sm border ${canEdit ? 'border-teal-500/40 ring-2 ring-teal-500/10' : 'border-stone-100 dark:border-stone-800'} flex items-center justify-between`}>
-                                                                <div className="flex flex-col pl-2 py-1"><div className="flex items-center gap-1.5 mb-0.5"><span className="text-[15px] font-black text-stone-800 dark:text-stone-200">{m.name}</span><span className="text-[10px] text-stone-400 font-bold">({u?.position})</span></div><p className="text-[9px] text-teal-600 font-bold tracking-tight">{u?.jobTitle}</p></div>
-                                                                {canEdit ? (
-                                                                    <div className="flex flex-col gap-1 items-end">
-                                                                        <select className="text-[11px] font-black bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-2 py-1.5 outline-none focus:border-teal-500 cursor-pointer shadow-sm" value={m.status} onChange={(e) => handleUpdateDuty(m.empId, todayStr, e.target.value, isAdminAuth)}>
-                                                                            <option value="" disabled className="bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300">-</option>
-                                                                            {SCHED_STATUS_OPTIONS.map(opt => <option key={opt} value={opt} className="bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300">{opt}</option>)}
-                                                                        </select>
+                                                            <div key={m.empId} className={`bg-white dark:bg-stone-900 p-3 rounded-[1.2rem] shadow-sm border ${canEdit ? 'border-teal-500/40 ring-2 ring-teal-500/10' : 'border-stone-100 dark:border-stone-800'}`}>
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex flex-col pl-1 py-0.5 min-w-0 flex-1 mr-2">
+                                                                        <div className="flex items-center gap-1.5 mb-0.5">
+                                                                            <span className="text-[14px] font-black text-stone-800 dark:text-stone-200 truncate">{m.name}</span>
+                                                                            <span className="text-[9px] text-stone-400 font-bold shrink-0">({u?.position})</span>
+                                                                        </div>
+                                                                        <span className="text-[9px] text-teal-600 font-bold truncate">{u?.jobTitle}</span>
+                                                                        {hasDetail && (
+                                                                            <div className="flex items-center gap-1 mt-1 min-w-0">
+                                                                                {u?.category && <span className="text-[9px] font-bold text-stone-400 bg-stone-50 dark:bg-stone-800 px-1.5 py-0.5 rounded-md truncate max-w-[80px]" title={u.category}>{u.category}</span>}
+                                                                                {u?.brands && <span className="text-[9px] font-bold text-teal-500 bg-teal-50 dark:bg-teal-900/20 px-1.5 py-0.5 rounded-md truncate max-w-[90px]" title={u.brands}>{u.brands}</span>}
+                                                                            </div>
+                                                                        )}
                                                                     </div>
-                                                                ) : (<div className={`px-3 py-1.5 rounded-lg text-[10px] font-black shadow-sm ${STATUS_THEME[m.status] || 'bg-stone-100 text-stone-400'}`}>{m.status}</div>)}
+                                                                    {canEdit ? (
+                                                                        <div className="flex flex-col gap-1 items-end shrink-0">
+                                                                            <select className="text-[11px] font-black bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-2 py-1.5 outline-none focus:border-teal-500 cursor-pointer shadow-sm" value={m.status} onChange={(e) => handleUpdateDuty(m.empId, todayStr, e.target.value, isAdminAuth)}>
+                                                                                <option value="" disabled className="bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300">-</option>
+                                                                                {SCHED_STATUS_OPTIONS.map(opt => <option key={opt} value={opt} className="bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300">{opt}</option>)}
+                                                                            </select>
+                                                                        </div>
+                                                                    ) : (<div className={`px-3 py-1.5 rounded-lg text-[10px] font-black shadow-sm shrink-0 ${STATUS_THEME[m.status] || 'bg-stone-100 text-stone-400'}`}>{m.status}</div>)}
+                                                                </div>
                                                             </div>
                                                         )
                                                     })}
@@ -1416,7 +1582,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                 <div className="flex justify-between items-start">
                                                     <div className="flex flex-col gap-1 w-full">
                                                         <div className="flex items-center justify-between w-full">
-                                                            <div className="flex items-baseline gap-1.5"><span className="text-[15px] font-black text-stone-800 dark:text-stone-200">{u.name}</span><span className="text-[10px] text-stone-500 font-bold">({u.position})</span></div>{u.jobTitle !== '일반' && <span className="text-[9px] font-black text-teal-600 bg-teal-50 dark:bg-teal-900/30 px-1.5 py-0.5 rounded">{u.jobTitle}</span>}
+                                                            <div className="flex items-baseline gap-1.5 min-w-0"><span className="text-[15px] font-black text-stone-800 dark:text-stone-200 truncate">{u.name}</span><span className="text-[10px] text-stone-500 font-bold shrink-0">({u.position})</span></div>{u.jobTitle !== '일반' && <span className="text-[9px] font-black text-teal-600 bg-teal-50 dark:bg-teal-900/30 px-1.5 py-0.5 rounded shrink-0 truncate max-w-[72px]" title={u.jobTitle}>{u.jobTitle}</span>}
                                                         </div>
                                                         <div className="flex items-center justify-between w-full">
                                                             <div className="flex items-center gap-2 mt-0.5"><span className="text-[11px] font-bold text-stone-600 dark:text-stone-400">{u.part}</span><span className="text-[9px] font-bold text-stone-400 border-l border-stone-200 dark:border-stone-700 pl-2">사번: {u.empId}</span></div>
@@ -1996,7 +2162,32 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                                     {(appManagerForm.actionType === 'board' || appManagerForm.actionType === 'form' || appManagerForm.actionType === 'notice') && (
                                                                         <div className="bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 space-y-3 mt-2 shadow-sm">
                                                                             <p className="text-[11px] font-black text-indigo-600 flex items-center gap-1.5"><Icon name="shield" size={14}/> 게시판/폼 관리 권한 부여</p>
-                                                                            <select className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-indigo-400" value={appManagerForm.writePermission} onChange={e => setAppManagerForm({...appManagerForm, writePermission: e.target.value})}><option value="all">누구나 권한 있음 (비로그인 파트너스 포함)</option><option value="member">사번으로 로그인 한 직원 전원</option><optgroup label="--- [부서 단위 권한] ---">{uniqueParts.map(p => <option key={p} value={`PART_${p}`}>[{p}] 파트 소속 직원 전용 권한</option>)}</optgroup><optgroup label="--- [개인 단위 권한] ---">{users.map(u => <option key={u.empId} value={`USER_${u.empId}`}>[{u.name}] 개인 1인 전용 권한</option>)}</optgroup></select>
+                                                                            {/* 공지자료형만 다중 선택 */}
+                                                                            {appManagerForm.actionType === 'notice' ? (
+                                                                                <div className="space-y-2">
+                                                                                    <p className="text-[10px] text-stone-400 font-bold">작성 권한 (중복 선택 가능)</p>
+                                                                                    {[
+                                                                                        {v:'admin', l:'🔐 시스템 관리자'},
+                                                                                        {v:'manager', l:'👔 영업관리자'},
+                                                                                        {v:'member', l:'👤 전체 직원'},
+                                                                                        ...uniqueParts.map(p => ({v:`PART_${p}`, l:`🏢 ${p} 파트`}))
+                                                                                    ].map(({v,l}) => {
+                                                                                        const perms = Array.isArray(appManagerForm.writePermission) ? appManagerForm.writePermission : [appManagerForm.writePermission].filter(Boolean);
+                                                                                        const checked = perms.includes(v);
+                                                                                        return (
+                                                                                            <label key={v} className="flex items-center gap-2 cursor-pointer p-2.5 rounded-xl hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors">
+                                                                                                <input type="checkbox" checked={checked} onChange={() => {
+                                                                                                    const next = checked ? perms.filter(x=>x!==v) : [...perms, v];
+                                                                                                    setAppManagerForm({...appManagerForm, writePermission: next.length ? next : ['admin']});
+                                                                                                }} className="w-4 h-4 text-indigo-600 rounded"/>
+                                                                                                <span className="text-[12px] font-bold text-stone-700 dark:text-stone-300">{l}</span>
+                                                                                            </label>
+                                                                                        );
+                                                                                    })}
+                                                                                </div>
+                                                                            ) : (
+                                                                                <select className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-indigo-400" value={Array.isArray(appManagerForm.writePermission) ? 'all' : appManagerForm.writePermission} onChange={e => setAppManagerForm({...appManagerForm, writePermission: e.target.value})}><option value="all">누구나 권한 있음 (비로그인 파트너스 포함)</option><option value="member">사번으로 로그인 한 직원 전원</option><optgroup label="--- [부서 단위 권한] ---">{uniqueParts.map(p => <option key={p} value={`PART_${p}`}>[{p}] 파트 소속 직원 전용 권한</option>)}</optgroup><optgroup label="--- [개인 단위 권한] ---">{users.map(u => <option key={u.empId} value={`USER_${u.empId}`}>[{u.name}] 개인 1인 전용 권한</option>)}</optgroup></select>
+                                                                            )}
                                                                             {/* 🔔 제출 시 푸시 알림 대상 */}
                                                                             <p className="text-[11px] font-black text-amber-600 flex items-center gap-1.5 pt-1"><Icon name="bellRing" size={14}/> 제출 시 푸시 알림 받을 대상</p>
                                                                             <select className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-amber-400" value={appManagerForm.notifyTarget || 'none'} onChange={e => setAppManagerForm({...appManagerForm, notifyTarget: e.target.value})}>
