@@ -132,49 +132,50 @@
         
         const ACTION_OPTIONS = [ {v:'guide', l:'📘 안내형'}, {v:'board', l:'📝 게시판형'}, {v:'notice', l:'📢 공지/자료형'}, {v:'form', l:'📮 폼 제출형'}, {v:'reservation', l:'📅 스마트 예약형'}, {v:'link', l:'🔗 링크형'}, {v:'popup_ext', l:'📞 내장 연결'}, {v:'widget_managers', l:'🧩 위젯: 오늘 근무 영업관리자'}, {v:'widget_notices', l:'🧩 위젯: 실시간 공지사항'}, {v:'widget_board', l:'🧩 위젯: 파트너스 게시판'} ];
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCDW2TzDtMDfAVmSRHM7a-IZDhsBlkRMEQ",
-  authDomain: "ware-house-b36d7.firebaseapp.com",
-  projectId: "ware-house-b36d7",
-  storageBucket: "ware-house-b36d7.firebasestorage.app",
-  messagingSenderId: "549765421476",
-  appId: "1:549765421476:web:ef48192ccce302b1c38931"
-};
+        const firebaseConfig = {
+        apiKey: "AIzaSyCDW2TzDtMDfAVmSRHM7a-IZDhsBlkRMEQ",
+        authDomain: "ware-house-b36d7.firebaseapp.com",
+        projectId: "ware-house-b36d7",
+        storageBucket: "ware-house-b36d7.firebasestorage.app",
+        messagingSenderId: "549765421476",
+        appId: "1:549765421476:web:ef48192ccce302b1c38931"
+        };
 
-const appId = firebaseConfig.appId;
+        const appId = firebaseConfig.appId;
 
-const PART_W = { '영업1파트': 1, '영업2파트': 2, '고객관리파트': 3, '무역센터':4 };
-const RANK_W = { '부장': 1, '차장': 2, '과장': 3, '대리': 4, '주임': 5, '사원': 6 };
+        const PART_W = { '영업1파트': 1, '영업2파트': 2, '고객관리파트': 3, '무역센터':4 };
+        const RANK_W = { '부장': 1, '차장': 2, '과장': 3, '대리': 4, '주임': 5, '사원': 6 };
 
         const resizeImage = (file, maxWidth = 800) => { return new Promise((resolve) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = (e) => { const img = new Image(); img.src = e.target.result; img.onload = () => { const canvas = document.createElement('canvas'); const scale = img.width > maxWidth ? maxWidth / img.width : 1; canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale); const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); resolve(canvas.toDataURL('image/jpeg', 0.7)); }; }; }); };
         
-       const isRedDay = (y, m, d) => {
-    const sY = String(y);
-    const sM = String(m).padStart(2, '0');
-    const sD = String(d).padStart(2, '0');
-    
-    const yyyymmdd = `${sY}-${sM}-${sD}`;
-    const mmdd = `${sM}-${sD}`;          
+        const isRedDay = (y, m, d) => {
+            const sY = String(y);
+            const sM = String(m).padStart(2, '0');
+            const sD = String(d).padStart(2, '0');
+            
+            const yyyymmdd = `${sY}-${sM}-${sD}`;
+            const mmdd = `${sM}-${sD}`;          
 
-    const dateObj = new Date(y, m - 1, d);
-    const dayOfWeek = dateObj.getDay();
+            const dateObj = new Date(y, m - 1, d);
+            const dayOfWeek = dateObj.getDay();
 
-    const fixedHolidays = ['01-01', '03-01', '05-05', '06-06', '08-15', '10-03', '10-09', '12-25'];
+            const fixedHolidays = ['01-01', '03-01', '05-05', '06-06', '08-15', '10-03', '10-09', '12-25'];
 
-    const customHolidays = [
-        '2026-02-16', '2026-02-17', '2026-02-18', 
-        '2026-03-02',
-        '2026-05-24', '2026-05-25', 
-        '2026-06-03', 
-        '2026-09-24', '2026-09-25', '2026-09-28'
-    ];
+            const customHolidays = [
+                '2026-02-16', '2026-02-17', '2026-02-18', 
+                '2026-03-02',
+                '2026-05-24', '2026-05-25', 
+                '2026-06-03', 
+                '2026-09-24', '2026-09-25', '2026-09-28'
+            ];
 
-    if (dayOfWeek === 0 || dayOfWeek === 6 || fixedHolidays.includes(mmdd) || customHolidays.includes(yyyymmdd)) {
-        return true;
-    }
+            if (dayOfWeek === 0 || dayOfWeek === 6 || fixedHolidays.includes(mmdd) || customHolidays.includes(yyyymmdd)) {
+                return true;
+            }
 
-    return false;
-};
+            return false;
+        };
+
         const formatLocalTime = (isoString) => { if(!isoString) return ''; try { return new Date(isoString).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute:'2-digit' }).replace(/\./g, '').replace(/\s/g, '-'); } catch(e) { return isoString.slice(0, 10); } };
 
         const getMockDate = (offset = 0) => { const d = new Date(); d.setDate(d.getDate() + offset); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
@@ -218,438 +219,434 @@ const RANK_W = { '부장': 1, '차장': 2, '과장': 3, '대리': 4, '주임': 5
             { id: 'sopt_10', label: '대체 휴무', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: false }
         ];
 
-const hashPassword = async (plain) => {
-    const enc = new TextEncoder();
-    const buf = await crypto.subtle.digest('SHA-256', enc.encode(String(plain)));
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-};
-
-const DEFAULT_EVENT_SETTINGS = {
-    id: 'evtSettings',
-    drawStyle: 'roulette',
-    enabledTypes: ['random', 'fcfs', 'quiz', 'team', 'lunch'],
-    enableWeighted: false,
-    enableHistory: true,
-    lunchMenus: ['한식 🍚', '중식 🥢', '일식 🍱', '양식 🍝', '분식 🍜'],
-};
-const EVENT_TYPE_META = {
-    random: { label: '🎲 랜덤 추첨',      desc: '참여자 중 무작위 당첨' },
-    fcfs:   { label: '⚡ 선착순',           desc: '먼저 참여한 N명 당첨' },
-    quiz:   { label: '📝 오늘의 퀴즈',     desc: '정답자 중 추첨' },
-    team:   { label: '👥 팀 배정 뽑기',    desc: '출근자를 팀으로 랜덤 배정' },
-    lunch:  { label: '🍱 점심 메뉴 뽑기',  desc: '오늘 점심 메뉴 랜덤 결정' },
-};
-
-const RouletteWheel = ({ names, rotation }) => {
-    const n = names.length;
-    if (!n) return null;
-    const size = 260, cx = size/2, cy = size/2, r = size/2 - 6;
-    const COLORS = ['#0d9488','#f43f5e','#f59e0b','#6366f1','#10b981','#8b5cf6','#f97316','#06b6d4','#84cc16','#ec4899','#14b8a6','#a855f7'];
-    const angle = (2*Math.PI)/n;
-    const sectors = names.map((name, i) => {
-        const s = i*angle - Math.PI/2, e = s + angle;
-        const x1=cx+r*Math.cos(s), y1=cy+r*Math.sin(s), x2=cx+r*Math.cos(e), y2=cy+r*Math.sin(e);
-        const mid = s + angle/2, tr = r*0.60;
-        return { path:`M${cx},${cy}L${x1},${y1}A${r},${r},0,${angle>Math.PI?1:0},1,${x2},${y2}Z`, color:COLORS[i%COLORS.length], tx:cx+tr*Math.cos(mid), ty:cy+tr*Math.sin(mid), rot:(mid*180/Math.PI)+90, label:name.length>5?name.slice(0,5):name };
-    });
-    return (
-        <div className="relative inline-flex flex-col items-center">
-            <div className="absolute -top-3 left-1/2 z-10 -translate-x-1/2">
-                <div className="w-0 h-0 border-l-[11px] border-r-[11px] border-t-[18px] border-l-transparent border-r-transparent border-t-amber-400 drop-shadow"/>
-            </div>
-            <svg width={size} height={size} style={{transform:`rotate(${rotation}deg)`,transition:'transform 4s cubic-bezier(0.17,0.67,0.12,0.99)'}}>
-                {sectors.map((s,i) => (
-                    <g key={i}>
-                        <path d={s.path} fill={s.color} stroke="rgba(255,255,255,0.4)" strokeWidth="1.5"/>
-                        {n <= 20 && <text x={s.tx} y={s.ty} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize={n>12?7:9} fontWeight="900" transform={`rotate(${s.rot},${s.tx},${s.ty})`}>{s.label}</text>}
-                    </g>
-                ))}
-                <circle cx={cx} cy={cy} r={16} fill="white" stroke="#e2e8f0" strokeWidth="3"/>
-                <circle cx={cx} cy={cy} r={9} fill="#0d9488"/>
-            </svg>
-        </div>
-    );
-};
-
-const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { const store = window.localDB.transaction(storeName, 'readwrite').objectStore(storeName); if (Array.isArray(data)) data.forEach(item => store.put(item)); else store.put(data); } catch (e) {} };
-const deleteFromIDB = (storeName, id) => { if (!window.localDB) return; try { window.localDB.transaction(storeName, 'readwrite').objectStore(storeName).delete(id); } catch (e) {} };
-
-function App() {
-    const [db, setDb] = useState(null);
-    const [fbUser, setFbUser] = useState(null); 
-    const [appUser, setAppUser] = useState(null); 
-    const [isAuthReady, setIsAuthReady] = useState(false);
-    const [loading, setLoading] = useState(true);
-    const [view, setView] = useState('daily'); 
-    const [adminTab, setAdminTab] = useState('apps'); 
-    const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('hmood_dark_mode') === 'true');
-    const [isLargeTextMode, setIsLargeTextMode] = useState(() => localStorage.getItem('hmood_large_text') === 'true');
-
-    const [users, setUsers] = useState([]);
-    const [schedules, setSchedules] = useState([]);
-    const [notices, setNotices] = useState([]);
-    const [extensions, setExtensions] = useState([]);
-    const [dynamicApps, setDynamicApps] = useState([]); 
-    const [dynamicPosts, setDynamicPosts] = useState([]); 
-    const [currentEvent, setCurrentEvent] = useState(null); 
-    const [blacklists, setBlacklists] = useState([]); 
-    
-    const [eventForm, setEventForm] = useState({ title: '', prize: '', target: 'daily', type: 'random', winnerCount: 1, quizQuestion: '', quizAnswer: '', teamCount: 2 });
-    const [spinDisplay, setSpinDisplay] = useState('');
-    const [wheelRotation, setWheelRotation] = useState(0);
-    const [eventSettings, setEventSettings] = useState(DEFAULT_EVENT_SETTINGS);
-    const [winHistory, setWinHistory] = useState([]);
-    const [lunchPick, setLunchPick] = useState(null);
-    const [lunchMenuInput, setLunchMenuInput] = useState('');
-    const [quizAnswer, setQuizAnswer] = useState('');
-    const [showEventMgmt, setShowEventMgmt] = useState(false);
-    const [monthlyFilters, setMonthlyFilters] = useState({ part: true, cat: true, id: true });
-    const [viewMode, setViewMode] = useState('all'); 
-    
-    const [isAdminAuth, setIsAdminAuth] = useState(false);
-    const [masterPinHash, setMasterPinHash] = useState(() => localStorage.getItem('hmood_master_pin_hash') || null);
-    const DEFAULT_PIN = '6011';
-    const [pinInput, setPinInput] = useState('');
-    const [currentDate, setCurrentDate] = useState(new Date());
-    
-    const [toast, setToast] = useState('');
-    const [toastError, setToastError] = useState(false);
-    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null, onCancel: null, telHref: null, title: '' });
-    const [showSharedPopup, setShowSharedPopup] = useState(false);
-    
-    const [loginForm, setLoginForm] = useState({ id: '', pw: '' });
-    const [rememberMe, setRememberMe] = useState(false);
-    const [profileSearch, setProfileSearch] = useState('');
-    const [extSearch, setExtSearch] = useState('');
-    const [favoriteExts, setFavoriteExts] = useState(() => JSON.parse(localStorage.getItem('hmood_fav_exts') || '[]'));
-    const [adminMemberSearch, setAdminMemberSearch] = useState('');
-    const [adminExtSearch, setAdminExtSearch] = useState('');
-    const [expandedProfiles, setExpandedProfiles] = useState({});
-    
-    const [noticeForm, setNoticeForm] = useState({ content: '', photos: [], isPinned: false }); 
-    const [editingNoticeId, setEditingNoticeId] = useState(null);
-    const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
-    
-    const [extForm, setExtForm] = useState({ number: '', floor: '', user: '' }); 
-    const [editingExtId, setEditingExtId] = useState(null);
-    
-    const pad = (n) => String(n).padStart(2, '0');
-    const todayStr = `${currentDate.getFullYear()}-${pad(currentDate.getMonth()+1)}-${pad(currentDate.getDate())}`;
-    const [bulkScheduleMonth, setBulkScheduleMonth] = useState(todayStr.slice(0, 7));
-    
-    const [memberForm, setMemberForm] = useState({ empId: '', name: '', part: '', position: '사원', jobTitle: '일반', category: '', brands: '', password: '' });
-    const [appManagerForm, setAppManagerForm] = useState({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', viewPermission: 'admin', notifyTarget: 'none', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 1, sortOrder: 99 });
-    const [editingAppId, setEditingAppId] = useState(null);
-    const [submitFormState, setSubmitFormState] = useState({ content: '', photo: '', authorName: '' });
-
-    const [openedFolder, setOpenedFolder] = useState(null); 
-    const [openedDynamicApp, setOpenedDynamicApp] = useState(null); 
-    const [boardSearch, setBoardSearch] = useState('');
-    const [openedSubmitForm, setOpenedSubmitForm] = useState(null);
-    const [openedGuide, setOpenedGuide] = useState(null);
-    const [openedAdminBoard, setOpenedAdminBoard] = useState(null);
-    const [selectedAdminPost, setSelectedAdminPost] = useState(null);
-    const [adminBoardForm, setAdminBoardForm] = useState({ title: '', content: '', photo: '' });
-
-    const [openedReservationApp, setOpenedReservationApp] = useState(null);
-    const [resSelectedDate, setResSelectedDate] = useState(todayStr);
-    const [resForm, setResForm] = useState({ operatorId: '', slots: '', max: 1, lDays: 0, lHours: 0 }); 
-    const [resPrompt, setResPrompt] = useState(null); 
-    const [resInput, setResInput] = useState({ brand: '', name: '', ext: '', note: '' }); 
-    const [blacklistInput, setBlacklistInput] = useState({ brand: '', name: '' });
-    const [isHealthOnlyAdmin, setIsHealthOnlyAdmin] = useState(false);
-    const [resConfigMode, setResConfigMode] = useState(false);
-    const tableScrollRef = useRef(null);
-
-    const [adminSchedForm, setAdminSchedForm] = useState({ empId: '', date: todayStr, status: 'A' });
-    const [showExtModal, setShowExtModal] = useState(false);
-    const [showProfileEdit, setShowProfileEdit] = useState(false);
-    const [profileTab, setProfileTab] = useState('pw'); 
-    const [profileForm, setProfileForm] = useState({ name: '', part: '', category: '', brands: '', extNumber: '', position: '', jobTitle: '', password: '', targetEmpId: '' });
-    const [expandedImage, setExpandedImage] = useState(null);
-    const [expandedCell, setExpandedCell] = useState(null);
-    const [dailySearch, setDailySearch] = useState(''); 
-    const [expandedDailyCard, setExpandedDailyCard] = useState(null); 
-    const [readNoticeIds, setReadNoticeIds] = useState(() => {
-        try { return JSON.parse(localStorage.getItem('hmood_read_notices') || '[]'); } catch(e) { return []; }
-    });
-
-    const [statusOptions, setStatusOptions] = useState([]);
-    const [statusForm, setStatusForm] = useState({ label: '', bg: 'bg-stone-700 dark:bg-stone-600', text: 'text-white', isWork: 'true' });
-    const [editingStatusId, setEditingStatusId] = useState(null);
-    useEffect(() => {
-        if (isDarkMode) document.documentElement.classList.add('dark');
-        else document.documentElement.classList.remove('dark');
-        localStorage.setItem('hmood_dark_mode', isDarkMode);
-    }, [isDarkMode]);
-
-    useEffect(() => {
-        localStorage.setItem('hmood_large_text', isLargeTextMode);
-    }, [isLargeTextMode]);
-
-    const userMap = useMemo(() => { const map = {}; (users || []).forEach(u => { if(u) map[u.empId] = u; }); return map; }, [users]);
-    const scheduleMap = useMemo(() => { const map = {}; (schedules || []).forEach(s => { if(s) { if (!map[s.empId]) map[s.empId] = {}; map[s.empId][s.date] = s; }}); return map; }, [schedules]);
-    
-    const SCHED_STATUS_OPTIONS = useMemo(() => (statusOptions || []).map(o => o?.label).filter(Boolean), [statusOptions]);
-    const STATUS_THEME = useMemo(() => { const theme = {}; (statusOptions || []).forEach(o => { if(o) theme[o.label] = `${o.bg} ${o.text}`; }); return theme; }, [statusOptions]);
-    const STATUS_INLINE_STYLE = useMemo(() => {
-        const map = {};
-        (statusOptions || []).forEach(o => {
-            if (!o) return;
-            let color = '';
-            if (o.text.includes('text-white')) color = '#ffffff';
-            else if (o.text.includes('text-stone-600')) color = isDarkMode ? '#d6d3d1' : '#57534e';
-            else if (o.text.includes('text-stone-300')) color = '#d6d3d1';
-            map[o.label] = color ? { color } : {};
-        });
-        return map;
-    }, [statusOptions, isDarkMode]);
-
-    const canManageNotice = useMemo(() => isAdminAuth || (appUser && appUser.jobTitle === '영업관리자'), [isAdminAuth, appUser]);
-
-    const isHealthAdmin = useMemo(() => {
-        return appUser && (dynamicApps || []).some(app => app.actionType === 'reservation' && app.resOperatorId === appUser.empId);
-    }, [appUser, dynamicApps]);
-
-    // 통합 및 재배열된 탭 메뉴
-    const AVAILABLE_TABS = useMemo(() => {
-        return [ 
-            { id: 'health', name: '🏥 헬스키퍼 관리', show: isHealthOnlyAdmin || isAdminAuth || isHealthAdmin }, 
-            { id: 'apps', name: '공지 및 앱/폴더 관리', show: isAdminAuth || (!isHealthOnlyAdmin && appUser && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) }, 
-            { id: 'members', name: '구성원/조직 관리', show: isAdminAuth && !isHealthOnlyAdmin }, 
-            { id: 'schedules', name: '스케줄 관리', show: isAdminAuth && !isHealthOnlyAdmin }, 
-            { id: 'extensions', name: '내선번호', show: isAdminAuth && !isHealthOnlyAdmin }, 
-            { id: 'posts', name: '제출 데이터', show: (isAdminAuth && !isHealthOnlyAdmin) || (appUser && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) }, 
-            { id: 'security', name: '보안 설정', show: isAdminAuth && !isHealthOnlyAdmin } 
-        ].filter(t => t.show);
-    }, [isHealthOnlyAdmin, isAdminAuth, isHealthAdmin, appUser]);
-
-    const currentAdminTab = useMemo(() => {
-        if (AVAILABLE_TABS.find(t => t.id === adminTab)) return adminTab;
-        return AVAILABLE_TABS[0]?.id || 'health';
-    }, [adminTab, AVAILABLE_TABS]);
-
-    useEffect(() => {
-        if (currentAdminTab === 'health') {
-            const hkApp = (dynamicApps || []).find(a => a.id === 'app_5' || a.name.includes('헬스'));
-            if (hkApp) {
-                setResForm({ operatorId: hkApp.resOperatorId || '', slots: hkApp.resTimeSlots || '10:00, 11:00', max: hkApp.resMaxPerSlot || 1, lDays: hkApp.resLeadTimeDays || 0, lHours: hkApp.resLeadTimeHours || 0 });
-            }
-        }
-    }, [currentAdminTab, dynamicApps]);
-
-    const canEditProfile = useCallback((targetEmpId) => { return (appUser && appUser.empId === targetEmpId) || isAdminAuth; }, [appUser, isAdminAuth]);
-    const showToast = (m, isError = false) => { setToast(m); setToastError(isError); setTimeout(() => { setToast(''); setToastError(false); }, 3000); };
-    const showConfirm = (options) => { setConfirmDialog({ ...options, isOpen: true }); };
-
-    // 영업관리자 열람 권한이 추가된 canViewPosts
-    const canViewPosts = useCallback((appItem) => {
-        if (!appItem) return false;
-        if (isAdminAuth) return true;
-        if (!appUser) return false;
-        const vp = appItem.viewPermission || 'admin';
-        
-        if (vp === 'admin') {
-            const p = appItem.writePermission;
-            if (p === 'all' && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) return true; 
-            if (Array.isArray(p)) {
-                 if (p.includes('manager') && appUser.jobTitle === '영업관리자') return true;
-                 if (p.some(x => x.startsWith('PART_') && appUser.part === x.replace('PART_', ''))) return true;
-                 if (p.some(x => x.startsWith('USER_') && appUser.empId === x.replace('USER_', ''))) return true;
-            } else {
-                 if (p === 'manager' && appUser.jobTitle === '영업관리자') return true;
-                 if (p.startsWith('PART_') && appUser.part === p.replace('PART_', '')) return true;
-                 if (p.startsWith('USER_') && appUser.empId === p.replace('USER_', '')) return true;
-            }
-            return false;
-        }
-        
-        if (vp === 'manager') return appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장';
-        if (vp === 'member') return true;
-        if (vp.startsWith('PART_')) return appUser.part === vp.replace('PART_', '');
-        return false;
-    }, [appUser, isAdminAuth]);
-
-    const canWrite = useCallback((appItem) => {
-        if (!appItem) return false;
-        const p = appItem.writePermission;
-        if (Array.isArray(p)) {
-            if (p.includes('admin')) { if (isAdminAuth) return true; }
-            if (!appUser) return false;
-            if (p.includes('manager') && appUser.jobTitle === '영업관리자') return true;
-            if (p.includes('member')) return true;
-            if (p.some(x => x.startsWith('PART_') && appUser.part === x.replace('PART_', ''))) return true;
-            if (p.some(x => x.startsWith('USER_') && appUser.empId === x.replace('USER_', ''))) return true;
-            return false;
-        }
-        if (p === 'all') return true;
-        if (!appUser) return false;
-        if (p === 'member') return true;
-        if (p.startsWith('PART_')) return appUser.part === p.replace('PART_', '');
-        if (p.startsWith('USER_')) return appUser.empId === p.replace('USER_', '');
-        return false;
-    }, [appUser, isAdminAuth]);
-
-    const writeBlockedMsg = useCallback((appItem) => {
-        if (!appItem) return '권한이 없습니다.';
-        const p = appItem.writePermission;
-        if (!appUser) return '로그인이 필요합니다.';
-        if (p.startsWith('PART_')) return `[${p.replace('PART_', '')}] 파트 직원만 작성 가능합니다.`;
-        if (p.startsWith('USER_')) return '지정된 권한자만 작성 가능합니다.';
-        return '권한이 없습니다.';
-    }, [appUser]);
-
-    useEffect(() => {
-        if (firebaseConfig && !firebase.apps.length) firebase.initializeApp(firebaseConfig);
-        if (firebase.apps.length > 0) {
-            setDb(firebase.firestore());
-            const auth = firebase.auth();
-            const initAuth = async () => {
-                try { 
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await auth.signInWithCustomToken(__initial_auth_token); 
-                    else await auth.signInAnonymously();
-                } catch (error) { 
-                    console.log("모바일 보안 차단 우회");
-                    setIsAuthReady(true); 
-                }
-            };
-            initAuth();
-            const unsubscribe = auth.onAuthStateChanged(user => { 
-                if (user) setFbUser(user);
-                setIsAuthReady(true); 
-            });
-            return () => unsubscribe();
-        } else { setIsAuthReady(true); }
-    }, []);
-
-    useEffect(() => {
-        const savedEmpId = localStorage.getItem('hmood_empId');
-        if (savedEmpId) { setLoginForm(prev => ({ ...prev, id: savedEmpId })); setRememberMe(true); }
-        if (new URLSearchParams(window.location.search).get('mode') === 'shared') { setView('shared'); setShowSharedPopup(true); }
-    }, []);
-
-    useEffect(() => {
-        if (!users || users.length === 0) return;
-        const savedSession = localStorage.getItem('hmood_session');
-        if (!savedSession) return;
-        try {
-            const { empId } = JSON.parse(savedSession);
-            if (!empId) return;
-            const found = users.find(u => u.empId === empId);
-            if (found && !appUser) {
-                setAppUser(found);
-                const mode = new URLSearchParams(window.location.search).get('mode');
-                if (mode !== 'shared') setView('daily');
-            }
-        } catch(e) { localStorage.removeItem('hmood_session'); }
-    }, [users]);
-
-    useEffect(() => {
-        const initLocalDB = async () => {
-            try {
-                const idb = await new Promise((resolve) => {
-                    const req = indexedDB.open('HmoodERP_DB_V80', 1); 
-                    req.onupgradeneeded = (e) => { const dbInstance = e.target.result; ['users', 'schedules', 'notices', 'extensions', 'dynamicApps', 'dynamicPosts', 'events', 'statusOptions', 'blacklists', 'evtSettings', 'winHistory'].forEach(store => { if (!dbInstance.objectStoreNames.contains(store)) dbInstance.createObjectStore(store, { keyPath: 'id' }); }); };
-                    req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null);
-                });
-                if (idb) {
-                    window.localDB = idb;
-                    const loadStore = (store) => new Promise(res => { try { const req = idb.transaction(store, 'readonly').objectStore(store).getAll(); req.onsuccess = () => res(req.result); req.onerror = () => res([]); } catch(e) { res([]); } });
-                    const [lUsers, lScheds, lNotices, lExts, lApps, lPosts, lEvents, lStatusOpts, lBlacks, lEvtSet, lWinHist] = await Promise.all([loadStore('users'), loadStore('schedules'), loadStore('notices'), loadStore('extensions'), loadStore('dynamicApps'), loadStore('dynamicPosts'), loadStore('events'), loadStore('statusOptions'), loadStore('blacklists'), loadStore('evtSettings'), loadStore('winHistory')]);
-                    
-                    if (lUsers.length > 0) setUsers(lUsers); else { saveToIDB('users', defaultUsers); setUsers(defaultUsers); }
-                    if (lScheds.length > 0) setSchedules(lScheds); else { saveToIDB('schedules', defaultSchedules); setSchedules(defaultSchedules); }
-                    if (lNotices.length > 0) setNotices(lNotices.sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||'')));
-                    if (lExts.length > 0) setExtensions(lExts); else { saveToIDB('extensions', defaultExtensions); setExtensions(defaultExtensions); }
-                    if (lBlacks.length > 0) setBlacklists(lBlacks);
-                    
-                    if (lApps.length >= defaultDynamicApps.length) { setDynamicApps(lApps); } 
-                    else { 
-                        const missingApps = defaultDynamicApps.filter(da => !lApps.find(la => la.id === da.id));
-                        const mergedApps = [...lApps, ...missingApps];
-                        setDynamicApps(mergedApps); missingApps.forEach(a => saveToIDB('dynamicApps', a)); 
-                    }
-                    
-                    if (lPosts.length > 0) setDynamicPosts(lPosts.sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||'')));
-                    if (lEvents.length > 0) setCurrentEvent(lEvents.find(e => e.id === 'current' || e.status === 'closed') || null);
-                    if (lStatusOpts && lStatusOpts.length > 0) setStatusOptions(lStatusOpts.sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||''))); else { setStatusOptions(defaultStatusOptions); defaultStatusOptions.forEach(o => saveToIDB('statusOptions', o)); }
-                    if (lEvtSet.length > 0) setEventSettings(lEvtSet[0]); else { saveToIDB('evtSettings', DEFAULT_EVENT_SETTINGS); }
-                    if (lWinHist.length > 0) setWinHistory(lWinHist);
-                }
-            } catch (err) {
-                console.error('DB Init Error:', err);
-            } finally {
-                setLoading(false);
-            }
+        const hashPassword = async (plain) => {
+            const enc = new TextEncoder();
+            const buf = await crypto.subtle.digest('SHA-256', enc.encode(String(plain)));
+            return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
         };
-        initLocalDB();
-    }, []);
 
-    useEffect(() => {
-        if (!db || !fbUser || !isAuthReady) return;
-        const unsubApps = db.collection(`artifacts/${appId}/public/data/dynamic_apps`).onSnapshot((snapshot) => {
-                const newApps = snapshot.docs.map(d => d.data());
-                if(newApps.length > 0) { setDynamicApps(newApps); newApps.forEach(a => saveToIDB('dynamicApps', a)); }
+        const DEFAULT_EVENT_SETTINGS = {
+            id: 'evtSettings',
+            drawStyle: 'roulette',
+            enabledTypes: ['random', 'fcfs', 'quiz', 'team', 'lunch'],
+            enableWeighted: false,
+            enableHistory: true,
+            lunchMenus: ['한식 🍚', '중식 🥢', '일식 🍱', '양식 🍝', '분식 🍜'],
+        };
+
+        const EVENT_TYPE_META = {
+            random: { label: '🎲 랜덤 추첨',      desc: '참여자 중 무작위 당첨' },
+            fcfs:   { label: '⚡ 선착순',           desc: '먼저 참여한 N명 당첨' },
+            quiz:   { label: '📝 오늘의 퀴즈',     desc: '정답자 중 추첨' },
+            team:   { label: '👥 팀 배정 뽑기',    desc: '출근자를 팀으로 랜덤 배정' },
+            lunch:  { label: '🍱 점심 메뉴 뽑기',  desc: '오늘 점심 메뉴 랜덤 결정' },
+        };
+
+        const RouletteWheel = ({ names, rotation }) => {
+            const n = names.length;
+            if (!n) return null;
+            const size = 260, cx = size/2, cy = size/2, r = size/2 - 6;
+            const COLORS = ['#0d9488','#f43f5e','#f59e0b','#6366f1','#10b981','#8b5cf6','#f97316','#06b6d4','#84cc16','#ec4899','#14b8a6','#a855f7'];
+            const angle = (2*Math.PI)/n;
+            const sectors = names.map((name, i) => {
+                const s = i*angle - Math.PI/2, e = s + angle;
+                const x1=cx+r*Math.cos(s), y1=cy+r*Math.sin(s), x2=cx+r*Math.cos(e), y2=cy+r*Math.sin(e);
+                const mid = s + angle/2, tr = r*0.60;
+                return { path:`M${cx},${cy}L${x1},${y1}A${r},${r},0,${angle>Math.PI?1:0},1,${x2},${y2}Z`, color:COLORS[i%COLORS.length], tx:cx+tr*Math.cos(mid), ty:cy+tr*Math.sin(mid), rot:(mid*180/Math.PI)+90, label:name.length>5?name.slice(0,5):name };
             });
-        const unsubEvent = db.collection(`artifacts/${appId}/public/data/events`).onSnapshot((snapshot) => {
-                const activeOrClosed = snapshot.docs.map(d => d.data()).find(e => e.id === 'current' || e.status === 'closed');
-                if (activeOrClosed) { setCurrentEvent(activeOrClosed); saveToIDB('events', activeOrClosed); } else { setCurrentEvent(null); deleteFromIDB('events', 'current'); }
+            return (
+                <div className="relative inline-flex flex-col items-center">
+                    <div className="absolute -top-3 left-1/2 z-10 -translate-x-1/2">
+                        <div className="w-0 h-0 border-l-[11px] border-r-[11px] border-t-[18px] border-l-transparent border-r-transparent border-t-amber-400 drop-shadow"/>
+                    </div>
+                    <svg width={size} height={size} style={{transform:`rotate(${rotation}deg)`,transition:'transform 4s cubic-bezier(0.17,0.67,0.12,0.99)'}}>
+                        {sectors.map((s,i) => (
+                            <g key={i}>
+                                <path d={s.path} fill={s.color} stroke="rgba(255,255,255,0.4)" strokeWidth="1.5"/>
+                                {n <= 20 && <text x={s.tx} y={s.ty} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize={n>12?7:9} fontWeight="900" transform={`rotate(${s.rot},${s.tx},${s.ty})`}>{s.label}</text>}
+                            </g>
+                        ))}
+                        <circle cx={cx} cy={cy} r={16} fill="white" stroke="#e2e8f0" strokeWidth="3"/>
+                        <circle cx={cx} cy={cy} r={9} fill="#0d9488"/>
+                    </svg>
+                </div>
+            );
+        };
+
+        const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { const store = window.localDB.transaction(storeName, 'readwrite').objectStore(storeName); if (Array.isArray(data)) data.forEach(item => store.put(item)); else store.put(data); } catch (e) {} };
+        const deleteFromIDB = (storeName, id) => { if (!window.localDB) return; try { window.localDB.transaction(storeName, 'readwrite').objectStore(storeName).delete(id); } catch (e) {} };
+
+        function App() {
+            const [db, setDb] = useState(null);
+            const [fbUser, setFbUser] = useState(null); 
+            const [appUser, setAppUser] = useState(null); 
+            const [isAuthReady, setIsAuthReady] = useState(false);
+            const [loading, setLoading] = useState(true);
+            const [view, setView] = useState('daily'); 
+            const [adminTab, setAdminTab] = useState('apps'); 
+            const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('hmood_dark_mode') === 'true');
+            const [isLargeTextMode, setIsLargeTextMode] = useState(() => localStorage.getItem('hmood_large_text') === 'true');
+
+            const [users, setUsers] = useState([]);
+            const [schedules, setSchedules] = useState([]);
+            const [notices, setNotices] = useState([]);
+            const [extensions, setExtensions] = useState([]);
+            const [dynamicApps, setDynamicApps] = useState([]); 
+            const [dynamicPosts, setDynamicPosts] = useState([]); 
+            const [currentEvent, setCurrentEvent] = useState(null); 
+            const [blacklists, setBlacklists] = useState([]); 
+            
+            const [eventForm, setEventForm] = useState({ title: '', prize: '', target: 'daily', type: 'random', winnerCount: 1, quizQuestion: '', quizAnswer: '', teamCount: 2 });
+            const [spinDisplay, setSpinDisplay] = useState('');
+            const [wheelRotation, setWheelRotation] = useState(0);
+            const [eventSettings, setEventSettings] = useState(DEFAULT_EVENT_SETTINGS);
+            const [winHistory, setWinHistory] = useState([]);
+            const [lunchPick, setLunchPick] = useState(null);
+            const [lunchMenuInput, setLunchMenuInput] = useState('');
+            const [quizAnswer, setQuizAnswer] = useState('');
+            const [showEventMgmt, setShowEventMgmt] = useState(false);
+            const [monthlyFilters, setMonthlyFilters] = useState({ part: true, cat: true, id: true });
+            const [viewMode, setViewMode] = useState('all'); 
+            
+            const [isAdminAuth, setIsAdminAuth] = useState(false);
+            const [masterPinHash, setMasterPinHash] = useState(() => localStorage.getItem('hmood_master_pin_hash') || null);
+            const DEFAULT_PIN = '6011';
+            const [pinInput, setPinInput] = useState('');
+            const [currentDate, setCurrentDate] = useState(new Date());
+            
+            const [toast, setToast] = useState('');
+            const [toastError, setToastError] = useState(false);
+            const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null, onCancel: null, telHref: null, title: '' });
+            const [showSharedPopup, setShowSharedPopup] = useState(false);
+            
+            const [loginForm, setLoginForm] = useState({ id: '', pw: '' });
+            const [rememberMe, setRememberMe] = useState(false);
+            const [profileSearch, setProfileSearch] = useState('');
+            const [extSearch, setExtSearch] = useState('');
+            const [favoriteExts, setFavoriteExts] = useState(() => JSON.parse(localStorage.getItem('hmood_fav_exts') || '[]'));
+            const [adminMemberSearch, setAdminMemberSearch] = useState('');
+            const [adminExtSearch, setAdminExtSearch] = useState('');
+            const [expandedProfiles, setExpandedProfiles] = useState({});
+            
+            const [noticeForm, setNoticeForm] = useState({ content: '', photos: [], isPinned: false }); 
+            const [editingNoticeId, setEditingNoticeId] = useState(null);
+            const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
+            
+            const [extForm, setExtForm] = useState({ number: '', floor: '', user: '' }); 
+            const [editingExtId, setEditingExtId] = useState(null);
+            
+            const pad = (n) => String(n).padStart(2, '0');
+            const todayStr = `${currentDate.getFullYear()}-${pad(currentDate.getMonth()+1)}-${pad(currentDate.getDate())}`;
+            const [bulkScheduleMonth, setBulkScheduleMonth] = useState(todayStr.slice(0, 7));
+            
+            const [memberForm, setMemberForm] = useState({ empId: '', name: '', part: '', position: '사원', jobTitle: '일반', category: '', brands: '', password: '' });
+            const [appManagerForm, setAppManagerForm] = useState({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', viewPermission: 'admin', notifyTarget: 'none', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 1, sortOrder: 99 });
+            const [editingAppId, setEditingAppId] = useState(null);
+            const [submitFormState, setSubmitFormState] = useState({ content: '', photo: '', authorName: '' });
+
+            const [openedFolder, setOpenedFolder] = useState(null); 
+            const [openedDynamicApp, setOpenedDynamicApp] = useState(null); 
+            const [boardSearch, setBoardSearch] = useState('');
+            const [openedSubmitForm, setOpenedSubmitForm] = useState(null);
+            const [openedGuide, setOpenedGuide] = useState(null);
+            const [openedAdminBoard, setOpenedAdminBoard] = useState(null);
+            const [selectedAdminPost, setSelectedAdminPost] = useState(null);
+            const [adminBoardForm, setAdminBoardForm] = useState({ title: '', content: '', photo: '' });
+
+            const [openedReservationApp, setOpenedReservationApp] = useState(null);
+            const [resSelectedDate, setResSelectedDate] = useState(todayStr);
+            const [resForm, setResForm] = useState({ operatorId: '', slots: '', max: 1, lDays: 0, lHours: 0 }); 
+            const [resPrompt, setResPrompt] = useState(null); 
+            const [resInput, setResInput] = useState({ brand: '', name: '', ext: '', note: '' }); 
+            const [blacklistInput, setBlacklistInput] = useState({ brand: '', name: '' });
+            const [isHealthOnlyAdmin, setIsHealthOnlyAdmin] = useState(false);
+            const [resConfigMode, setResConfigMode] = useState(false);
+            const tableScrollRef = useRef(null);
+
+            const [adminSchedForm, setAdminSchedForm] = useState({ empId: '', date: todayStr, status: 'A' });
+            const [showExtModal, setShowExtModal] = useState(false);
+            const [showProfileEdit, setShowProfileEdit] = useState(false);
+            const [profileTab, setProfileTab] = useState('pw'); 
+            const [profileForm, setProfileForm] = useState({ name: '', part: '', category: '', brands: '', extNumber: '', position: '', jobTitle: '', password: '', targetEmpId: '' });
+            const [expandedImage, setExpandedImage] = useState(null);
+            const [expandedCell, setExpandedCell] = useState(null);
+            const [dailySearch, setDailySearch] = useState(''); 
+            const [expandedDailyCard, setExpandedDailyCard] = useState(null); 
+            const [readNoticeIds, setReadNoticeIds] = useState(() => {
+                try { return JSON.parse(localStorage.getItem('hmood_read_notices') || '[]'); } catch(e) { return []; }
             });
-        const unsubNotices = db.collection(`artifacts/${appId}/public/data/notices`).onSnapshot((snapshot) => {
-                const newNotices = snapshot.docs.map(d => d.data()).sort((a,b) => { if (a.isPinned && !b.isPinned) return -1; if (!a.isPinned && b.isPinned) return 1; return (b.createdAt||'').localeCompare(a.createdAt||''); });
-                if(newNotices.length > 0) { setNotices(newNotices); newNotices.forEach(n => saveToIDB('notices', n)); }
-            });
-        const unsubPosts = db.collection(`artifacts/${appId}/public/data/dynamic_posts`).onSnapshot((snapshot) => {
-                const newPosts = snapshot.docs.map(d => d.data()).sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||''));
-                setDynamicPosts(newPosts); newPosts.forEach(p => saveToIDB('dynamicPosts', p));
-            });
-        const unsubStatusOpts = db.collection(`artifacts/${appId}/public/data/status_options`).onSnapshot((snapshot) => {
-                const newOpts = snapshot.docs.map(d => d.data());
-                if(newOpts.length > 0) {
-                    setStatusOptions(prev => {
-                        const merged = [...prev];
-                        newOpts.forEach(o => {
-                            const idx = merged.findIndex(x => x.id === o.id);
-                            if (idx >= 0) merged[idx] = o; else merged.push(o);
-                        });
-                        return merged.sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||''));
-                    });
-                    newOpts.forEach(o => saveToIDB('statusOptions', o));
+
+            const [statusOptions, setStatusOptions] = useState([]);
+            const [statusForm, setStatusForm] = useState({ label: '', bg: 'bg-stone-700 dark:bg-stone-600', text: 'text-white', isWork: 'true' });
+            const [editingStatusId, setEditingStatusId] = useState(null);
+            useEffect(() => {
+                if (isDarkMode) document.documentElement.classList.add('dark');
+                else document.documentElement.classList.remove('dark');
+                localStorage.setItem('hmood_dark_mode', isDarkMode);
+            }, [isDarkMode]);
+
+            useEffect(() => {
+                localStorage.setItem('hmood_large_text', isLargeTextMode);
+            }, [isLargeTextMode]);
+
+            const userMap = useMemo(() => { const map = {}; (users || []).forEach(u => { if(u) map[u.empId] = u; }); return map; }, [users]);
+            const scheduleMap = useMemo(() => { const map = {}; (schedules || []).forEach(s => { if(s) { if (!map[s.empId]) map[s.empId] = {}; map[s.empId][s.date] = s; }}); return map; }, [schedules]);
+            
+            const SCHED_STATUS_OPTIONS = useMemo(() => (statusOptions || []).map(o => o?.label).filter(Boolean), [statusOptions]);
+            const STATUS_THEME = useMemo(() => { const theme = {}; (statusOptions || []).forEach(o => { if(o) theme[o.label] = `${o.bg} ${o.text}`; }); return theme; }, [statusOptions]);
+            const STATUS_INLINE_STYLE = useMemo(() => {
+                const map = {};
+                (statusOptions || []).forEach(o => {
+                    if (!o) return;
+                    let color = '';
+                    if (o.text.includes('text-white')) color = '#ffffff';
+                    else if (o.text.includes('text-stone-600')) color = isDarkMode ? '#d6d3d1' : '#57534e';
+                    else if (o.text.includes('text-stone-300')) color = '#d6d3d1';
+                    map[o.label] = color ? { color } : {};
+                });
+                return map;
+            }, [statusOptions, isDarkMode]);
+
+            const canManageNotice = useMemo(() => isAdminAuth || (appUser && appUser.jobTitle === '영업관리자'), [isAdminAuth, appUser]);
+
+            const isHealthAdmin = useMemo(() => {
+                return appUser && (dynamicApps || []).some(app => app.actionType === 'reservation' && app.resOperatorId === appUser.empId);
+            }, [appUser, dynamicApps]);
+
+            const AVAILABLE_TABS = useMemo(() => {
+                return [ 
+                    { id: 'health', name: '🏥 헬스키퍼 관리', show: isHealthOnlyAdmin || isAdminAuth || isHealthAdmin }, 
+                    { id: 'apps', name: '공지 및 앱/폴더 관리', show: isAdminAuth || (!isHealthOnlyAdmin && appUser && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) }, 
+                    { id: 'members', name: '구성원/조직 관리', show: isAdminAuth && !isHealthOnlyAdmin }, 
+                    { id: 'schedules', name: '스케줄 관리', show: isAdminAuth && !isHealthOnlyAdmin }, 
+                    { id: 'extensions', name: '내선번호', show: isAdminAuth && !isHealthOnlyAdmin }, 
+                    { id: 'posts', name: '제출 데이터', show: (isAdminAuth && !isHealthOnlyAdmin) || (appUser && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) }, 
+                    { id: 'security', name: '보안 설정', show: isAdminAuth && !isHealthOnlyAdmin } 
+                ].filter(t => t.show);
+            }, [isHealthOnlyAdmin, isAdminAuth, isHealthAdmin, appUser]);
+
+            const currentAdminTab = useMemo(() => {
+                if (AVAILABLE_TABS.find(t => t.id === adminTab)) return adminTab;
+                return AVAILABLE_TABS[0]?.id || 'health';
+            }, [adminTab, AVAILABLE_TABS]);
+
+            useEffect(() => {
+                if (currentAdminTab === 'health') {
+                    const hkApp = (dynamicApps || []).find(a => a.id === 'app_5' || a.name.includes('헬스'));
+                    if (hkApp) {
+                        setResForm({ operatorId: hkApp.resOperatorId || '', slots: hkApp.resTimeSlots || '10:00, 11:00', max: hkApp.resMaxPerSlot || 1, lDays: hkApp.resLeadTimeDays || 0, lHours: hkApp.resLeadTimeHours || 0 });
+                    }
                 }
-            });
-        const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists`).onSnapshot((snapshot) => {
-                const newBls = snapshot.docs.map(d => d.data());
-                setBlacklists(newBls); newBls.forEach(b => saveToIDB('blacklists', b));
-            });
-        const unsubUsers = db.collection(`artifacts/${appId}/public/data/users`).onSnapshot((snapshot) => {
-            const newUsers = snapshot.docs.map(d => d.data());
-            if(newUsers.length > 0) { setUsers(newUsers); newUsers.forEach(u => saveToIDB('users', u)); }
-        });
-        const unsubSchedules = db.collection(`artifacts/${appId}/public/data/schedules`).onSnapshot((snapshot) => {
-            const newScheds = snapshot.docs.map(d => d.data());
-            if(newScheds.length > 0) { setSchedules(newScheds); newScheds.forEach(s => saveToIDB('schedules', s)); }
-        });
-        const unsubExtensions = db.collection(`artifacts/${appId}/public/data/extensions`).onSnapshot((snapshot) => {
-            const newExts = snapshot.docs.map(d => d.data());
-            if(newExts.length > 0) { setExtensions(newExts); newExts.forEach(e => saveToIDB('extensions', e)); }
-        });
+            }, [currentAdminTab, dynamicApps]);
 
-        return () => { unsubApps(); unsubEvent(); unsubNotices(); unsubPosts(); unsubStatusOpts(); unsubBlacklists(); unsubUsers(); unsubSchedules(); unsubExtensions(); };
-    }, [db, fbUser, isAuthReady]);
-    const sortedUsers = useMemo(() => {
+            const canEditProfile = useCallback((targetEmpId) => { return (appUser && appUser.empId === targetEmpId) || isAdminAuth; }, [appUser, isAdminAuth]);
+            const showToast = (m, isError = false) => { setToast(m); setToastError(isError); setTimeout(() => { setToast(''); setToastError(false); }, 3000); };
+            const showConfirm = (options) => { setConfirmDialog({ ...options, isOpen: true }); };
+
+            const canViewPosts = useCallback((appItem) => {
+                if (!appItem) return false;
+                if (isAdminAuth) return true;
+                if (!appUser) return false;
+                const vp = appItem.viewPermission || 'admin';
+                
+                if (vp === 'admin') {
+                    const p = appItem.writePermission;
+                    if (p === 'all' && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) return true; 
+                    if (Array.isArray(p)) {
+                         if (p.includes('manager') && appUser.jobTitle === '영업관리자') return true;
+                         if (p.some(x => x.startsWith('PART_') && appUser.part === x.replace('PART_', ''))) return true;
+                         if (p.some(x => x.startsWith('USER_') && appUser.empId === x.replace('USER_', ''))) return true;
+                    } else {
+                         if (p === 'manager' && appUser.jobTitle === '영업관리자') return true;
+                         if (p.startsWith('PART_') && appUser.part === p.replace('PART_', '')) return true;
+                         if (p.startsWith('USER_') && appUser.empId === p.replace('USER_', '')) return true;
+                    }
+                    return false;
+                }
+                
+                if (vp === 'manager') return appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장';
+                if (vp === 'member') return true;
+                if (vp.startsWith('PART_')) return appUser.part === vp.replace('PART_', '');
+                return false;
+            }, [appUser, isAdminAuth]);
+
+            const canWrite = useCallback((appItem) => {
+                if (!appItem) return false;
+                const p = appItem.writePermission;
+                if (Array.isArray(p)) {
+                    if (p.includes('admin')) { if (isAdminAuth) return true; }
+                    if (!appUser) return false;
+                    if (p.includes('manager') && appUser.jobTitle === '영업관리자') return true;
+                    if (p.includes('member')) return true;
+                    if (p.some(x => x.startsWith('PART_') && appUser.part === x.replace('PART_', ''))) return true;
+                    if (p.some(x => x.startsWith('USER_') && appUser.empId === x.replace('USER_', ''))) return true;
+                    return false;
+                }
+                if (p === 'all') return true;
+                if (!appUser) return false;
+                if (p === 'member') return true;
+                if (p.startsWith('PART_')) return appUser.part === p.replace('PART_', '');
+                if (p.startsWith('USER_')) return appUser.empId === p.replace('USER_', '');
+                return false;
+            }, [appUser, isAdminAuth]);
+
+            const writeBlockedMsg = useCallback((appItem) => {
+                if (!appItem) return '권한이 없습니다.';
+                const p = appItem.writePermission;
+                if (!appUser) return '로그인이 필요합니다.';
+                if (p.startsWith('PART_')) return `[${p.replace('PART_', '')}] 파트 직원만 작성 가능합니다.`;
+                if (p.startsWith('USER_')) return '지정된 권한자만 작성 가능합니다.';
+                return '권한이 없습니다.';
+            }, [appUser]);
+
+            useEffect(() => {
+                if (firebaseConfig && !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+                if (firebase.apps.length > 0) {
+                    setDb(firebase.firestore());
+                    const auth = firebase.auth();
+                    const initAuth = async () => {
+                        try { 
+                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await auth.signInWithCustomToken(__initial_auth_token); 
+                            else await auth.signInAnonymously();
+                        } catch (error) { 
+                            console.log("모바일 보안 차단 우회");
+                            setIsAuthReady(true); 
+                        }
+                    };
+                    initAuth();
+                    const unsubscribe = auth.onAuthStateChanged(user => { 
+                        if (user) setFbUser(user);
+                        setIsAuthReady(true); 
+                    });
+                    return () => unsubscribe();
+                } else { setIsAuthReady(true); }
+            }, []);
+
+            useEffect(() => {
+                const savedEmpId = localStorage.getItem('hmood_empId');
+                if (savedEmpId) { setLoginForm(prev => ({ ...prev, id: savedEmpId })); setRememberMe(true); }
+                if (new URLSearchParams(window.location.search).get('mode') === 'shared') { setView('shared'); setShowSharedPopup(true); }
+            }, []);
+
+            useEffect(() => {
+                if (!users || users.length === 0) return;
+                const savedSession = localStorage.getItem('hmood_session');
+                if (!savedSession) return;
+                try {
+                    const { empId } = JSON.parse(savedSession);
+                    if (!empId) return;
+                    const found = users.find(u => u.empId === empId);
+                    if (found && !appUser) {
+                        setAppUser(found);
+                        const mode = new URLSearchParams(window.location.search).get('mode');
+                        if (mode !== 'shared') setView('daily');
+                    }
+                } catch(e) { localStorage.removeItem('hmood_session'); }
+            }, [users]);
+
+            useEffect(() => {
+                const initLocalDB = async () => {
+                    try {
+                        const idb = await new Promise((resolve) => {
+                            const req = indexedDB.open('HmoodERP_DB_V80', 1); 
+                            req.onupgradeneeded = (e) => { const dbInstance = e.target.result; ['users', 'schedules', 'notices', 'extensions', 'dynamicApps', 'dynamicPosts', 'events', 'statusOptions', 'blacklists', 'evtSettings', 'winHistory'].forEach(store => { if (!dbInstance.objectStoreNames.contains(store)) dbInstance.createObjectStore(store, { keyPath: 'id' }); }); };
+                            req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null);
+                        });
+                        if (idb) {
+                            window.localDB = idb;
+                            const loadStore = (store) => new Promise(res => { try { const req = idb.transaction(store, 'readonly').objectStore(store).getAll(); req.onsuccess = () => res(req.result); req.onerror = () => res([]); } catch(e) { res([]); } });
+                            const [lUsers, lScheds, lNotices, lExts, lApps, lPosts, lEvents, lStatusOpts, lBlacks, lEvtSet, lWinHist] = await Promise.all([loadStore('users'), loadStore('schedules'), loadStore('notices'), loadStore('extensions'), loadStore('dynamicApps'), loadStore('dynamicPosts'), loadStore('events'), loadStore('statusOptions'), loadStore('blacklists'), loadStore('evtSettings'), loadStore('winHistory')]);
+                            
+                            if (lUsers.length > 0) setUsers(lUsers); else { saveToIDB('users', defaultUsers); setUsers(defaultUsers); }
+                            if (lScheds.length > 0) setSchedules(lScheds); else { saveToIDB('schedules', defaultSchedules); setSchedules(defaultSchedules); }
+                            if (lNotices.length > 0) setNotices(lNotices.sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||'')));
+                            if (lExts.length > 0) setExtensions(lExts); else { saveToIDB('extensions', defaultExtensions); setExtensions(defaultExtensions); }
+                            if (lBlacks.length > 0) setBlacklists(lBlacks);
+                            
+                            if (lApps.length >= defaultDynamicApps.length) { setDynamicApps(lApps); } 
+                            else { 
+                                const missingApps = defaultDynamicApps.filter(da => !lApps.find(la => la.id === da.id));
+                                const mergedApps = [...lApps, ...missingApps];
+                                setDynamicApps(mergedApps); missingApps.forEach(a => saveToIDB('dynamicApps', a)); 
+                            }
+                            
+                            if (lPosts.length > 0) setDynamicPosts(lPosts.sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||'')));
+                            if (lEvents.length > 0) setCurrentEvent(lEvents.find(e => e.id === 'current' || e.status === 'closed') || null);
+                            if (lStatusOpts && lStatusOpts.length > 0) setStatusOptions(lStatusOpts.sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||''))); else { setStatusOptions(defaultStatusOptions); defaultStatusOptions.forEach(o => saveToIDB('statusOptions', o)); }
+                            if (lEvtSet.length > 0) setEventSettings(lEvtSet[0]); else { saveToIDB('evtSettings', DEFAULT_EVENT_SETTINGS); }
+                            if (lWinHist.length > 0) setWinHistory(lWinHist);
+                        }
+                    } catch (err) {
+                        console.error('DB Init Error:', err);
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+                initLocalDB();
+            }, []);
+
+            useEffect(() => {
+                if (!db || !fbUser || !isAuthReady) return;
+                const unsubApps = db.collection(`artifacts/${appId}/public/data/dynamic_apps`).onSnapshot((snapshot) => {
+                        const newApps = snapshot.docs.map(d => d.data());
+                        if(newApps.length > 0) { setDynamicApps(newApps); newApps.forEach(a => saveToIDB('dynamicApps', a)); }
+                    });
+                const unsubEvent = db.collection(`artifacts/${appId}/public/data/events`).onSnapshot((snapshot) => {
+                        const activeOrClosed = snapshot.docs.map(d => d.data()).find(e => e.id === 'current' || e.status === 'closed');
+                        if (activeOrClosed) { setCurrentEvent(activeOrClosed); saveToIDB('events', activeOrClosed); } else { setCurrentEvent(null); deleteFromIDB('events', 'current'); }
+                    });
+                const unsubNotices = db.collection(`artifacts/${appId}/public/data/notices`).onSnapshot((snapshot) => {
+                        const newNotices = snapshot.docs.map(d => d.data()).sort((a,b) => { if (a.isPinned && !b.isPinned) return -1; if (!a.isPinned && b.isPinned) return 1; return (b.createdAt||'').localeCompare(a.createdAt||''); });
+                        if(newNotices.length > 0) { setNotices(newNotices); newNotices.forEach(n => saveToIDB('notices', n)); }
+                    });
+                const unsubPosts = db.collection(`artifacts/${appId}/public/data/dynamic_posts`).onSnapshot((snapshot) => {
+                        const newPosts = snapshot.docs.map(d => d.data()).sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||''));
+                        setDynamicPosts(newPosts); newPosts.forEach(p => saveToIDB('dynamicPosts', p));
+                    });
+                const unsubStatusOpts = db.collection(`artifacts/${appId}/public/data/status_options`).onSnapshot((snapshot) => {
+                        const newOpts = snapshot.docs.map(d => d.data());
+                        if(newOpts.length > 0) {
+                            setStatusOptions(prev => {
+                                const merged = [...prev];
+                                newOpts.forEach(o => {
+                                    const idx = merged.findIndex(x => x.id === o.id);
+                                    if (idx >= 0) merged[idx] = o; else merged.push(o);
+                                });
+                                return merged.sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||''));
+                            });
+                            newOpts.forEach(o => saveToIDB('statusOptions', o));
+                        }
+                    });
+                const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists`).onSnapshot((snapshot) => {
+                        const newBls = snapshot.docs.map(d => d.data());
+                        setBlacklists(newBls); newBls.forEach(b => saveToIDB('blacklists', b));
+                    });
+                const unsubUsers = db.collection(`artifacts/${appId}/public/data/users`).onSnapshot((snapshot) => {
+                    const newUsers = snapshot.docs.map(d => d.data());
+                    if(newUsers.length > 0) { setUsers(newUsers); newUsers.forEach(u => saveToIDB('users', u)); }
+                });
+                const unsubSchedules = db.collection(`artifacts/${appId}/public/data/schedules`).onSnapshot((snapshot) => {
+                    const newScheds = snapshot.docs.map(d => d.data());
+                    if(newScheds.length > 0) { setSchedules(newScheds); newScheds.forEach(s => saveToIDB('schedules', s)); }
+                });
+                const unsubExtensions = db.collection(`artifacts/${appId}/public/data/extensions`).onSnapshot((snapshot) => {
+                    const newExts = snapshot.docs.map(d => d.data());
+                    if(newExts.length > 0) { setExtensions(newExts); newExts.forEach(e => saveToIDB('extensions', e)); }
+                });
+
+                return () => { unsubApps(); unsubEvent(); unsubNotices(); unsubPosts(); unsubStatusOpts(); unsubBlacklists(); unsubUsers(); unsubSchedules(); unsubExtensions(); };
+            }, [db, fbUser, isAuthReady]);
+            
+            const sortedUsers = useMemo(() => {
                 return [...(users || [])].filter(Boolean).sort((a, b) => {
                     if (a.jobTitle === '점장' && b.jobTitle !== '점장') return -1; 
                     if (a.jobTitle !== '점장' && b.jobTitle === '점장') return 1;
-                    
                     const wA = PART_W[a.part||''] || 99; const wB = PART_W[b.part||''] || 99;
                     if (wA !== wB) return wA - wB;
-
                     if (a.jobTitle === '파트장' && b.jobTitle !== '파트장') return -1; 
                     if (a.jobTitle !== '파트장' && b.jobTitle === '파트장') return 1;
-                    
                     const rA = RANK_W[a.position] ?? 99; const rB = RANK_W[b.position] ?? 99;
                     if (rA !== rB) return rA - rB;
-                    
                     return (a.name||'').localeCompare(b.name||'');
                 });
             }, [users]);
@@ -1179,506 +1176,110 @@ function App() {
 
             const handlePhotoSingle = async (e, setter) => { if(e.target.files[0]) { const base64Img = await resizeImage(e.target.files[0]); setter(prev => ({ ...prev, photo: base64Img })); } };
             const handleGuideImageUpload = async (e) => { if(e.target.files[0]) { const base64Img = await resizeImage(e.target.files[0]); setAppManagerForm(prev => ({ ...prev, guideImage: base64Img })); } };
-    {currentEvent.type === 'team' && currentEvent.teams ? (
-                                                <div className="space-y-4">
-                                                    <p className="text-xs font-black text-teal-500 tracking-widest mb-4">👥 팀 배정 완료!</p>
-                                                    <div className="grid grid-cols-2 gap-3">
-                                                        {currentEvent.teams.map((team, i) => (
-                                                            <div key={i} className="bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-2xl p-4 text-left">
-                                                                <p className="text-[12px] font-black text-teal-600 mb-2">{team.name}</p>
-                                                                {team.members.map((m,j) => <p key={j} className="text-[11px] font-bold text-stone-700 dark:text-stone-300">{m}</p>)}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <Icon name="partyPopper" size={64} className="mx-auto text-rose-500 mb-4"/>
-                                                    <p className="text-xs font-black text-rose-400 tracking-widest mb-4">🎉 당첨자 발표 ({currentEvent.winners?.length||0}명) 🎉</p>
-                                                    <div className="space-y-3 mb-6 max-h-48 overflow-y-auto scrollbar-hide">
-                                                        {(currentEvent.winners||[]).map((w,idx) => (
-                                                            <div key={idx} className="bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-800 rounded-2xl p-4 flex justify-between items-center">
-                                                                <div className="flex items-center gap-3"><div className="w-8 h-8 bg-rose-200 text-rose-600 rounded-full flex items-center justify-center font-black text-xs">{idx+1}</div><div className="text-left"><p className="text-lg font-black text-stone-800 dark:text-stone-200 leading-none">{w.name}</p><p className="text-[10px] font-bold text-stone-500 mt-1">{w.part} · {w.position}</p></div></div>
-                                                                <Icon name="gift" size={20} className="text-rose-400"/>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </>
-                                            )}
-                                            <div className="pt-5 border-t border-stone-100 dark:border-stone-700 space-y-3">
-                                                {currentEvent.type !== 'team' && <button onClick={handleCongratulate} className="w-full bg-rose-500 text-white font-black py-5 rounded-2xl shadow-xl btn-press text-sm flex items-center justify-center gap-2"><Icon name="thumbsUp" size={18}/> 축하해주기 ({currentEvent.congratulations||0})</button>}
-                                                {isAdminAuth && <div className="flex gap-2"><button onClick={handleArchiveEvent} className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-4 rounded-2xl btn-press text-xs">종료 처리</button><button onClick={handleResetEvent} className="flex-1 bg-rose-50 dark:bg-rose-900/30 text-rose-500 font-black py-4 rounded-2xl btn-press text-xs border border-rose-200 dark:border-rose-800">완전 삭제</button></div>}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* ADMIN VIEW */}
-                            {view === 'admin' && (
-                                <div className="max-w-3xl mx-auto pb-20 fade-in">
-                                    {!isAdminAuth && !isHealthOnlyAdmin && !appUser ? (
-                                        <div className="bg-white dark:bg-stone-900 p-10 rounded-[3rem] shadow-2xl border border-stone-200 dark:border-stone-800 text-center mt-10 max-w-sm mx-auto">
-                                            <h3 className="text-2xl font-black mb-2 text-stone-800 dark:text-stone-200">시스템 관리자</h3>
-                                            <form onSubmit={async e => { e.preventDefault(); const inputHash = await hashPassword(pinInput); const storedHash = masterPinHash || (await hashPassword(DEFAULT_PIN)); if(inputHash === storedHash) setIsAdminAuth(true); else showToast('PIN이 일치하지 않습니다.', true); }}>
-                                                <input type="password" placeholder="PIN 번호 입력" className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 py-5 rounded-2xl text-center font-black tracking-[0.5em] mb-4 outline-none focus:border-teal-500" value={pinInput} onChange={e => setPinInput(e.target.value)} autoFocus />
-                                                <button className="w-full bg-stone-800 text-white py-4 rounded-2xl font-black shadow-xl tracking-widest text-[13px] btn-press">접속</button>
-                                            </form>
-                                            {isHealthAdmin && (
-                                                <div className="mt-4 pt-4 border-t border-stone-200 dark:border-stone-800">
-                                                    <button onClick={() => { setIsHealthOnlyAdmin(true); setAdminTab('health'); }} className="w-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 font-black py-3 rounded-xl shadow-sm btn-press text-[12px] border border-teal-200 dark:border-teal-800">🏥 헬스키퍼 관리자 메뉴 접속</button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ) : !isAdminAuth && !isHealthOnlyAdmin && appUser ? (
-                                        <div className="bg-white dark:bg-stone-900 p-6 md:p-8 rounded-[3.5rem] shadow-2xl border border-stone-200 dark:border-stone-800 space-y-6 fade-in">
-                                            <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide border-b border-stone-100 dark:border-stone-700 snap-x">
-                                                {AVAILABLE_TABS.map(tab => (
-                                                    <button key={tab.id} onClick={() => setAdminTab(tab.id)} className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${currentAdminTab === tab.id ? 'bg-stone-800 text-white shadow-md' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'}`}>{tab.name}</button>
-                                                ))}
-                                                <button onClick={async () => { const pw = prompt('관리자 PIN'); if(pw) { const h = await hashPassword(pw); const sh = masterPinHash || await hashPassword(DEFAULT_PIN); if(h===sh) setIsAdminAuth(true); else showToast('PIN 오류', true); } }} className="snap-center px-4 py-3 rounded-[1.2rem] font-black text-[11px] whitespace-nowrap bg-stone-50 dark:bg-stone-800 text-stone-400 border border-stone-200 dark:border-stone-700 shrink-0">🔐 관리자</button>
-                                            </div>
-                                            
-                                            {currentAdminTab === 'apps' && (
-                                                <div className="space-y-5 fade-in">
-                                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-5 rounded-[2rem] border border-rose-100 dark:border-rose-900 space-y-4">
-                                                        <p className="text-[12px] font-black text-rose-600 tracking-widest flex items-center gap-2"><Icon name="bellRing" size={16}/> 현장 실시간 공지 등록</p>
-                                                        <textarea className="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-24 resize-none focus:border-rose-400" placeholder="새로운 공지 내용을 입력하세요" value={noticeForm.content} onChange={e => setNoticeForm({...noticeForm, content: e.target.value})}></textarea>
-                                                        <div className="flex justify-between items-center gap-2">
-                                                            <label className="flex-1 bg-white dark:bg-stone-800 text-stone-500 font-black py-4 rounded-2xl flex items-center justify-center gap-1.5 cursor-pointer shadow-sm btn-press text-[11px] border border-stone-100 dark:border-stone-700"><Icon name="camera" size={16}/> {noticeForm.photos.length > 0 ? `${noticeForm.photos.length}장 첨부됨` : '사진 첨부'}<input type="file" multiple className="hidden" accept="image/*" onChange={(e) => handlePhotoUpload(e, setNoticeForm)} /></label>
-                                                            <label className="flex items-center gap-2 shrink-0 pr-2 cursor-pointer group"><input type="checkbox" checked={noticeForm.isPinned} onChange={e => setNoticeForm({...noticeForm, isPinned: e.target.checked})} className="w-4 h-4 text-rose-500 rounded border-stone-300 focus:ring-rose-500" /><span className="text-[11px] font-black text-stone-500 group-hover:text-rose-500">📌 중요 고정</span></label>
-                                                        </div>
-                                                        <button onClick={handleNoticeSubmit} className="w-full bg-rose-500 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[12px]">공지 등록</button>
-                                                    </div>
-
-                                                    <div className="bg-white dark:bg-stone-900 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-800">
-                                                        <div className="flex items-center justify-between mb-4">
-                                                            <p className="text-[12px] font-black text-stone-500 flex items-center gap-2"><Icon name="box" size={16}/> 앱/폴더/위젯 관리</p>
-                                                            {isAdminAuth && <button onClick={() => {
-                                                                setEditingAppId(null);
-                                                                setAppManagerForm({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', viewPermission: 'admin', notifyTarget: 'none', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 1, sortOrder: 99 });
-                                                            }} className="bg-teal-500 text-white font-black px-4 py-2 rounded-xl text-[10px] btn-press shadow-md">새 항목 추가</button>}
-                                                        </div>
-
-                                                        <div className="space-y-3 max-h-[400px] overflow-y-auto scrollbar-hide pr-1">
-                                                            {(dynamicApps || []).filter(app => isAdminAuth || canWrite(app)).sort((a,b) => (a.sortOrder||99) - (b.sortOrder||99)).map(app => (
-                                                                <div key={app.id} className="flex justify-between items-center bg-stone-50 dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700">
-                                                                    <div className="flex items-center gap-3">
-                                                                        <div className={`w-10 h-10 ${app.bg} rounded-xl flex items-center justify-center`}><Icon name={app.icon} size={20} className={app.color} /></div>
-                                                                        <div className="flex flex-col">
-                                                                            <span className="text-xs font-black text-stone-800 dark:text-stone-200">{app.name} {app.isFolder ? '📁' : ''}</span>
-                                                                            <span className="text-[9px] font-bold text-stone-400 mt-0.5">
-                                                                                {app.actionType === 'guide' ? '안내형' : app.actionType === 'board' ? '게시판형' : app.actionType === 'notice' ? '자료형' : app.actionType === 'form' ? '제출형' : app.actionType === 'reservation' ? '예약형' : app.actionType === 'link' ? '링크형' : '위젯/기타'}
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="flex gap-2">
-                                                                        <button onClick={() => handleEditDynamicApp(app)} className="bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 p-2 rounded-xl text-stone-500 dark:text-stone-300 hover:text-teal-500 btn-press"><Icon name="edit" size={14}/></button>
-                                                                        {isAdminAuth && <button onClick={() => handleDeleteDynamicApp(app.id)} className="bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 p-2 rounded-xl text-stone-500 dark:text-stone-300 hover:text-rose-500 btn-press"><Icon name="trash" size={14}/></button>}
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                            {(dynamicApps || []).filter(app => isAdminAuth || canWrite(app)).length === 0 && (
-                                                                <p className="text-center text-[11px] text-stone-400 font-bold py-6">관리할 수 있는 앱/메뉴가 없습니다.</p>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {currentAdminTab === 'posts' && (
-                                                <div className="space-y-6 fade-in">
-                                                    <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-4">
-                                                        <p className="text-[12px] font-black text-indigo-600 tracking-widest flex items-center gap-2"><Icon name="clipboardList" size={18}/> 게시판/폼 데이터 조회</p>
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                            {(dynamicApps || []).filter(a => ['board','form','notice','reservation'].includes(a.actionType)).map(app => {
-                                                                const postsCount = (dynamicPosts || []).filter(p => p.appId === app.id).length;
-                                                                const canView = canViewPosts(app);
-                                                                return (
-                                                                    <div key={app.id} className={`bg-white dark:bg-stone-900 p-4 rounded-2xl border shadow-sm flex items-center justify-between transition-colors ${canView ? 'border-stone-200 dark:border-stone-700 cursor-pointer btn-press hover:border-indigo-300' : 'border-stone-100 dark:border-stone-800 opacity-50'}`} onClick={() => { if (!canView) return showToast('열람 권한이 없습니다.', true); if (app.actionType === 'notice') { setOpenedAdminBoard(app); setSelectedAdminPost(null); } else if (app.actionType === 'reservation') { setOpenedReservationApp(app); setResSelectedDate(todayStr); setResConfigMode(false); } else { setOpenedDynamicApp(app); } }}>
-                                                                        <div className="flex items-center gap-3"><div className={`w-9 h-9 ${app.bg} ${app.color} rounded-xl flex items-center justify-center`}><Icon name={app.icon} size={16}/></div><div className="flex flex-col"><span className="text-xs font-black text-stone-800 dark:text-stone-200">{app.name}</span><span className="text-[9px] font-bold text-stone-400">{app.actionType === 'form' ? '폼' : app.actionType === 'reservation' ? '예약' : '게시판'} · {canView ? `${postsCount}건` : '🔒 열람 제한'}</span></div></div>
-                                                                        {canView && <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 font-black text-[10px] px-2.5 py-1 rounded-full shrink-0">{postsCount}건</span>}
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                        {isAdminAuth && <div className="pt-4 border-t border-stone-200 dark:border-stone-700"><button onClick={handleClearAllPosts} className="bg-rose-50 dark:bg-rose-900/30 text-rose-500 font-black px-5 py-2.5 rounded-2xl flex items-center justify-center gap-2 mx-auto btn-press text-xs"><Icon name="trash" size={14}/> 모든 데이터 영구 삭제</button></div>}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {currentAdminTab === 'extensions' && (
-                                                <div className="space-y-6 fade-in">
-                                                    <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-5">
-                                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-stone-200 dark:border-stone-700 pb-4 gap-4">
-                                                            <p className="text-[12px] font-black text-teal-600 tracking-widest flex items-center gap-2"><Icon name="phoneForwarded" size={18}/> 내선번호 대량 등록</p>
-                                                            <button onClick={() => { const ws = XLSX.utils.aoa_to_sheet([['내선번호', '층수', '매장/사용자명'], ['6011', '8F', '홍길동']]); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Extensions"); XLSX.writeFile(wb, `내선번호양식.xlsx`); }} className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-teal-50 dark:bg-teal-900/30 text-teal-700 px-4 py-2.5 rounded-xl text-[11px] font-black shadow-sm btn-press"><Icon name="download" size={14}/> 양식 다운로드</button>
-                                                        </div>
-                                                        <label className="flex w-full bg-teal-600 text-white font-black px-6 py-4 rounded-2xl shadow-md text-[13px] cursor-pointer btn-press items-center justify-center gap-2 mt-2">
-                                                            <Icon name="download" size={16}/> 엑셀 파일 업로드<input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleExtExcelUpload} />
-                                                        </label>
-                                                        
-                                                        <div className="flex items-center justify-between pt-4 border-t border-stone-200 dark:border-stone-700">
-                                                            <p className="text-[12px] font-black text-teal-600 tracking-widest flex items-center gap-2"><Icon name="edit" size={18}/> 개별 수동 추가 / 수정</p>
-                                                            {editingExtId && <span className="bg-amber-100 text-amber-600 text-[10px] font-black px-3 py-1 rounded-full shadow-sm">수정 모드</span>}
-                                                        </div>
-                                                        <div className="grid grid-cols-1 gap-3">
-                                                            <div className="grid grid-cols-2 gap-3">
-                                                                <input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-500" placeholder="번호 (예: 6011)" value={extForm.number} onChange={e => setExtForm({...extForm, number: e.target.value})} />
-                                                                <input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-500" placeholder="층수 (예: 8F)" value={extForm.floor} onChange={e => setExtForm({...extForm, floor: e.target.value})} />
-                                                            </div>
-                                                            <input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-500" placeholder="사용자명 (예: 홍길동 매장)" value={extForm.user} onChange={e => setExtForm({...extForm, user: e.target.value})} />
-                                                            {editingExtId ? (
-                                                                <div className="flex gap-2">
-                                                                    <button onClick={handleCancelEditExt} className="flex-1 bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 font-black py-3 rounded-2xl text-xs btn-press">취소</button>
-                                                                    <button onClick={handleSaveExt} className="flex-1 bg-teal-600 text-white font-black py-3 rounded-2xl text-xs btn-press shadow-md">수정 완료</button>
-                                                                </div>
-                                                            ) : (
-                                                                <button onClick={handleSaveExt} className="w-full bg-stone-800 text-white font-black py-3 rounded-2xl text-xs btn-press shadow-md">추가</button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div className="bg-white dark:bg-stone-900 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-800">
-                                                        <div className="flex justify-between items-center mb-4">
-                                                            <p className="text-[11px] font-black text-stone-500">내선번호 목록 ({filteredAdminExtensions.length}개)</p>
-                                                            <input type="text" placeholder="번호 / 층 / 이름 검색" value={adminExtSearch} onChange={e => setAdminExtSearch(e.target.value)} className="bg-stone-50 dark:bg-stone-800 px-3 py-1.5 rounded-xl border border-stone-100 dark:border-stone-700 text-[11px] font-bold outline-none focus:border-teal-400 w-40" />
-                                                        </div>
-                                                        <div className="space-y-3 max-h-64 overflow-y-auto scrollbar-hide">
-                                                            {filteredAdminExtensions.map(ext => (
-                                                                <div className="flex justify-between items-center bg-stone-50 dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm" key={ext.id}>
-                                                                    <div className="flex items-center gap-3"><span className="text-sm font-black text-teal-600">{ext.number}</span><span className="text-xs font-black text-stone-700 dark:text-stone-300">{ext.floor} / {ext.user}</span></div>
-                                                                    <div className="flex gap-2">
-                                                                        <button onClick={() => { setExtForm({ number: ext.number, floor: ext.floor, user: ext.user }); setEditingExtId(ext.id); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="text-white bg-teal-500 hover:bg-teal-600 p-2 rounded-lg btn-press shadow-sm"><Icon name="edit" size={16}/></button>
-                                                                        <button onClick={() => handleDeleteExt(ext.id)} className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg btn-press shadow-sm"><Icon name="x" size={16}/></button>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                        </div>
-                                    )}
+            const renderWidget = (app) => {
+                if (app.actionType === 'widget_managers') {
+                    return (
+                        <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in">
+                            <div className="flex items-center justify-between"><h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}><Icon name={app.icon} size={16}/> {app.name}</h3>
+                            {isAdminAuth && <div className="flex gap-2"><button onClick={() => handleEditDynamicApp(app)} className="text-stone-400 hover:text-teal-500"><Icon name="edit" size={14}/></button><button onClick={() => handleDeleteDynamicApp(app.id)} className="text-stone-400 hover:text-rose-500"><Icon name="trash" size={14}/></button></div>}</div>
+                            {activeManagers.length === 0 ? <p className="text-center py-6 text-stone-300 font-bold text-[11px]">오늘 출근한 영업관리자가 없습니다.</p> : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                    {activeManagers.map(m => { const ext = (extensions || []).find(e => e?.user?.includes(m.name)); return (
+                                        <div key={m.empId} className="bg-stone-50 dark:bg-stone-800 rounded-2xl p-4 border border-stone-100 dark:border-stone-700 flex flex-col gap-2 shadow-sm"><div className="flex justify-between items-center w-full"><div className="flex flex-col"><p className="text-[15px] font-black text-stone-800 dark:text-stone-200">{m.name}</p><p className="text-[10px] text-stone-500 font-bold">{m.user?.position} · {m.user?.jobTitle}</p></div>{ext && <button onClick={(e) => callExtension(ext.number, m.name, e)} className="text-white bg-teal-500 p-2.5 rounded-full btn-press shadow-md"><Icon name="phoneCall" size={14} /></button>}</div><div className="mt-1"><span className={`px-3 py-1 rounded-lg text-[9px] font-black shadow-sm ${STATUS_THEME[m.status] || 'bg-stone-200 text-stone-500'}`}>{m.status}</span></div></div>
+                                    );})}
                                 </div>
                             )}
                         </div>
-
-                    </main>
-
-                    {view !== 'shared' && view !== 'login' && (
-                        <nav className="flex-none w-full bg-[#F9F8F6]/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200 dark:border-stone-800 flex items-center justify-around z-50 px-2 md:px-12 shadow-[0_-10px_30px_rgba(0,0,0,0.03)] font-black pb-[env(safe-area-inset-bottom,1rem)] pt-2">
-                            <button onClick={() => setView('daily')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'daily' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><Icon name="calendar" size={24}/><span className="text-[10px] tracking-tighter">일간</span></button>
-                            <button onClick={() => setView('monthly')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'monthly' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><Icon name="calendarToday" size={24}/><span className="text-[10px] tracking-tighter">월간</span></button>
-                            <button onClick={() => setView('tasks')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'tasks' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><Icon name="clipboardList" size={24}/><span className="text-[10px] tracking-tighter">담당업무</span></button>
-                            <button onClick={() => setView('directory')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'directory' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><Icon name="phoneForwarded" size={24}/><span className="text-[10px] tracking-tighter">내선</span></button>
-                            <button onClick={() => setView('event')} className={`relative flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'event' ? 'text-rose-600 dark:text-rose-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><div className={currentEvent?.status === 'waiting' ? 'animate-bounce text-amber-500' : ''}><Icon name="gift" size={24}/>{currentEvent?.status === 'waiting' && <div className="absolute top-0 right-2 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-[#F9F8F6] dark:border-stone-900"></div>}</div><span className="text-[10px] tracking-tighter">이벤트</span></button>
-                            <button onClick={() => setView('admin')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'admin' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><Icon name="settings" size={24}/><span className="text-[10px] tracking-tighter">관리</span></button>
-                        </nav>
-                    )}
-
-                    {/* MODALS */}
-                    {isNoticeModalOpen && (
-                        <ModalWrapper title="공지사항 작성" icon="edit" color="text-rose-500" onClose={() => { setIsNoticeModalOpen(false); setEditingNoticeId(null); setNoticeForm({content: '', photos: [], isPinned: false}); }}>
-                            <div className="space-y-4">
-                                <div className="bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-800 p-4 rounded-2xl mb-4"><p className="text-[10px] font-bold text-rose-600 dark:text-rose-300 leading-relaxed text-center">현장 근무자와 파트너스 전체에 노출되는 공지사항입니다.</p></div>
-                                <textarea className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-5 text-xs font-bold shadow-inner outline-none h-32 resize-none focus:border-rose-400" placeholder="공지할 내용을 입력하세요." value={noticeForm.content} onChange={e => setNoticeForm({...noticeForm, content: e.target.value})}></textarea>
-                                <label className="flex items-center gap-2 text-xs font-black cursor-pointer text-rose-500 px-2"><input type="checkbox" checked={noticeForm.isPinned} onChange={e => setNoticeForm({...noticeForm, isPinned: e.target.checked})} className="w-4 h-4" /> 중요 공지로 상단에 고정</label>
-                                <div className="flex gap-2 mt-4">
-                                    <button onClick={() => { setIsNoticeModalOpen(false); setEditingNoticeId(null); setNoticeForm({content: '', photos: [], isPinned: false}); }} className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-4 rounded-2xl btn-press text-[12px]">취소</button>
-                                    <button onClick={handleNoticeSubmit} className="flex-1 bg-rose-500 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[12px]">{editingNoticeId ? '수정 완료' : '등록'}</button>
+                    );
+                }
+                if (app.actionType === 'widget_notices') {
+                    return (
+                        <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in">
+                            <div className="flex items-center justify-between">
+                                <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}><Icon name={app.icon} size={16}/> {app.name}</h3>
+                                <div className="flex gap-2">
+                                    {canManageNotice && <button onClick={() => { setEditingNoticeId(null); setNoticeForm({content:'', photos:[], isPinned:false}); setIsNoticeModalOpen(true); }} className="text-[10px] font-black text-rose-500 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg btn-press transition-colors">공지 등록</button>}
+                                    {isAdminAuth && <button onClick={() => handleEditDynamicApp(app)} className="text-stone-400 hover:text-teal-500"><Icon name="edit" size={14}/></button>}
+                                    {isAdminAuth && <button onClick={() => handleDeleteDynamicApp(app.id)} className="text-stone-400 hover:text-rose-500"><Icon name="trash" size={14}/></button>}
                                 </div>
                             </div>
-                        </ModalWrapper>
-                    )}
-
-                    {openedReservationApp && (
-                        <ModalWrapper title={`${openedReservationApp.name} 예약`} icon={openedReservationApp.icon} color={openedReservationApp.color} onClose={() => setOpenedReservationApp(null)}>
-                            <div className="overflow-y-auto scrollbar-hide flex-1 pb-2">
-                                <div className="flex items-center justify-between bg-white dark:bg-stone-900 p-2 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 mb-6"><button onClick={() => setResSelectedDate(new Date(new Date(resSelectedDate).getTime() - 86400000).toISOString().split('T')[0])} className="p-2 text-stone-400 hover:text-teal-500"><Icon name="chevronLeft" size={20}/></button><span className="text-sm font-black text-stone-800 dark:text-stone-200">{resSelectedDate}</span><button onClick={() => setResSelectedDate(new Date(new Date(resSelectedDate).getTime() + 86400000).toISOString().split('T')[0])} className="p-2 text-stone-400 hover:text-teal-500"><Icon name="chevronRight" size={20}/></button></div>
-                                {(() => {
-                                    const operatorId = openedReservationApp.resOperatorId; const operatorName = userMap[operatorId]?.name || '담당자 미지정'; const opSched = scheduleMap[operatorId]?.[resSelectedDate]?.status; 
-                                    const opOpt = statusOptions.find(o => o.label === opSched);
-                                    const isOperatorOff = opOpt && (opOpt.isWork === false || opOpt.isWork === 'false') ? true : (!opSched || ['휴무', '연차', '대체 휴무'].includes(opSched));
-
-                                    if (isOperatorOff) return (<div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700"><div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/30 text-rose-400 rounded-full flex items-center justify-center mx-auto mb-3"><Icon name="alertCircle" size={24}/></div><p className="text-[12px] font-black text-stone-600 dark:text-stone-300 mb-1">예약 불가</p><p className="text-[10px] font-bold text-rose-500">사유: 담당자({operatorName}) 부재</p></div>);
-                                    const dayRes = (dynamicPosts || []).filter(p => p.appId === openedReservationApp.id && p.type === 'reservation' && p.resDate === resSelectedDate); const timeSlots = (openedReservationApp.resTimeSlots || '10:00,11:00').split(',').map(t => t.trim()); const maxPerSlot = openedReservationApp.resMaxPerSlot || 1; const leadTimeMs = ((openedReservationApp.resLeadTimeDays || 0) * 24 + (openedReservationApp.resLeadTimeHours || 0)) * 60 * 60 * 1000; const now = new Date(); const [y, m, d] = resSelectedDate.split('-');
-                                    return (
-                                        <div className="space-y-4"><div className="flex items-center justify-between text-[11px] font-bold text-stone-500 mb-2 px-2"><span>담당자: {operatorName} ({opSched})</span><span>타임당 인원: {maxPerSlot}명</span></div>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                {timeSlots.map(time => {
-                                                    const [hr, min] = time.split(':'); const slotTime = new Date(y, m - 1, d, hr, min); const isPast = slotTime.getTime() < now.getTime(); const isDeadlinePassed = slotTime.getTime() - leadTimeMs <= now.getTime(); const currentSlotRes = dayRes.filter(r => r.resTime === time); const isFull = currentSlotRes.length >= maxPerSlot; const myRes = currentSlotRes.find(r => r.authorId === appUser?.empId || (r.authorId.startsWith('guest_') && r.author === `${resInput.brand} ${resInput.name}`)); const isResAdmin = isAdminAuth || (appUser && appUser.empId === openedReservationApp.resOperatorId); const isDisabled = (!myRes && !isResAdmin) && (isPast || isDeadlinePassed || isFull);
-                                                    return (
-                                                        <div key={time} className={`p-4 rounded-2xl border text-center transition-colors relative ${myRes ? 'bg-teal-50 dark:bg-teal-900/30 border-teal-500' : isDisabled ? 'bg-stone-100 dark:bg-stone-800 border-stone-200 dark:border-stone-700 opacity-60' : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-700 shadow-sm cursor-pointer hover:border-teal-400 btn-press'}`} onClick={() => { 
-                                                            if (isDisabled) { if (isPast) return showToast('이미 지난 시간입니다.', true); if (isDeadlinePassed) return showToast(`예약 마감됨`, true); if (isFull) return showToast('마감되었습니다.', true); } 
-                                                            if (myRes) return showToast('이미 예약하신 시간입니다.', true); 
-                                                            setResPrompt(time); 
-                                                        }}>
-                                                            {myRes && <div className="absolute -top-2 -right-2 bg-teal-500 text-white rounded-full p-1"><Icon name="checkCircle" size={12}/></div>}<p className={`text-lg font-black ${myRes ? 'text-teal-700 dark:text-teal-400' : isDisabled ? 'text-stone-400' : 'text-stone-700 dark:text-stone-300'}`}>{time}</p><p className={`text-[10px] font-bold mt-1 ${myRes ? 'text-teal-600' : isDisabled ? 'text-rose-400' : 'text-teal-500'}`}>{myRes ? '내 예약' : isPast ? '종료됨' : isDeadlinePassed ? '마감됨' : isFull ? '예약 꽉참' : `예약 가능 (${currentSlotRes.length}/${maxPerSlot})`}</p>
-                                                            {isResAdmin && currentSlotRes.length > 0 && (<div className="mt-2 pt-2 border-t border-stone-200/50 dark:border-stone-700">{currentSlotRes.map(r => (<div key={r.id} className="flex justify-between items-center text-[9px] text-stone-500 mb-1"><span className="truncate max-w-[80px]">{r.author}</span><button onClick={(e) => { e.stopPropagation(); handleReservationCancel(r.id); }} className="text-rose-400 hover:text-rose-600 font-bold">취소</button></div>))}</div>)}
-                                                            {!isResAdmin && myRes && (<button onClick={(e) => { e.stopPropagation(); handleReservationCancel(myRes.id); }} className="w-full mt-2 bg-white dark:bg-stone-800 text-rose-500 border border-rose-200 dark:border-rose-800 rounded-lg py-1.5 text-[9px] font-black hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors">예약 취소</button>)}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
+                            <div className="space-y-3 max-h-[480px] overflow-y-auto scrollbar-hide pr-1">
+                                {(notices || []).length === 0 ? <p className="text-center py-10 text-stone-300 font-bold text-[11px]">공지사항이 없습니다.</p> : notices.slice(0, 5).map(n => { const images = n.photos || (n.photo ? [n.photo] : []); const isUnread = !readNoticeIds.includes(n.id); return (
+                                    <div key={n.id} className={`p-5 rounded-3xl border space-y-4 shadow-sm relative ${n.isPinned ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800' : 'bg-stone-50 dark:bg-stone-800 border-stone-100 dark:border-stone-700'}`} onClick={() => { if(isUnread) { const next = [...readNoticeIds, n.id]; setReadNoticeIds(next); localStorage.setItem('hmood_read_notices', JSON.stringify(next)); } }}>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-2">{n.isPinned && <div className="text-[10px] font-black text-rose-500 flex items-center gap-1"><Icon name="pin" size={14}/> <span>중요 공지</span></div>}{isUnread && <div className="w-2 h-2 bg-rose-500 rounded-full"/>}</div>
+                                            {canManageNotice && (
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => { setNoticeForm({ content: n.content, photos: n.photos || [], isPinned: !!n.isPinned }); setEditingNoticeId(n.id); setIsNoticeModalOpen(true); }} className="text-stone-400 hover:text-teal-500 btn-press"><Icon name="edit" size={14}/></button>
+                                                    <button onClick={() => handleDeleteNotice(n.id)} className="text-stone-400 hover:text-rose-500 btn-press"><Icon name="trash" size={14}/></button>
+                                                </div>
+                                            )}
                                         </div>
-                                    );
-                                })()}
-                            </div>
-                        </ModalWrapper>
-                    )}
-
-                    {resPrompt && (
-                        <ModalWrapper title="예약 정보 입력" icon="calendar" onClose={() => { setResPrompt(null); setResInput({ brand: '', name: '', ext: '', note: '' }); }}>
-                            <div className="space-y-4">
-                                <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 p-4 rounded-2xl mb-2 text-center"><p className="text-[12px] font-black text-indigo-700 dark:text-indigo-300">[{resSelectedDate} / {resPrompt}]</p><p className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1 font-bold">예약에 필요한 정보를 입력해 주세요.</p></div>
-                                <div><label className="text-[10px] font-black text-stone-500 ml-2">브랜드명 (필수)</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="예: 샤넬" value={resInput.brand} onChange={e => setResInput({...resInput, brand: e.target.value})} /></div>
-                                <div><label className="text-[10px] font-black text-stone-500 ml-2">성명/직급 (필수)</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="예: 홍길동 사원" value={resInput.name} onChange={e => setResInput({...resInput, name: e.target.value})} /></div>
-                                <div><label className="text-[10px] font-black text-stone-500 ml-2">내선번호</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="예: 6011" value={resInput.ext} onChange={e => setResInput({...resInput, ext: e.target.value})} /></div>
-                                <div><label className="text-[10px] font-black text-stone-500 ml-2">기타 (하고 싶은 말)</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="전달사항을 남겨주세요." value={resInput.note} onChange={e => setResInput({...resInput, note: e.target.value})} /></div>
-                                <div className="flex gap-2 mt-4">
-                                    <button onClick={() => { setResPrompt(null); setResInput({ brand: '', name: '', ext: '', note: '' }); }} className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-4 rounded-2xl btn-press text-[12px]">취소</button>
-                                    <button onClick={submitCustomRes} className="flex-1 bg-teal-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[12px]">예약 확정</button>
-                                </div>
-                            </div>
-                        </ModalWrapper>
-                    )}
-
-                    {showProfileEdit && (
-                        <ModalWrapper title="내 정보" icon="user" color="text-teal-500" onClose={() => { setShowProfileEdit(false); setProfileTab('pw'); }}>
-                            <div className="space-y-4">
-                                <div className="flex gap-2 bg-stone-100 dark:bg-stone-800 p-1 rounded-2xl">
-                                    <button onClick={() => setProfileTab('pw')} className={`flex-1 py-2.5 rounded-xl text-[12px] font-black transition-all btn-press ${profileTab === 'pw' ? 'bg-white dark:bg-stone-700 text-teal-600 shadow-sm' : 'text-stone-400'}`}>🔑 비밀번호 변경</button>
-                                    <button onClick={() => setProfileTab('info')} className={`flex-1 py-2.5 rounded-xl text-[12px] font-black transition-all btn-press ${profileTab === 'info' ? 'bg-white dark:bg-stone-700 text-teal-600 shadow-sm' : 'text-stone-400'}`}>👤 내 정보 수정</button>
-                                </div>
-
-                                {profileTab === 'pw' && (
-                                    <div className="space-y-4 fade-in">
-                                        <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 p-4 rounded-2xl">
-                                            <p className="text-[11px] font-bold text-teal-700 dark:text-teal-300 leading-relaxed">비밀번호는 암호화되어 저장됩니다.<br/>초기 비밀번호는 사번과 동일합니다.</p>
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] font-black text-stone-500 ml-2">새 비밀번호</label>
-                                            <input type="password" className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-teal-500 transition-colors" placeholder="새 비밀번호 입력" value={profileForm.password || ''} onChange={e => setProfileForm({...profileForm, password: e.target.value})} autoFocus />
-                                        </div>
-                                        <button onClick={async () => {
-                                            if (!profileForm.password || profileForm.password.length < 4) return showToast('비밀번호는 4자 이상 입력해주세요.', true);
-                                            const targetEmpId = profileForm.targetEmpId || appUser.empId;
-                                            const originalUser = users.find(u => u.empId === targetEmpId);
-                                            const pwHash = await hashPassword(profileForm.password);
-                                            const updatedUser = { ...originalUser, password: pwHash };
-                                            setUsers((users || []).map(u => u.empId === targetEmpId ? updatedUser : u));
-                                            saveToIDB('users', updatedUser);
-                                            if (appUser && appUser.empId === targetEmpId) setAppUser(updatedUser);
-                                            if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/users`).doc(targetEmpId).set(updatedUser, { merge: true });
-                                            setProfileForm({...profileForm, password: ''});
-                                            setShowProfileEdit(false);
-                                            showToast('비밀번호가 변경되었습니다.');
-                                        }} className="w-full bg-teal-600 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[13px]">비밀번호 변경</button>
+                                        <p className="text-[13px] font-bold leading-relaxed whitespace-pre-wrap text-stone-800 dark:text-stone-200">{n.content}</p>
+                                        {images.length > 0 && (<div className="flex gap-2 overflow-x-auto py-1 scrollbar-hide">{images.map((imgSrc, idx) => (<div key={idx} className="relative w-16 h-16 shrink-0 rounded-xl border border-stone-200 dark:border-stone-700 shadow-sm cursor-pointer btn-press" onClick={() => setExpandedImage(imgSrc)}><img src={imgSrc} className="w-full h-full object-cover rounded-xl" /></div>))}</div>)}
+                                        <div className="flex justify-between text-[9px] text-stone-400 font-black mt-2"><span>{n.author}</span><span>{formatLocalTime(n.createdAt)}</span></div>
                                     </div>
-                                )}
-
-                                {profileTab === 'info' && (
-                                    <div className="space-y-3 fade-in">
-                                        <div><label className="text-[10px] font-black text-stone-500 ml-2">성명</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" value={profileForm.name} onChange={e => setProfileForm({...profileForm, name: e.target.value})} /></div>
-                                        <div><label className="text-[10px] font-black text-stone-500 ml-2">소속 파트</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" value={profileForm.part} onChange={e => setProfileForm({...profileForm, part: e.target.value})} /></div>
-                                        <div><label className="text-[10px] font-black text-stone-500 ml-2">담당 카테고리</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="예: C&P, LTSF" value={profileForm.category || ''} onChange={e => setProfileForm({...profileForm, category: e.target.value})} /></div>
-                                        <div><label className="text-[10px] font-black text-stone-500 ml-2">담당 브랜드 <span className="text-stone-400 font-bold">(검색 가능)</span></label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="예: 샤넬, 디올, 에스티로더" value={profileForm.brands || ''} onChange={e => setProfileForm({...profileForm, brands: e.target.value})} /></div>
-                                        <div><label className="text-[10px] font-black text-stone-500 ml-2">개인 내선번호</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="예: 6011" value={profileForm.extNumber || ''} onChange={e => setProfileForm({...profileForm, extNumber: e.target.value})} /></div>
-                                        <button onClick={async () => {
-                                            const targetEmpId = profileForm.targetEmpId || appUser.empId;
-                                            const originalUser = users.find(u => u.empId === targetEmpId);
-                                            const updatedUser = { ...originalUser, name: profileForm.name, part: profileForm.part, category: profileForm.category, brands: profileForm.brands || '', extNumber: profileForm.extNumber || '', position: profileForm.position || originalUser.position, jobTitle: profileForm.jobTitle || originalUser.jobTitle };
-                                            setUsers((users || []).map(u => u.empId === targetEmpId ? updatedUser : u));
-                                            saveToIDB('users', updatedUser);
-                                            setSchedules((schedules || []).map(s => s.empId === targetEmpId ? { ...s, name: profileForm.name, part: profileForm.part } : s));
-                                            if (appUser && appUser.empId === targetEmpId) setAppUser(updatedUser);
-                                            if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/users`).doc(targetEmpId).set(updatedUser, { merge: true });
-                                            setShowProfileEdit(false);
-                                            showToast('정보가 저장되었습니다.');
-                                        }} className="w-full bg-teal-600 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[13px] mt-1">정보 업데이트</button>
-                                    </div>
-                                )}
-                            </div>
-                        </ModalWrapper>
-                    )}
-
-                    {openedFolder && (
-                        <ModalWrapper title={openedFolder.name} icon="folder" color="text-indigo-500" onClose={() => setOpenedFolder(null)}>
-                            <div className="grid grid-cols-4 gap-4 py-4">
-                                {(dynamicApps || []).filter(a => a.parentId === openedFolder.id).sort((a,b) => (a.sortOrder||99) - (b.sortOrder||99)).map((app, idx) => (
-                                    <button key={idx} className="flex flex-col items-center gap-2 group w-full" onClick={() => { setOpenedFolder(null); handleAppClick(app); }}>
-                                        <div className={`w-14 h-14 ${app.bg} ${app.color} rounded-[1rem] shadow-sm flex items-center justify-center transition-all btn-press`}><Icon name={app.icon} size={22}/></div><span className="text-[10px] font-black text-stone-600 dark:text-stone-300 tracking-tighter whitespace-nowrap overflow-hidden text-ellipsis w-full text-center">{app.name}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </ModalWrapper>
-                    )}
-
-                    {openedGuide && (
-                        <ModalWrapper title={openedGuide.name} icon={openedGuide.icon || 'bookOpen'} color={openedGuide.color || 'text-stone-800'} onClose={() => setOpenedGuide(null)}>
-                            <div className="overflow-y-auto scrollbar-hide flex-1 pb-4 space-y-6">
-                                {openedGuide.guideImage && <img src={openedGuide.guideImage} className="w-full h-auto max-h-64 object-contain rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm cursor-pointer" onClick={() => setExpandedImage(openedGuide.guideImage)} />}
-                                {openedGuide.guideContent ? <p className="text-[14px] font-bold text-stone-600 dark:text-stone-300 leading-relaxed whitespace-pre-wrap">{openedGuide.guideContent}</p> : !openedGuide.guideImage ? <div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700"><p className="text-[11px] font-bold text-stone-400">등록된 안내 내용이 없습니다.</p></div> : null}
-                            </div>
-                            <button onClick={() => setOpenedGuide(null)} className="w-full bg-stone-800 text-white font-black py-4 rounded-2xl btn-press text-[13px] tracking-widest mt-2 shrink-0">확인 완료</button>
-                        </ModalWrapper>
-                    )}
-
-                    {openedDynamicApp && (
-                        <ModalWrapper title={openedDynamicApp.name} icon={openedDynamicApp.icon} color={openedDynamicApp.color} onClose={() => setOpenedDynamicApp(null)}>
-                            <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-2xl flex items-center gap-2 px-4 py-3 shadow-sm mb-4"><Icon name="search" size={16} className="text-stone-400 shrink-0" /><input type="text" placeholder="게시글 검색..." value={boardSearch} onChange={(e) => setBoardSearch(e.target.value)} className="w-full bg-transparent outline-none text-[13px] font-bold text-stone-700 dark:text-stone-300 placeholder-stone-400" /></div>
-                            <div className="overflow-y-auto scrollbar-hide flex-1 space-y-4 pb-2 pr-1">
-                                {(()=>{
-                                    const filtered = (dynamicPosts || []).filter(p => p.appId === openedDynamicApp.id && (p.content.includes(boardSearch) || p.author.includes(boardSearch)));
-                                    if(filtered.length === 0) return <div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700"><p className="text-[11px] font-bold text-stone-400">게시글이 없습니다.</p></div>;
-                                    return filtered.map(post => (
-                                        <div key={post.id} className="bg-white dark:bg-stone-800 p-5 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm space-y-3">
-                                            <p className="text-[12px] font-bold text-stone-800 dark:text-stone-200 whitespace-pre-wrap">{post.content}</p>{post.photo && <img src={post.photo} className="w-full h-auto rounded-xl object-cover cursor-pointer border border-stone-100 dark:border-stone-700" onClick={() => setExpandedImage(post.photo)} />}
-                                            <div className="flex justify-between items-center text-[9px] text-stone-400 font-black mt-2 pt-2 border-t border-stone-50 dark:border-stone-700"><span>{post.author}</span><div className="flex items-center gap-2"><span>{formatLocalTime(post.createdAt)}</span>{isAdminAuth && (<button onClick={(e) => handleDeleteDynamicPost(e, post.id)} className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg ml-2 btn-press shadow-sm"><Icon name="trash" size={14}/></button>)}</div></div>
-                                        </div>
-                                    ));
-                                })()}
-                            </div>
-                            {canWrite(openedDynamicApp) ? (
-                                <div className="shrink-0 pt-4 border-t border-stone-200 dark:border-stone-700 mt-2 space-y-3">
-                                    {!appUser && <input className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-stone-400" placeholder="작성자 성명 (필수)" value={submitFormState.authorName || ''} onChange={e => setSubmitFormState({...submitFormState, authorName: e.target.value})} />}
-                                    <textarea className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-20 resize-none focus:border-indigo-300" placeholder="자유롭게 글을 남겨주세요." value={submitFormState.content} onChange={e => setSubmitFormState({...submitFormState, content: e.target.value})}></textarea>
-                                    <div className="flex gap-2">
-                                        <label className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer btn-press text-[11px]"><Icon name="camera" size={14}/> {submitFormState.photo ? '사진 변경' : '사진 첨부'}<input type="file" className="hidden" accept="image/*" onChange={(e) => handlePhotoSingle(e, setSubmitFormState)} /></label>
-                                        <button onClick={handleGenericPostSubmit} className="flex-1 bg-stone-800 text-white font-black py-3 rounded-xl shadow-md btn-press text-[11px]">게시글 등록</button>
-                                    </div>
-                                </div>
-                            ) : (<div className="shrink-0 pt-4 border-t border-stone-200 dark:border-stone-700 mt-2 text-center"><p className="text-[11px] font-bold text-stone-400 bg-stone-50 dark:bg-stone-800 py-3 rounded-xl border border-stone-100 dark:border-stone-700">{writeBlockedMsg(openedDynamicApp)}</p></div>)}
-                        </ModalWrapper>
-                    )}
-
-                    {openedSubmitForm && (
-                        <ModalWrapper title={openedSubmitForm.name} icon={openedSubmitForm.icon} color={openedSubmitForm.color} onClose={() => setOpenedSubmitForm(null)}>
-                            <div className="space-y-4">
-                                <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 p-4 rounded-2xl mb-4"><p className="text-[10px] font-bold text-indigo-600 dark:text-indigo-300 leading-relaxed text-center">이곳에서 제출하신 내용은 <b>본인과 관리자</b>만 열람 가능합니다.<br/>안심하고 양식을 작성해 주세요.</p></div>
-                                {canWrite(openedSubmitForm) ? (
-                                    <>
-                                        {!appUser && <input className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none focus:border-indigo-400" placeholder="작성자 성명 (필수)" value={submitFormState.authorName || ''} onChange={e => setSubmitFormState({...submitFormState, authorName: e.target.value})} />}
-                                        <textarea className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-5 text-xs font-bold shadow-inner outline-none h-32 resize-none focus:border-indigo-400" placeholder="상세 내용을 입력하세요." value={submitFormState.content} onChange={e => setSubmitFormState({...submitFormState, content: e.target.value})}></textarea>
-                                        <div className="flex gap-2">
-                                            <label className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-4 rounded-2xl flex items-center justify-center gap-1.5 cursor-pointer btn-press text-[12px]"><Icon name="camera" size={16}/> {submitFormState.photo ? '사진 변경' : '사진 첨부'}<input type="file" className="hidden" accept="image/*" onChange={(e) => handlePhotoSingle(e, setSubmitFormState)} /></label>
-                                            <button onClick={() => { handleGenericPostSubmit(); setOpenedSubmitForm(null); }} className="w-24 bg-stone-800 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[12px]">접수</button>
-                                        </div>
-                                        {submitFormState.photo && <img src={submitFormState.photo} className="w-full h-32 rounded-2xl object-cover border border-stone-200 dark:border-stone-700 mt-2 shadow-sm" />}
-                                    </>
-                                ) : (<div className="text-center"><p className="text-[11px] font-bold text-stone-400 bg-stone-50 dark:bg-stone-800 py-4 rounded-xl border border-stone-100 dark:border-stone-700">{writeBlockedMsg(openedSubmitForm)}</p></div>)}
-                            </div>
-                        </ModalWrapper>
-                    )}
-
-                    {openedAdminBoard && (
-                        <ModalWrapper title={openedAdminBoard.name} icon={openedAdminBoard.icon} color={openedAdminBoard.color} onClose={() => { setOpenedAdminBoard(null); setSelectedAdminPost(null); }}>
-                            <div className="overflow-y-auto scrollbar-hide flex-1 pb-2">
-                                {canWrite(openedAdminBoard) && !selectedAdminPost && (
-                                    <div className="bg-white dark:bg-stone-800 rounded-[2rem] border border-stone-200 dark:border-stone-700 p-5 mb-5 space-y-3 shadow-sm">
-                                        <p className="text-[11px] font-black text-indigo-600 flex items-center gap-1.5"><Icon name="edit" size={14}/> 공지/자료 등록</p>
-                                        <input className="w-full bg-stone-50 dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-indigo-400" placeholder="제목" value={adminBoardForm.title} onChange={e => setAdminBoardForm({...adminBoardForm, title: e.target.value})} />
-                                        <textarea className="w-full bg-stone-50 dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-24 resize-none" placeholder="내용" value={adminBoardForm.content} onChange={e => setAdminBoardForm({...adminBoardForm, content: e.target.value})} />
-                                        <label className="flex items-center gap-2 cursor-pointer bg-stone-50 dark:bg-stone-900 border border-dashed border-stone-300 dark:border-stone-600 rounded-xl px-4 py-2.5 btn-press hover:bg-stone-100 transition-colors">
-                                            <Icon name="camera" size={14} className="text-stone-400"/><span className="text-[11px] font-bold text-stone-400">{adminBoardForm.photo ? '사진 변경' : '사진 첨부 (선택)'}</span>
-                                            <input type="file" accept="image/*" className="hidden" onChange={async e => { if(e.target.files[0]) { const b64 = await resizeImage(e.target.files[0]); setAdminBoardForm(prev => ({...prev, photo: b64})); e.target.value=''; }}}/>
-                                        </label>
-                                        {adminBoardForm.photo && <div className="relative w-16 h-16"><img src={adminBoardForm.photo} className="w-full h-full object-cover rounded-xl border"/><button onClick={() => setAdminBoardForm(p=>({...p,photo:''}))} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">×</button></div>}
-                                        <div className="flex gap-2"><button onClick={handleAdminBoardPost} className="w-full bg-indigo-600 text-white font-black py-3 rounded-2xl shadow-md btn-press text-[11px]">게시글 등록</button></div>
-                                    </div>
-                                )}
-                                {selectedAdminPost ? (
-                                    <div className="bg-white dark:bg-stone-800 rounded-[2rem] border border-stone-200 dark:border-stone-700 p-6 shadow-sm space-y-4 fade-in">
-                                        <h4 className="text-[16px] font-black text-stone-800 dark:text-stone-200">{selectedAdminPost.title}</h4><p className="text-[10px] text-stone-400 font-bold mt-1">{selectedAdminPost.author} · {formatLocalTime(selectedAdminPost.createdAt)}</p>
-                                        {selectedAdminPost.photo && <img src={selectedAdminPost.photo} className="w-full h-auto rounded-2xl object-cover cursor-pointer" onClick={() => setExpandedImage(selectedAdminPost.photo)} />}
-                                        <div className="border-t border-stone-100 dark:border-stone-700 pt-4"><p className="text-[13px] font-bold text-stone-700 dark:text-stone-300 whitespace-pre-wrap">{selectedAdminPost.content}</p></div>
-                                        <button onClick={() => setSelectedAdminPost(null)} className="w-full bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300 font-black py-3 rounded-2xl btn-press text-[11px]">목록으로</button>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {(dynamicPosts || []).filter(p => p.appId === openedAdminBoard.id).length === 0 && (<div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700"><p className="text-[11px] font-bold text-stone-400">등록된 게시글이 없습니다.</p></div>)}
-                                        {(dynamicPosts || []).filter(p => p.appId === openedAdminBoard.id).map(post => (
-                                            <div key={post.id} className="flex items-center justify-between bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm group hover:border-indigo-200 transition-colors">
-                                                <button onClick={() => setSelectedAdminPost(post)} className="flex-1 text-left btn-press"><p className="text-[13px] font-black text-stone-800 dark:text-stone-200 truncate group-hover:text-indigo-600">{post.title}</p><p className="text-[10px] text-stone-400 font-bold mt-1">{post.author} · {formatLocalTime(post.createdAt)}</p></button>
-                                                {canWrite(openedAdminBoard) && (<button onClick={(e) => handleDeleteDynamicPost(e, post.id)} className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg ml-2 btn-press shadow-sm"><Icon name="trash" size={14}/></button>)}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </ModalWrapper>
-                    )}
-
-                    {showExtModal && (
-                        <ModalWrapper title="내선번호 통합 조회" icon="phoneForwarded" color="text-teal-500" onClose={() => setShowExtModal(false)}>
-                            <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl flex items-center gap-2 px-4 py-3 shadow-sm mb-4"><Icon name="search" size={16} className="text-stone-400 shrink-0" /><input type="text" placeholder="번호, 층, 사용자 검색..." value={extSearch} onChange={(e) => setExtSearch(e.target.value)} className="w-full bg-transparent outline-none text-[13px] font-bold text-stone-700 dark:text-stone-300 placeholder-stone-400" /></div>
-                            <div className="overflow-y-auto scrollbar-hide flex-1 space-y-4 pb-2 pr-1">
-                                <div className="bg-rose-50 dark:bg-rose-900/20 p-4 rounded-2xl border border-rose-200 dark:border-rose-800 flex justify-between items-center cursor-pointer btn-press hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors" onClick={(e) => callExtension('6112', '면세보안 (안전실)', e)}><div className="flex flex-col ml-3"><span className="text-[14px] font-black text-rose-700 dark:text-rose-400">면세보안 (안전실)</span><span className="text-[10px] font-bold text-rose-500 mt-0.5">긴급 연락처 고정</span></div><button className="text-[14px] font-black text-white bg-rose-500 px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2"><Icon name="phoneCall" size={16}/> 6112</button></div>
-                                <h4 className="text-[11px] font-black text-stone-400 tracking-widest mb-3 pt-2">전체 연락처</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    {filteredExtensions.map(ext => (
-                                        <div key={ext.id} className="bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-100 dark:border-stone-800 shadow-sm flex justify-between items-center cursor-pointer hover:border-teal-200 transition-colors" onClick={(e) => callExtension(ext?.number, ext?.user, e)}>
-                                            <div className="flex items-center gap-3"><button onClick={(e) => { e.stopPropagation(); toggleFavExt(ext.id); }} className={`${favoriteExts.includes(ext.id) ? 'text-amber-400' : 'text-stone-300'} hover:scale-110 transition-all`}><Icon name={favoriteExts.includes(ext.id) ? 'starFilled' : 'star'} size={20}/></button><div className="flex flex-col"><span className="text-[14px] font-black text-stone-700 dark:text-stone-300">{ext?.user}</span><span className="text-[11px] font-bold text-stone-400 mt-0.5">{ext?.floor}</span></div></div>
-                                            <button className="text-[13px] font-black text-stone-600 dark:text-stone-300 bg-stone-50 dark:bg-stone-800 px-4 py-2.5 rounded-xl btn-press border border-stone-200 dark:border-stone-700 flex items-center gap-2"><Icon name="phoneCall" size={14}/> {ext?.number}</button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </ModalWrapper>
-                    )}
-
-                    {confirmDialog.isOpen && (
-                        <div className="fixed inset-0 z-[400] flex items-center justify-center p-4 bg-stone-900/80 backdrop-blur-sm fade-in">
-                            <div className="bg-white dark:bg-stone-800 w-full max-w-sm rounded-[3rem] p-8 shadow-2xl text-center">
-                                <p className="text-[14px] font-black text-stone-600 dark:text-stone-300 whitespace-pre-wrap leading-relaxed mb-8 mt-4">{confirmDialog.message}</p>
-                                <div className="flex gap-3">
-                                    <button onClick={confirmDialog.onCancel} className="flex-1 bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300 font-black py-4 rounded-2xl text-[13px] btn-press">취소</button>
-                                    {confirmDialog.telHref ? (<a href={confirmDialog.telHref} onClick={confirmDialog.onCancel} className="flex-1 flex items-center justify-center bg-teal-600 text-white font-black py-4 rounded-2xl text-[13px] decoration-none btn-press">통화 연결</a>) : (<button onClick={confirmDialog.onConfirm} className="flex-1 bg-stone-800 text-white font-black py-4 rounded-2xl text-[13px] btn-press">확인</button>)}
-                                </div>
+                                )})}
                             </div>
                         </div>
-                    )}
+                    );
+                }
+                return null;
+            };
 
-                    {/* 월간 셀 말풍선 팝업 */}
-                    {expandedCell && (
-                        <div className="fixed inset-0 z-[200]" onClick={() => setExpandedCell(null)}>
-                            <div
-                                className="absolute z-[201] pointer-events-none"
-                                style={{
-                                    left: Math.min(expandedCell.rect.left + expandedCell.rect.width / 2, window.innerWidth - 120),
-                                    top: expandedCell.rect.bottom + 6,
-                                    transform: 'translateX(-50%)'
-                                }}
-                            >
-                                <div className={`px-3 py-2 rounded-xl shadow-xl text-[12px] font-black whitespace-nowrap border ${STATUS_THEME[expandedCell.status] || 'bg-stone-800 text-white border-stone-700'}`}
-                                    style={STATUS_INLINE_STYLE[expandedCell.status] || {}}>
-                                    {expandedCell.status}
-                                </div>
-                                <div className="w-2 h-2 mx-auto -mt-1 rotate-45 rounded-sm"
-                                    style={{ background: 'inherit' }}
-                                />
+            const [wBoardForm, setWBoardForm] = useState({ title: '', content: '', photo: '' });
+            const [wBoardEditId, setWBoardEditId] = useState(null);
+            const [wBoardOpenId, setWBoardOpenId] = useState(null);
+            const [wBoardSelectedPost, setWBoardSelectedPost] = useState(null);
+
+            const canManageWidgetBoard = useMemo(() => isAdminAuth || (appUser && appUser.jobTitle === '영업관리자'), [isAdminAuth, appUser]);
+
+            const handleSaveWidgetPost = async (appId_) => {
+                if (!wBoardForm.title || !wBoardForm.content) return showToast('제목과 내용을 입력해주세요.', true);
+                const id = wBoardEditId || Date.now().toString() + '_' + Math.random().toString(36).substr(2,5);
+                const post = { id, appId: appId_, title: wBoardForm.title, content: wBoardForm.content, photo: wBoardForm.photo || '', author: appUser?.name || '관리자', authorId: appUser?.empId || '', createdAt: wBoardEditId ? (dynamicPosts.find(p=>p.id===wBoardEditId)?.createdAt || new Date().toISOString()) : new Date().toISOString(), isEdited: !!wBoardEditId, updatedAt: wBoardEditId ? new Date().toISOString() : null };
+                setDynamicPosts(prev => wBoardEditId ? prev.map(p => p.id===id ? post : p) : [post, ...prev]);
+                saveToIDB('dynamicPosts', post);
+                if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(id).set(post, { merge: true });
+                setWBoardForm({ title: '', content: '', photo: '' }); setWBoardEditId(null);
+                showToast(wBoardEditId ? '수정되었습니다.' : '등록되었습니다.');
+            };
+
+            const handleDeleteWidgetPost = (postId) => {
+                setConfirmDialog({ isOpen: true, message: '이 게시글을 삭제하시겠습니까?', onConfirm: async () => {
+                    setConfirmDialog({ isOpen: false });
+                    setDynamicPosts(prev => prev.filter(p => p.id !== postId));
+                    setWBoardSelectedPost(null);
+                    deleteFromIDB('dynamicPosts', postId);
+                    if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(postId).delete();
+                    showToast('삭제되었습니다.');
+                }, onCancel: () => setConfirmDialog({ isOpen: false }) });
+            };
+
+            const renderWidgetBoard = (app) => {
+                const posts = (dynamicPosts || []).filter(p => p.appId === app.id).sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||''));
+                return (
+                    <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in">
+                        <div className="flex items-center justify-between">
+                            <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}><Icon name={app.icon} size={16}/> {app.name}</h3>
+                            <div className="flex gap-2">
+                                {canManageWidgetBoard && <button onClick={() => { setWBoardForm({ title:'', content:'', photo:'' }); setWBoardEditId(null); setWBoardOpenId(wBoardOpenId === app.id ? null : app.id); }} className="text-[10px] font-black text-teal-600 bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 px-3 py-1.5 rounded-lg btn-press transition-colors">{wBoardOpenId===app.id?'닫기':'글쓰기'}</button>}
+                                {isAdminAuth && <button onClick={() => handleEditDynamicApp(app)} className="text-stone-400 hover:text-teal-500"><Icon name="edit" size={14}/></button>}
+                                {isAdminAuth && <button onClick={() => handleDeleteDynamicApp(app.id)} className="text-stone-400 hover:text-rose-500"><Icon name="trash" size={14}/></button>}
                             </div>
                         </div>
-                    )}
-
-                    {expandedImage && (
-                        <div className="fixed inset-0 z-[300] bg-black/90 flex items-center justify-center p-4 fade-in cursor-pointer" onClick={() => setExpandedImage(null)}>
-                            <img src={expandedImage} className="max-w-full max-h-full rounded-2xl object-contain shadow-2xl cursor-auto" onClick={e => e.stopPropagation()} />
-                            <button className="absolute top-6 right-6 text-white p-3 bg-white/20 hover:bg-white/40 rounded-full btn-press"><Icon name="x" size={28}/></button>
-                        </div>
-                    )}
-
-                    {toast && (
-                        <div className={`fixed top-24 left-1/2 -translate-x-1/2 z-[400] backdrop-blur-md px-10 py-5 rounded-[2rem] shadow-2xl font-black text-[13px] flex items-center gap-3 border ${toastError ? 'bg-rose-500/95 text-white border-rose-400' : 'bg-stone-800/95 text-white border-white/10'}`}>
-                            <Icon name={toastError ? "alertCircle" : "checkCircle"} size={18} className={toastError ? "text-white" : "text-teal-400"}/>
-                            {toast}
-                        </div>
-                    )}
-                </div>
-            );
-        }
-        const root = ReactDOM.createRoot(document.getElementById('root')); root.render(<App />);
-    </script>
-</body>
-</html>
+                        {wBoardOpenId === app.id && canManageWidgetBoard && (
+                            <div className="bg-stone-50 dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 space-y-3 fade-in">
+                                <input className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-400" placeholder="제목" value={wBoardForm.title} onChange={e => setWBoardForm({...wBoardForm, title: e.target.value})}/>
+                                <textarea className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-400 h-24 resize-none" placeholder="내용" value={wBoardForm.content} onChange={e => setWBoardForm({...wBoardForm, content: e.target.value})}/>
+                                <label className="flex items-center gap-2 cursor-pointer bg-white dark:bg-stone-900 border border-dashed border-stone-300 dark:border-stone-600 rounded-xl px-4 py-2.5 btn-press hover:bg-stone-50 transition-colors">
+                                    <Icon name="camera" size={14} className="text-stone-400"/><span className="text-[11px] font-bold text-stone-400">{wBoardForm.photo ? '사진 변경' : '사진 첨부 (선택)'}</span>
+                                    <input type="file" accept="image/*" className="hidden" onChange={async e => { if(e.target.files[0]) { const b64 = await resizeImage(e.target.files[0]); setWBoardForm(prev => ({...prev, photo: b64})); e.target.value=''; }}}/>
+                                </label>
+                                {wBoardForm.photo && <div className="relative w-16 h-16"><img src={wBoardForm.photo} className="w-full h-full object-cover rounded-xl border"/><button onClick={() => setWBoardForm(p=>({...p,photo:''}))} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">×</button></div>}
+                                <div className="flex gap-2">
+                                    <button onClick={() => { setWBoardOpenId(null); setWBoardEditId(null); setWBoardForm({title:'',content:'',photo:''}); }} className="flex-1 bg-stone-200 dark:bg-stone-700 text-stone-500 font-black py-2.5 rounded-xl btn-press text-xs">취소</button>
+                                    <button onClick={() => handleSaveWidgetPost(app.id)} className="flex-1 bg-teal-600 text-white font-black py-2.5 rounded-xl btn-press text-xs">{wBoardEditId ? '수정 완료' : '등록'}</button>
+                                </div>
+                            </div>
+                        )}
