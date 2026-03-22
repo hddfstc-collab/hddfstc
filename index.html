@@ -2173,6 +2173,9 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                             ))}
                                                         </div>
                                                     </div>
+                                                )}
+
+                                            {currentAdminTab === 'extensions' && (
                                                 <div className="space-y-6 fade-in">
                                                     <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-5">
                                                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-stone-200 dark:border-stone-700 pb-4 gap-4">
@@ -2221,7 +2224,6 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                         </div>
                                                     </div>
                                                 </div>
-                                                 </div>
                                             )}
 
                                             {currentAdminTab === 'security' && (
