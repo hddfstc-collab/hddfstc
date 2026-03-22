@@ -424,11 +424,11 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                 return appUser && (dynamicApps || []).some(app => app.actionType === 'reservation' && app.resOperatorId === appUser.empId);
             }, [appUser, dynamicApps]);
 
-            const AVAILABLE_TABS = useMemo(() => {
+const AVAILABLE_TABS = useMemo(() => {
                 return [ 
                     { id: 'health', name: '🏥 헬스키퍼 관리', show: isHealthOnlyAdmin || isAdminAuth || isHealthAdmin }, 
-                    { id: 'content', name: '📝 콘텐츠 관리', show: !isAdminAuth && !isHealthOnlyAdmin && appUser && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장') },
-                    { id: 'apps', name: '앱/공지 관리', show: isAdminAuth && !isHealthOnlyAdmin }, 
+                    // content 탭을 apps 탭으로 통합하여 직영페이지에서 한 번에 관리
+                    { id: 'apps', name: '공지 및 앱/폴더 관리', show: isAdminAuth || (!isHealthOnlyAdmin && appUser && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) }, 
                     { id: 'members', name: '구성원/조직 관리', show: isAdminAuth && !isHealthOnlyAdmin }, 
                     { id: 'schedules', name: '스케줄 관리', show: isAdminAuth && !isHealthOnlyAdmin }, 
                     { id: 'extensions', name: '내선번호', show: isAdminAuth && !isHealthOnlyAdmin }, 
@@ -455,13 +455,29 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const showToast = (m, isError = false) => { setToast(m); setToastError(isError); setTimeout(() => { setToast(''); setToastError(false); }, 3000); };
             const showConfirm = (options) => { setConfirmDialog({ ...options, isOpen: true }); };
 
-            // 제출 데이터 열람 권한
+// 제출 데이터 열람 권한
             const canViewPosts = useCallback((appItem) => {
                 if (!appItem) return false;
                 if (isAdminAuth) return true;
                 if (!appUser) return false;
                 const vp = appItem.viewPermission || 'admin';
-                if (vp === 'admin') return false;
+                
+                // [권한 추가] 관리자 전용 열람 앱이라도, 영업관리자가 해당 앱의 '작성 권한(writePermission)'을 부여받았다면 볼 수 있도록 허용
+                if (vp === 'admin') {
+                    const p = appItem.writePermission;
+                    if (p === 'all' && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) return true; 
+                    if (Array.isArray(p)) {
+                         if (p.includes('manager') && appUser.jobTitle === '영업관리자') return true;
+                         if (p.some(x => x.startsWith('PART_') && appUser.part === x.replace('PART_', ''))) return true;
+                         if (p.some(x => x.startsWith('USER_') && appUser.empId === x.replace('USER_', ''))) return true;
+                    } else {
+                         if (p === 'manager' && appUser.jobTitle === '영업관리자') return true;
+                         if (p.startsWith('PART_') && appUser.part === p.replace('PART_', '')) return true;
+                         if (p.startsWith('USER_') && appUser.empId === p.replace('USER_', '')) return true;
+                    }
+                    return false;
+                }
+                
                 if (vp === 'manager') return appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장';
                 if (vp === 'member') return true;
                 if (vp.startsWith('PART_')) return appUser.part === vp.replace('PART_', '');
@@ -1930,27 +1946,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                 ))}
                                                 <button onClick={async () => { const pw = prompt('관리자 PIN'); if(pw) { const h = await hashPassword(pw); const sh = masterPinHash || await hashPassword(DEFAULT_PIN); if(h===sh) setIsAdminAuth(true); else showToast('PIN 오류', true); } }} className="snap-center px-4 py-3 rounded-[1.2rem] font-black text-[11px] whitespace-nowrap bg-stone-50 dark:bg-stone-800 text-stone-400 border border-stone-200 dark:border-stone-700 shrink-0">🔐 관리자</button>
                                             </div>
-                                            {currentAdminTab === 'content' && (
-                                                <div className="space-y-5 fade-in">
-                                                    <p className="text-[12px] font-black text-teal-600 flex items-center gap-2"><Icon name="edit" size={16}/> 권한 부여된 콘텐츠 작성/관리</p>
-                                                    {(dynamicApps || []).filter(a => ['board','form','notice','widget_board'].includes(a.actionType) && canWrite(a)).length === 0 ? (
-                                                        <div className="text-center py-12 text-stone-400 font-bold text-sm">작성 권한이 부여된 앱이 없습니다.</div>
-                                                    ) : (dynamicApps || []).filter(a => ['board','form','notice','widget_board'].includes(a.actionType) && canWrite(a)).map(app => (
-                                                        <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2rem] p-5 border border-stone-200 dark:border-stone-800 shadow-sm space-y-3">
-                                                            <div className="flex items-center justify-between">
-                                                                <h3 className={`text-[13px] font-black flex items-center gap-2 ${app.color}`}><Icon name={app.icon} size={16}/> {app.name}</h3>
-                                                                <span className="text-[9px] text-stone-400 font-bold">{app.actionType === 'widget_board' ? '파트너스 게시판' : app.actionType === 'notice' ? '공지/자료' : '게시판'}</span>
-                                                            </div>
-                                                            {app.actionType === 'notice' && (
-                                                                <div className="space-y-2">
-                                                                    <input className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-500" placeholder="제목" value={adminBoardForm.title} onChange={e => setAdminBoardForm({...adminBoardForm, title: e.target.value})}/>
-                                                                    <textarea className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl p-3 text-xs font-bold h-20 resize-none outline-none focus:border-teal-500" placeholder="내용" value={adminBoardForm.content} onChange={e => setAdminBoardForm({...adminBoardForm, content: e.target.value})}></textarea>
-                                                                    <div className="flex gap-2">
-                                                                        <button onClick={() => { setOpenedAdminBoard(app); setSelectedAdminPost(null); }} className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-600 font-black py-2.5 rounded-xl btn-press text-xs">기존 글 보기</button>
-                                                                        <button onClick={() => handleAdminBoardPost(app.id)} className="flex-1 bg-teal-600 text-white font-black py-2.5 rounded-xl btn-press text-xs shadow-md">등록</button>
-                                                                    </div>
-                                                                </div>
-                                                            )}
+                                          
                                                             {(app.actionType === 'board' || app.actionType === 'widget_board') && (
                                                                 <button onClick={() => { if(app.actionType === 'widget_board') { setWBoardOpenId(app.id); setWBoardForm({title:'',content:'',photo:''}); setWBoardEditId(null); } else { setOpenedDynamicApp(app); } }} className="w-full bg-teal-50 dark:bg-teal-900/20 text-teal-600 font-black py-3 rounded-xl btn-press text-xs border border-teal-200 dark:border-teal-800">게시판 열기 / 글쓰기</button>
                                                             )}
@@ -2135,26 +2131,56 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                 </div>
                                             )}
 
-                                            {currentAdminTab === 'apps' && (
-                                                <div className="space-y-5 fade-in">
-                                                    {/* 공지사항 관리 섹션 */}
-                                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-5 rounded-[2rem] border border-rose-100 dark:border-rose-900 space-y-4">
-                                                        <p className="text-[12px] font-black text-rose-600 tracking-widest flex items-center gap-2"><Icon name="bellRing" size={16}/> 공지사항 관리</p>
-                                                        <textarea className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold h-24 shadow-inner outline-none focus:border-rose-400 resize-none" placeholder="공지 내용 입력" value={noticeForm.content} onChange={e => setNoticeForm({...noticeForm, content: e.target.value})}></textarea>
-                                                        <div className="flex items-center justify-between">
-                                                            <label className="flex items-center gap-2 text-xs font-black cursor-pointer text-rose-500"><input type="checkbox" checked={noticeForm.isPinned} onChange={e => setNoticeForm({...noticeForm, isPinned: e.target.checked})} className="w-4 h-4" /> 상단 고정</label>
-                                                            <div className="flex gap-2">
-                                                                {editingNoticeId && <button onClick={() => { setEditingNoticeId(null); setNoticeForm({ content: '', photos: [], isPinned: false }); }} className="bg-stone-200 dark:bg-stone-700 text-stone-600 font-black px-4 py-2 rounded-xl btn-press text-xs">취소</button>}
-                                                                <button onClick={handleNoticeSubmit} className="bg-rose-600 text-white font-black px-4 py-2 rounded-xl btn-press text-xs">{editingNoticeId ? '수정 완료' : '등록'}</button>
-                                                            </div>
-                                                        </div>
-                                                        <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-hide">
-                                                            {notices.map(n => (
-                                                                <div key={n.id} className="bg-white dark:bg-stone-900 p-3 rounded-2xl border border-stone-100 dark:border-stone-700 flex justify-between items-center gap-2">
-                                                                    <div className="flex items-center gap-2 min-w-0"><div className={`w-1.5 h-1.5 rounded-full shrink-0 ${n.isPinned ? 'bg-rose-500' : 'bg-stone-300'}`}/><span className="text-[11px] font-bold text-stone-700 dark:text-stone-200 truncate">{n.content}</span></div>
-                                                                    <div className="flex gap-1 shrink-0"><button onClick={() => { setNoticeForm({ content: n.content, photos: n.photos || [], isPinned: !!n.isPinned }); setEditingNoticeId(n.id); }} className="text-white bg-teal-500 p-1.5 rounded-lg btn-press"><Icon name="edit" size={13}/></button><button onClick={() => handleDeleteNotice(n.id)} className="text-white bg-rose-400 p-1.5 rounded-lg btn-press"><Icon name="trash" size={13}/></button></div>
-                                                                </div>
-                                                            ))}
+                                          {currentAdminTab === 'apps' && (
+                <div className="space-y-5 fade-in">
+                    {/* 공지사항 통합 관리 섹션 (관리자 및 권한 있는 영업관리자 공통) */}
+                    <div className="bg-rose-50 dark:bg-rose-900/10 p-5 rounded-[2rem] border border-rose-100 dark:border-rose-900 space-y-4">
+                        <p className="text-[12px] font-black text-rose-600 tracking-widest flex items-center gap-2"><Icon name="bellRing" size={16}/> 현장 실시간 공지 등록</p>
+                        <textarea className="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-24 resize-none focus:border-rose-400" placeholder="새로운 공지 내용을 입력하세요" value={noticeForm.content} onChange={e => setNoticeForm({...noticeForm, content: e.target.value})}></textarea>
+                        <div className="flex justify-between items-center gap-2">
+                            <label className="flex-1 bg-white dark:bg-stone-800 text-stone-500 font-black py-4 rounded-2xl flex items-center justify-center gap-1.5 cursor-pointer shadow-sm btn-press text-[11px] border border-stone-100 dark:border-stone-700"><Icon name="camera" size={16}/> {noticeForm.photos.length > 0 ? `${noticeForm.photos.length}장 첨부됨` : '사진 첨부'}<input type="file" multiple className="hidden" accept="image/*" onChange={(e) => handlePhotoUpload(e, setNoticeForm)} /></label>
+                            <label className="flex items-center gap-2 shrink-0 pr-2 cursor-pointer group"><input type="checkbox" checked={noticeForm.isPinned} onChange={e => setNoticeForm({...noticeForm, isPinned: e.target.checked})} className="w-4 h-4 text-rose-500 rounded border-stone-300 focus:ring-rose-500" /><span className="text-[11px] font-black text-stone-500 group-hover:text-rose-500">📌 중요 고정</span></label>
+                        </div>
+                        <button onClick={handleNoticeSubmit} className="w-full bg-rose-500 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[12px]">공지 등록</button>
+                    </div>
+
+                    {/* 앱/폴더/위젯 관리 섹션 (영업관리자는 작성 권한 부여된 앱만 표시) */}
+                    <div className="bg-white dark:bg-stone-900 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-800">
+                        <div className="flex items-center justify-between mb-4">
+                            <p className="text-[12px] font-black text-stone-500 flex items-center gap-2"><Icon name="box" size={16}/> 앱/폴더/위젯 관리</p>
+                            {/* 항목 추가는 최고관리자만 가능하도록 제한 */}
+                            {isAdminAuth && <button onClick={() => {
+                                setEditingAppId(null);
+                                setAppManagerForm({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', viewPermission: 'admin', notifyTarget: 'none', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 1, sortOrder: 99 });
+                            }} className="bg-teal-500 text-white font-black px-4 py-2 rounded-xl text-[10px] btn-press shadow-md">새 항목 추가</button>}
+                        </div>
+
+                        <div className="space-y-3 max-h-[400px] overflow-y-auto scrollbar-hide pr-1">
+                            {/* 관리자는 전부 보이고, 영업관리자는 canWrite(app)이 true인 것만 노출 */}
+                            {(dynamicApps || []).filter(app => isAdminAuth || canWrite(app)).sort((a,b) => (a.sortOrder||99) - (b.sortOrder||99)).map(app => (
+                                <div key={app.id} className="flex justify-between items-center bg-stone-50 dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-10 h-10 ${app.bg} rounded-xl flex items-center justify-center`}><Icon name={app.icon} size={20} className={app.color} /></div>
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-black text-stone-800 dark:text-stone-200">{app.name} {app.isFolder ? '📁' : ''}</span>
+                                            <span className="text-[9px] font-bold text-stone-400 mt-0.5">
+                                                {app.actionType === 'guide' ? '안내형' : app.actionType === 'board' ? '게시판형' : app.actionType === 'notice' ? '자료형' : app.actionType === 'form' ? '제출형' : app.actionType === 'reservation' ? '예약형' : app.actionType === 'link' ? '링크형' : '위젯/기타'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => handleEditDynamicApp(app)} className="bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 p-2 rounded-xl text-stone-500 dark:text-stone-300 hover:text-teal-500 btn-press"><Icon name="edit" size={14}/></button>
+                                        {isAdminAuth && <button onClick={() => handleDeleteDynamicApp(app.id)} className="bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 p-2 rounded-xl text-stone-500 dark:text-stone-300 hover:text-rose-500 btn-press"><Icon name="trash" size={14}/></button>}
+                                    </div>
+                                </div>
+                            ))}
+                            {(dynamicApps || []).filter(app => isAdminAuth || canWrite(app)).length === 0 && (
+                                <p className="text-center text-[11px] text-stone-400 font-bold py-6">관리할 수 있는 앱/메뉴가 없습니다.</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
                                                         </div>
                                                     </div>
                                                 <div className="space-y-6 fade-in">
