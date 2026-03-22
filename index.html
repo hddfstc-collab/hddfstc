@@ -2151,7 +2151,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                 </div>
                                             )}
 
-                                            {currentAdminTab === 'apps' && (
+{currentAdminTab === 'apps' && (
                                                 <div className="space-y-5 fade-in">
                                                     {/* 공지사항 관리 섹션 */}
                                                     <div className="bg-rose-50 dark:bg-rose-900/10 p-5 rounded-[2rem] border border-rose-100 dark:border-rose-900 space-y-4">
@@ -2173,6 +2173,11 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                             ))}
                                                         </div>
                                                     </div>
+                                                </div>
+                                            )}
+
+                                            {/* 💡 새로 독립된 내선번호 관리 탭 */}
+                                            {currentAdminTab === 'extensions' && (
                                                 <div className="space-y-6 fade-in">
                                                     <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-5">
                                                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-stone-200 dark:border-stone-700 pb-4 gap-4">
@@ -2221,7 +2226,6 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                         </div>
                                                     </div>
                                                 </div>
-                                                 </div>
                                             )}
 
                                             {currentAdminTab === 'security' && (
@@ -2293,12 +2297,6 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                     </div>
                                                 </div>
                                             )}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
                     </main>
 
                     {/* 💡 파트너스 페이지(shared) 및 로그인 화면에서는 하단 탭 숨김 */}
