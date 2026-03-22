@@ -132,44 +132,54 @@
         
         const ACTION_OPTIONS = [ {v:'guide', l:'📘 안내형'}, {v:'board', l:'📝 게시판형'}, {v:'notice', l:'📢 공지/자료형'}, {v:'form', l:'📮 폼 제출형'}, {v:'reservation', l:'📅 스마트 예약형'}, {v:'link', l:'🔗 링크형'}, {v:'popup_ext', l:'📞 내장 연결'}, {v:'widget_managers', l:'🧩 위젯: 오늘 근무 영업관리자'}, {v:'widget_notices', l:'🧩 위젯: 실시간 공지사항'}, {v:'widget_board', l:'🧩 위젯: 파트너스 게시판'} ];
 
-        const firebaseConfig = {
-        apiKey: "AIzaSyCDW2TzDtMDfAVmSRHM7a-IZDhsBlkRMEQ",
-        authDomain: "ware-house-b36d7.firebaseapp.com",
-        projectId: "ware-house-b36d7",
-        storageBucket: "ware-house-b36d7.firebasestorage.app",
-        messagingSenderId: "549765421476",
-        appId: "1:549765421476:web:ef48192ccce302b1c38931"
-        };
+const firebaseConfig = {
+  apiKey: "AIzaSyCDW2TzDtMDfAVmSRHM7a-IZDhsBlkRMEQ",
+  authDomain: "ware-house-b36d7.firebaseapp.com",
+  projectId: "ware-house-b36d7",
+  storageBucket: "ware-house-b36d7.firebasestorage.app",
+  messagingSenderId: "549765421476",
+  appId: "1:549765421476:web:ef48192ccce302b1c38931"
+};
 
-        const appId = firebaseConfig.appId;
+// 🚨🚨🚨 이 한 줄이 핵심입니다! (이게 없어서 뻗었던 거예요) 🚨🚨🚨
+const appId = firebaseConfig.appId;
 
-        const PART_W = { '영업1파트': 1, '영업2파트': 2, '고객관리파트': 3, '무역센터':4 };
-        const RANK_W = { '부장': 1, '차장': 2, '과장': 3, '대리': 4, '주임': 5, '사원': 6 };
+const PART_W = { '영업1파트': 1, '영업2파트': 2, '고객관리파트': 3, '무역센터':4 };
+const RANK_W = { '부장': 1, '차장': 2, '과장': 3, '대리': 4, '주임': 5, '사원': 6 };
 
         const resizeImage = (file, maxWidth = 800) => { return new Promise((resolve) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = (e) => { const img = new Image(); img.src = e.target.result; img.onload = () => { const canvas = document.createElement('canvas'); const scale = img.width > maxWidth ? maxWidth / img.width : 1; canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale); const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); resolve(canvas.toDataURL('image/jpeg', 0.7)); }; }; }); };
         
-        const isRedDay = (y, m, d) => {
-            const sY = String(y);
-            const sM = String(m).padStart(2, '0');
-            const sD = String(d).padStart(2, '0');
-            const yyyymmdd = `${sY}-${sM}-${sD}`;
-            const mmdd = `${sM}-${sD}`;          
-            const dateObj = new Date(y, m - 1, d);
-            const dayOfWeek = dateObj.getDay();
+       const isRedDay = (y, m, d) => {
+    const sY = String(y);
+    const sM = String(m).padStart(2, '0');
+    const sD = String(d).padStart(2, '0');
+    
+    const yyyymmdd = `${sY}-${sM}-${sD}`; // 예: "2026-03-02"
+    const mmdd = `${sM}-${sD}`;           // 예: "03-01"
 
-            const fixedHolidays = ['01-01', '03-01', '05-05', '06-06', '08-15', '10-03', '10-09', '12-25'];
-            const customHolidays = [
-                '2026-02-16', '2026-02-17', '2026-02-18', 
-                '2026-03-02', '2026-05-24', '2026-05-25', 
-                '2026-06-03', '2026-09-24', '2026-09-25', '2026-09-28'
-            ];
+    const dateObj = new Date(y, m - 1, d);
+    const dayOfWeek = dateObj.getDay();
 
-            if (dayOfWeek === 0 || dayOfWeek === 6 || fixedHolidays.includes(mmdd) || customHolidays.includes(yyyymmdd)) {
-                return true;
-            }
-            return false;
-        };
+    // 1. 고정 공휴일 목록 (양력)
+    const fixedHolidays = ['01-01', '03-01', '05-05', '06-06', '08-15', '10-03', '10-09', '12-25'];
 
+    // 2. 대체공휴일 및 변동 휴무일 목록
+    const customHolidays = [
+        '2026-02-16', '2026-02-17', '2026-02-18', 
+        '2026-03-02', // 👈 3.1절 대체공휴일
+        '2026-05-24', '2026-05-25', 
+        '2026-06-03', 
+        '2026-09-24', '2026-09-25', '2026-09-28'
+    ];
+
+    // [체크 시작] 
+    // 주말(일=0, 토=6)이거나, 고정공휴일에 포함되거나, 커스텀휴일(대체공휴일)에 포함되면 "빨간날"이다!
+    if (dayOfWeek === 0 || dayOfWeek === 6 || fixedHolidays.includes(mmdd) || customHolidays.includes(yyyymmdd)) {
+        return true;
+    }
+
+    return false;
+};
         const formatLocalTime = (isoString) => { if(!isoString) return ''; try { return new Date(isoString).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute:'2-digit' }).replace(/\./g, '').replace(/\s/g, '-'); } catch(e) { return isoString.slice(0, 10); } };
 
         const getMockDate = (offset = 0) => { const d = new Date(); d.setDate(d.getDate() + offset); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
@@ -212,62 +222,65 @@
             { id: 'sopt_9', label: '기념일반반차', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: true },
             { id: 'sopt_10', label: '대체 휴무', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: false }
         ];
+// 🔐 SHA-256 해시 (비밀번호 평문 저장 방지)
+const hashPassword = async (plain) => {
+    const enc = new TextEncoder();
+    const buf = await crypto.subtle.digest('SHA-256', enc.encode(String(plain)));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+};
 
-        const hashPassword = async (plain) => {
-            const enc = new TextEncoder();
-            const buf = await crypto.subtle.digest('SHA-256', enc.encode(String(plain)));
-            return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-        };
+// ──────────────────────────────────────────
+// 🎉 라이브 이벤트 설정 기본값
+// ──────────────────────────────────────────
+const DEFAULT_EVENT_SETTINGS = {
+    id: 'evtSettings',
+    drawStyle: 'roulette',
+    enabledTypes: ['random', 'fcfs', 'quiz', 'team', 'lunch'],
+    enableWeighted: false,
+    enableHistory: true,
+    lunchMenus: ['한식 🍚', '중식 🥢', '일식 🍱', '양식 🍝', '분식 🍜'],
+};
+const EVENT_TYPE_META = {
+    random: { label: '🎲 랜덤 추첨',      desc: '참여자 중 무작위 당첨' },
+    fcfs:   { label: '⚡ 선착순',           desc: '먼저 참여한 N명 당첨' },
+    quiz:   { label: '📝 오늘의 퀴즈',     desc: '정답자 중 추첨' },
+    team:   { label: '👥 팀 배정 뽑기',    desc: '출근자를 팀으로 랜덤 배정' },
+    lunch:  { label: '🍱 점심 메뉴 뽑기',  desc: '오늘 점심 메뉴 랜덤 결정' },
+};
 
-        const DEFAULT_EVENT_SETTINGS = {
-            id: 'evtSettings',
-            drawStyle: 'roulette',
-            enabledTypes: ['random', 'fcfs', 'quiz', 'team', 'lunch'],
-            enableWeighted: false,
-            enableHistory: true,
-            lunchMenus: ['한식 🍚', '중식 🥢', '일식 🍱', '양식 🍝', '분식 🍜'],
-        };
+// 🎡 룰렛 휠 SVG 컴포넌트
+const RouletteWheel = ({ names, rotation }) => {
+    const n = names.length;
+    if (!n) return null;
+    const size = 260, cx = size/2, cy = size/2, r = size/2 - 6;
+    const COLORS = ['#0d9488','#f43f5e','#f59e0b','#6366f1','#10b981','#8b5cf6','#f97316','#06b6d4','#84cc16','#ec4899','#14b8a6','#a855f7'];
+    const angle = (2*Math.PI)/n;
+    const sectors = names.map((name, i) => {
+        const s = i*angle - Math.PI/2, e = s + angle;
+        const x1=cx+r*Math.cos(s), y1=cy+r*Math.sin(s), x2=cx+r*Math.cos(e), y2=cy+r*Math.sin(e);
+        const mid = s + angle/2, tr = r*0.60;
+        return { path:`M${cx},${cy}L${x1},${y1}A${r},${r},0,${angle>Math.PI?1:0},1,${x2},${y2}Z`, color:COLORS[i%COLORS.length], tx:cx+tr*Math.cos(mid), ty:cy+tr*Math.sin(mid), rot:(mid*180/Math.PI)+90, label:name.length>5?name.slice(0,5):name };
+    });
+    return (
+        <div className="relative inline-flex flex-col items-center">
+            <div className="absolute -top-3 left-1/2 z-10 -translate-x-1/2">
+                <div className="w-0 h-0 border-l-[11px] border-r-[11px] border-t-[18px] border-l-transparent border-r-transparent border-t-amber-400 drop-shadow"/>
+            </div>
+            <svg width={size} height={size} style={{transform:`rotate(${rotation}deg)`,transition:'transform 4s cubic-bezier(0.17,0.67,0.12,0.99)'}}>
+                {sectors.map((s,i) => (
+                    <g key={i}>
+                        <path d={s.path} fill={s.color} stroke="rgba(255,255,255,0.4)" strokeWidth="1.5"/>
+                        {n <= 20 && <text x={s.tx} y={s.ty} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize={n>12?7:9} fontWeight="900" transform={`rotate(${s.rot},${s.tx},${s.ty})`}>{s.label}</text>}
+                    </g>
+                ))}
+                <circle cx={cx} cy={cy} r={16} fill="white" stroke="#e2e8f0" strokeWidth="3"/>
+                <circle cx={cx} cy={cy} r={9} fill="#0d9488"/>
+            </svg>
+        </div>
+    );
+};
 
-        const EVENT_TYPE_META = {
-            random: { label: '🎲 랜덤 추첨',      desc: '참여자 중 무작위 당첨' },
-            fcfs:   { label: '⚡ 선착순',           desc: '먼저 참여한 N명 당첨' },
-            quiz:   { label: '📝 오늘의 퀴즈',     desc: '정답자 중 추첨' },
-            team:   { label: '👥 팀 배정 뽑기',    desc: '출근자를 팀으로 랜덤 배정' },
-            lunch:  { label: '🍱 점심 메뉴 뽑기',  desc: '오늘 점심 메뉴 랜덤 결정' },
-        };
-
-        const RouletteWheel = ({ names, rotation }) => {
-            const n = names.length;
-            if (!n) return null;
-            const size = 260, cx = size/2, cy = size/2, r = size/2 - 6;
-            const COLORS = ['#0d9488','#f43f5e','#f59e0b','#6366f1','#10b981','#8b5cf6','#f97316','#06b6d4','#84cc16','#ec4899','#14b8a6','#a855f7'];
-            const angle = (2*Math.PI)/n;
-            const sectors = names.map((name, i) => {
-                const s = i*angle - Math.PI/2, e = s + angle;
-                const x1=cx+r*Math.cos(s), y1=cy+r*Math.sin(s), x2=cx+r*Math.cos(e), y2=cy+r*Math.sin(e);
-                const mid = s + angle/2, tr = r*0.60;
-                return { path:`M${cx},${cy}L${x1},${y1}A${r},${r},0,${angle>Math.PI?1:0},1,${x2},${y2}Z`, color:COLORS[i%COLORS.length], tx:cx+tr*Math.cos(mid), ty:cy+tr*Math.sin(mid), rot:(mid*180/Math.PI)+90, label:name.length>5?name.slice(0,5):name };
-            });
-            return (
-                <div className="relative inline-flex flex-col items-center">
-                    <div className="absolute -top-3 left-1/2 z-10 -translate-x-1/2">
-                        <div className="w-0 h-0 border-l-[11px] border-r-[11px] border-t-[18px] border-l-transparent border-r-transparent border-t-amber-400 drop-shadow"/>
-                    </div>
-                    <svg width={size} height={size} style={{transform:`rotate(${rotation}deg)`,transition:'transform 4s cubic-bezier(0.17,0.67,0.12,0.99)'}}>
-                        {sectors.map((s,i) => (
-                            <g key={i}>
-                                <path d={s.path} fill={s.color} stroke="rgba(255,255,255,0.4)" strokeWidth="1.5"/>
-                                {n <= 20 && <text x={s.tx} y={s.ty} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize={n>12?7:9} fontWeight="900" transform={`rotate(${s.rot},${s.tx},${s.ty})`}>{s.label}</text>}
-                            </g>
-                        ))}
-                        <circle cx={cx} cy={cy} r={16} fill="white" stroke="#e2e8f0" strokeWidth="3"/>
-                        <circle cx={cx} cy={cy} r={9} fill="#0d9488"/>
-                    </svg>
-                </div>
-            );
-        };
-
-        const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { const store = window.localDB.transaction(storeName, 'readwrite').objectStore(storeName); if (Array.isArray(data)) data.forEach(item => store.put(item)); else store.put(data); } catch (e) {} };
+const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { const store = window.localDB.transaction(storeName, 'readwrite').objectStore(storeName); if (Array.isArray(data)) data.forEach(item => store.put(item)); else store.put(data); } catch (e) {} };
         const deleteFromIDB = (storeName, id) => { if (!window.localDB) return; try { window.localDB.transaction(storeName, 'readwrite').objectStore(storeName).delete(id); } catch (e) {} };
 
         function App() {
@@ -303,6 +316,7 @@
             const [viewMode, setViewMode] = useState('all'); 
             
             const [isAdminAuth, setIsAdminAuth] = useState(false);
+            // 🔐 PIN은 평문 대신 해시로 localStorage에 저장
             const [masterPinHash, setMasterPinHash] = useState(() => localStorage.getItem('hmood_master_pin_hash') || null);
             const DEFAULT_PIN = '6011';
             const [pinInput, setPinInput] = useState('');
@@ -360,12 +374,13 @@
             const [adminSchedForm, setAdminSchedForm] = useState({ empId: '', date: todayStr, status: 'A' });
             const [showExtModal, setShowExtModal] = useState(false);
             const [showProfileEdit, setShowProfileEdit] = useState(false);
-            const [profileTab, setProfileTab] = useState('pw'); 
+            const [profileTab, setProfileTab] = useState('pw'); // 'pw' | 'info'
             const [profileForm, setProfileForm] = useState({ name: '', part: '', category: '', brands: '', extNumber: '', position: '', jobTitle: '', password: '', targetEmpId: '' });
             const [expandedImage, setExpandedImage] = useState(null);
             const [expandedCell, setExpandedCell] = useState(null);
-            const [dailySearch, setDailySearch] = useState(''); 
-            const [expandedDailyCard, setExpandedDailyCard] = useState(null); 
+            const [dailySearch, setDailySearch] = useState(''); // 일간 검색
+            const [expandedDailyCard, setExpandedDailyCard] = useState(null); // 클릭 시 카테고리/브랜드 전체 표시
+            // 미읽은 공지 추적
             const [readNoticeIds, setReadNoticeIds] = useState(() => {
                 try { return JSON.parse(localStorage.getItem('hmood_read_notices') || '[]'); } catch(e) { return []; }
             });
@@ -389,6 +404,7 @@
             
             const SCHED_STATUS_OPTIONS = useMemo(() => (statusOptions || []).map(o => o?.label).filter(Boolean), [statusOptions]);
             const STATUS_THEME = useMemo(() => { const theme = {}; (statusOptions || []).forEach(o => { if(o) theme[o.label] = `${o.bg} ${o.text}`; }); return theme; }, [statusOptions]);
+            // ① 대체 휴무 등 글자색 수정: Tailwind text 클래스가 브라우저 네이티브 select 스타일에 묻히는 문제를 inline style로 확실히 해결
             const STATUS_INLINE_STYLE = useMemo(() => {
                 const map = {};
                 (statusOptions || []).forEach(o => {
@@ -408,18 +424,20 @@
                 return appUser && (dynamicApps || []).some(app => app.actionType === 'reservation' && app.resOperatorId === appUser.empId);
             }, [appUser, dynamicApps]);
 
-            const AVAILABLE_TABS = useMemo(() => {
+const AVAILABLE_TABS = useMemo(() => {
                 return [ 
                     { id: 'health', name: '🏥 헬스키퍼 관리', show: isHealthOnlyAdmin || isAdminAuth || isHealthAdmin }, 
+                    // content 탭을 없애고 apps로 통합
                     { id: 'apps', name: '공지 및 앱/폴더 관리', show: isAdminAuth || (!isHealthOnlyAdmin && appUser && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) }, 
                     { id: 'members', name: '구성원/조직 관리', show: isAdminAuth && !isHealthOnlyAdmin }, 
                     { id: 'schedules', name: '스케줄 관리', show: isAdminAuth && !isHealthOnlyAdmin }, 
+                    // 내선번호를 원래 위치로 복구
                     { id: 'extensions', name: '내선번호', show: isAdminAuth && !isHealthOnlyAdmin }, 
+                    // 영업관리자도 제출 데이터(posts) 탭을 볼 수 있게 권한 추가
                     { id: 'posts', name: '제출 데이터', show: (isAdminAuth && !isHealthOnlyAdmin) || (appUser && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) }, 
                     { id: 'security', name: '보안 설정', show: isAdminAuth && !isHealthOnlyAdmin } 
                 ].filter(t => t.show);
             }, [isHealthOnlyAdmin, isAdminAuth, isHealthAdmin, appUser]);
-
             const currentAdminTab = useMemo(() => {
                 if (AVAILABLE_TABS.find(t => t.id === adminTab)) return adminTab;
                 return AVAILABLE_TABS[0]?.id || 'health';
@@ -438,12 +456,13 @@
             const showToast = (m, isError = false) => { setToast(m); setToastError(isError); setTimeout(() => { setToast(''); setToastError(false); }, 3000); };
             const showConfirm = (options) => { setConfirmDialog({ ...options, isOpen: true }); };
 
-            const canViewPosts = useCallback((appItem) => {
+ const canViewPosts = useCallback((appItem) => {
                 if (!appItem) return false;
                 if (isAdminAuth) return true;
                 if (!appUser) return false;
                 const vp = appItem.viewPermission || 'admin';
                 
+                // 관리자 전용 데이터라도 영업관리자에게 작성/관리 권한이 있다면 열람 허용
                 if (vp === 'admin') {
                     const p = appItem.writePermission;
                     if (p === 'all' && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) return true; 
@@ -468,6 +487,7 @@
             const canWrite = useCallback((appItem) => {
                 if (!appItem) return false;
                 const p = appItem.writePermission;
+                // 배열인 경우 (notice 타입 다중 선택)
                 if (Array.isArray(p)) {
                     if (p.includes('admin')) { if (isAdminAuth) return true; }
                     if (!appUser) return false;
@@ -494,28 +514,29 @@
                 return '권한이 없습니다.';
             }, [appUser]);
 
-            useEffect(() => {
-                if (firebaseConfig && !firebase.apps.length) firebase.initializeApp(firebaseConfig);
-                if (firebase.apps.length > 0) {
-                    setDb(firebase.firestore());
-                    const auth = firebase.auth();
-                    const initAuth = async () => {
-                        try { 
-                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await auth.signInWithCustomToken(__initial_auth_token); 
-                            else await auth.signInAnonymously();
-                        } catch (error) { 
-                            console.log("모바일 보안 차단 우회");
-                            setIsAuthReady(true); 
-                        }
-                    };
-                    initAuth();
-                    const unsubscribe = auth.onAuthStateChanged(user => { 
-                        if (user) setFbUser(user);
-                        setIsAuthReady(true); 
-                    });
-                    return () => unsubscribe();
-                } else { setIsAuthReady(true); }
-            }, []);
+// ✅ 핸드폰(사파리 등) 보안을 뚫어주는 마법의 코드입니다.
+useEffect(() => {
+    if (firebaseConfig && !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    if (firebase.apps.length > 0) {
+        setDb(firebase.firestore());
+        const auth = firebase.auth();
+        const initAuth = async () => {
+            try { 
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await auth.signInWithCustomToken(__initial_auth_token); 
+                else await auth.signInAnonymously();
+            } catch (error) { 
+                console.log("모바일 보안 차단 우회");
+                setIsAuthReady(true); 
+            }
+        };
+        initAuth();
+        const unsubscribe = auth.onAuthStateChanged(user => { 
+            if (user) setFbUser(user);
+            setIsAuthReady(true); 
+        });
+        return () => unsubscribe();
+    } else { setIsAuthReady(true); }
+}, []);
 
             useEffect(() => {
                 const savedEmpId = localStorage.getItem('hmood_empId');
@@ -523,6 +544,7 @@
                 if (new URLSearchParams(window.location.search).get('mode') === 'shared') { setView('shared'); setShowSharedPopup(true); }
             }, []);
 
+            // 새로고침 후 자동 로그인 복원 (users 로딩 완료 후 실행)
             useEffect(() => {
                 if (!users || users.length === 0) return;
                 const savedSession = localStorage.getItem('hmood_session');
@@ -601,6 +623,7 @@
                 const unsubStatusOpts = db.collection(`artifacts/${appId}/public/data/status_options`).onSnapshot((snapshot) => {
                         const newOpts = snapshot.docs.map(d => d.data());
                         if(newOpts.length > 0) {
+                            // 🔑 replace 대신 merge: Firestore에 없는 기존 IDB 항목(기본값들)이 증발하는 버그 수정
                             setStatusOptions(prev => {
                                 const merged = [...prev];
                                 newOpts.forEach(o => {
@@ -612,23 +635,28 @@
                             newOpts.forEach(o => saveToIDB('statusOptions', o));
                         }
                     });
-                const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists`).onSnapshot((snapshot) => {
+const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists`).onSnapshot((snapshot) => {
                         const newBls = snapshot.docs.map(d => d.data());
                         setBlacklists(newBls); newBls.forEach(b => saveToIDB('blacklists', b));
                     });
+
+                // 🌟🌟 [추가된 부분] 직원, 스케줄, 내선번호 데이터를 실시간으로 가져옵니다! 🌟🌟
                 const unsubUsers = db.collection(`artifacts/${appId}/public/data/users`).onSnapshot((snapshot) => {
                     const newUsers = snapshot.docs.map(d => d.data());
                     if(newUsers.length > 0) { setUsers(newUsers); newUsers.forEach(u => saveToIDB('users', u)); }
                 });
+                
                 const unsubSchedules = db.collection(`artifacts/${appId}/public/data/schedules`).onSnapshot((snapshot) => {
                     const newScheds = snapshot.docs.map(d => d.data());
                     if(newScheds.length > 0) { setSchedules(newScheds); newScheds.forEach(s => saveToIDB('schedules', s)); }
                 });
+                
                 const unsubExtensions = db.collection(`artifacts/${appId}/public/data/extensions`).onSnapshot((snapshot) => {
                     const newExts = snapshot.docs.map(d => d.data());
                     if(newExts.length > 0) { setExtensions(newExts); newExts.forEach(e => saveToIDB('extensions', e)); }
                 });
 
+                // 🌟🌟 [수정된 부분] 앱을 끌 때 통신도 깔끔하게 끊어줍니다. 🌟🌟
                 return () => { unsubApps(); unsubEvent(); unsubNotices(); unsubPosts(); unsubStatusOpts(); unsubBlacklists(); unsubUsers(); unsubSchedules(); unsubExtensions(); };
             }, [db, fbUser, isAuthReady]);
             
@@ -636,12 +664,16 @@
                 return [...(users || [])].filter(Boolean).sort((a, b) => {
                     if (a.jobTitle === '점장' && b.jobTitle !== '점장') return -1; 
                     if (a.jobTitle !== '점장' && b.jobTitle === '점장') return 1;
+                    
                     const wA = PART_W[a.part||''] || 99; const wB = PART_W[b.part||''] || 99;
                     if (wA !== wB) return wA - wB;
+
                     if (a.jobTitle === '파트장' && b.jobTitle !== '파트장') return -1; 
                     if (a.jobTitle !== '파트장' && b.jobTitle === '파트장') return 1;
+                    
                     const rA = RANK_W[a.position] ?? 99; const rB = RANK_W[b.position] ?? 99;
                     if (rA !== rB) return rA - rB;
+                    
                     return (a.name||'').localeCompare(b.name||'');
                 });
             }, [users]);
@@ -657,12 +689,16 @@
                     if (viewMode.startsWith('PART_')) return u.part === viewMode.replace('PART_', '');
                     return true;
                 }).sort((a, b) => {
+                    // 파트 순서 우선
                     const wA = PART_W[a.part||''] || 99; const wB = PART_W[b.part||''] || 99;
                     if (wA !== wB) return wA - wB;
+                    // 점장 최상위
                     if (a.jobTitle === '점장' && b.jobTitle !== '점장') return -1;
                     if (a.jobTitle !== '점장' && b.jobTitle === '점장') return 1;
+                    // 파트장 최상위
                     if (a.jobTitle === '파트장' && b.jobTitle !== '파트장') return -1;
                     if (a.jobTitle !== '파트장' && b.jobTitle === '파트장') return 1;
+                    // 동일 카테고리 묶기 (가나다순)
                     const cA = a.category || ''; const cB = b.category || '';
                     if (cA !== cB) return cA.localeCompare(cB, 'ko');
                     return (a.name||'').localeCompare(b.name||'', 'ko');
@@ -688,10 +724,12 @@
                 }).map(([part, members]) => {
                     const sorted = [...members].sort((a, b) => {
                         const uA = userMap[a.empId]; const uB = userMap[b.empId];
+                        // 파트장 최상위
                         if (uA?.jobTitle === '점장' && uB?.jobTitle !== '점장') return -1;
                         if (uA?.jobTitle !== '점장' && uB?.jobTitle === '점장') return 1;
                         if (uA?.jobTitle === '파트장' && uB?.jobTitle !== '파트장') return -1;
                         if (uA?.jobTitle !== '파트장' && uB?.jobTitle === '파트장') return 1;
+                        // 동일 카테고리끼리 묶기 (가나다순)
                         const cA = uA?.category || ''; const cB = uB?.category || '';
                         if (cA !== cB) return cA.localeCompare(cB, 'ko');
                         return (a.name || '').localeCompare(b.name || '', 'ko');
@@ -705,17 +743,16 @@
                 const working = (schedules || []).filter(s => {
                     if (s?.date !== todayStr) return false;
                     const opt = (statusOptions || []).find(o => o.label === s?.status);
+                    // statusOptions의 isWork 기준으로 판단 (하드코딩 제거)
                     if (opt && opt.isWork !== undefined) return opt.isWork === true || opt.isWork === 'true';
-                    return ['A', 'B', '당직'].includes(s?.status); 
+                    return ['A', 'B', '당직'].includes(s?.status); // fallback
                 });
                 return working.map(s => ({ ...s, user: userMap[s.empId] })).filter(s => s.user && s.user.jobTitle === '영업관리자').sort((a, b) => (a.user.name||'').localeCompare(b.user.name||'')); 
             }, [schedules, todayStr, userMap, statusOptions]);
-            
             const filteredExtensions = useMemo(() => {
                 const list = !extSearch.trim() ? extensions : (() => { const q = extSearch.toLowerCase(); return extensions.filter(e => (e?.number||'').toLowerCase().includes(q)||(e?.floor||'').toLowerCase().includes(q)||(e?.user||'').toLowerCase().includes(q)); })();
                 return [...list].sort((a,b) => { const af = favoriteExts.includes(a.id)?0:1; const bf = favoriteExts.includes(b.id)?0:1; return af-bf; });
             }, [extensions, extSearch, favoriteExts]);
-            
             const filteredAdminExtensions = useMemo(() => { if (!adminExtSearch.trim()) return extensions; const q = adminExtSearch.toLowerCase(); return extensions.filter(e => (e?.number || '').toLowerCase().includes(q) || (e?.floor || '').toLowerCase().includes(q) || (e?.user || '').toLowerCase().includes(q)); }, [extensions, adminExtSearch]);
 
             const callExtension = (number, name, e) => {
@@ -730,6 +767,7 @@
                 e.preventDefault(); const loginId = String(loginForm.id || '').trim(); const loginPw = String(loginForm.pw || '').trim();
                 if (!loginId || !loginPw) return showToast('사원번호와 비밀번호를 모두 입력해주세요.', true);
                 const pwHash = await hashPassword(loginPw);
+                // 해시 비밀번호 우선 비교, 없으면 평문 비교(마이그레이션 호환)
                 const f = (users || []).find(u => String(u?.empId) === loginId && (u?.password === pwHash || u?.password === loginPw));
                 if(f) { if (rememberMe) localStorage.setItem('hmood_empId', loginForm.id); else localStorage.removeItem('hmood_empId'); localStorage.setItem('hmood_session', JSON.stringify({ empId: f.empId })); setAppUser(f); setView('daily'); setCurrentDate(new Date()); showToast(`${f.name}님 환영합니다!`); } else showToast('사원번호 또는 비밀번호가 올바르지 않습니다.', true);
             };
@@ -810,7 +848,9 @@
                 const isResAdmin = isAdminAuth || (appUser && appUser.empId === openedReservationApp?.resOperatorId);
 
                 if (!isResAdmin) {
+                    // ✅ 로컬 state 대신 Firestore 직접 조회 (동시 예약 경쟁 방지)
                     const maxPerSlot = openedReservationApp?.resMaxPerSlot || 1;
+
                     try {
                         let liveCount = 0;
                         if (db && fbUser) {
@@ -822,6 +862,7 @@
                                 .get();
                             liveCount = snap.size;
                         } else {
+                            // 오프라인 fallback: 로컬 state 사용
                             liveCount = (dynamicPosts || []).filter(p =>
                                 p.appId === openedReservationApp?.id &&
                                 p.type === 'reservation' &&
@@ -831,6 +872,7 @@
                         }
                         if (liveCount >= maxPerSlot) return showToast('방금 마감되었습니다. 다른 시간을 선택해주세요.', true);
                     } catch(e) {
+                        // 조회 실패 시 로컬 state로 fallback
                         const localCount = (dynamicPosts || []).filter(p =>
                             p.appId === openedReservationApp?.id &&
                             p.type === 'reservation' &&
@@ -840,6 +882,7 @@
                         if (localCount >= maxPerSlot) return showToast('해당 시간은 이미 마감되었습니다.', true);
                     }
 
+                    // 시간 마감 체크
                     const leadTimeMs = ((openedReservationApp?.resLeadTimeDays || 0) * 24 + (openedReservationApp?.resLeadTimeHours || 0)) * 60 * 60 * 1000;
                     const [y, m, d] = resSelectedDate.split('-');
                     const [hr, min] = resPrompt.split(':');
@@ -852,6 +895,7 @@
                 const newRes = { id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5), appId: openedReservationApp.id, type: 'reservation', resDate: resSelectedDate, resTime: resPrompt, author: authorName, ext: resInput.ext, content: resInput.note, authorId: appUser ? appUser.empId : `guest_${Date.now()}`, createdAt: new Date().toISOString() };
                 try { setDynamicPosts([newRes, ...(dynamicPosts || [])]); saveToIDB('dynamicPosts', newRes); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newRes.id).set(newRes); showToast(`[${resSelectedDate} ${resPrompt}] 예약이 완료되었습니다!`); setResPrompt(null); setResInput({brand:'', name:'', ext:'', note:''}); } catch(e) { showToast('예약 실패', true); }
             };
+            
             const handleGenericPostSubmit = async () => {
                 const author = appUser ? appUser.name : submitFormState.authorName;
                 if (!author || !submitFormState.content) return showToast('작성자와 내용을 모두 입력해주세요.', true);
@@ -953,6 +997,7 @@
                     const id = editingNoticeId || Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5);
                     const newNotice = { id, content: noticeForm.content, photos: noticeForm.photos, isPinned: noticeForm.isPinned, createdAt: editingNoticeId ? notices.find(n=>n.id===id).createdAt : new Date().toISOString(), author: appUser?.name || '관리자', isEdited: !!editingNoticeId, updatedAt: editingNoticeId ? new Date().toISOString() : null };
                     setNotices(prev => { const n = editingNoticeId ? prev.map(x=>x.id===id?newNotice:x) : [newNotice, ...prev]; return n.sort((a,b) => { if (a.isPinned && !b.isPinned) return -1; if (!a.isPinned && b.isPinned) return 1; return (b.createdAt||'').localeCompare(a.createdAt||''); }); });
+                    // 수정된 공지는 미읽음으로 리셋
                     const nextRead = readNoticeIds.filter(rid => rid !== id);
                     setReadNoticeIds(nextRead); localStorage.setItem('hmood_read_notices', JSON.stringify(nextRead));
                     saveToIDB('notices', newNotice); setEditingNoticeId(null); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/notices`).doc(id).set(newNotice, { merge: true }); showToast('저장되었습니다.'); setNoticeForm({ content: '', photos: [], isPinned: false });
@@ -1063,6 +1108,7 @@
                 if (currentEvent.target === 'daily') { const mySched = scheduleMap[appUser.empId]?.[todayStr]; eligible = mySched && ['A', 'B', '당직'].includes(mySched.status); }
                 if (!eligible) return showToast('참여 대상자가 아닙니다.', true);
                 if (currentEvent?.participants?.includes(appUser?.empId)) return showToast('이미 참여하셨습니다.', true);
+                // 퀴즈 타입: 답 검증
                 if (currentEvent.type === 'quiz') {
                     if (!quizAnswer.trim()) return showToast('정답을 입력해주세요.', true);
                     const isCorrect = quizAnswer.trim().toLowerCase() === (currentEvent.quizAnswer || '').trim().toLowerCase();
@@ -1083,6 +1129,7 @@
                 } catch(e) { showToast('참여 실패', true); }
             };
 
+            // 팀 배정 뽑기
             const handleTeamDraw = async () => {
                 const pool = currentEvent?.target === 'daily'
                     ? (schedules || []).filter(s => s.date === todayStr && (statusOptions.find(o => o.label === s.status)?.isWork !== false)).map(s => s.empId)
@@ -1098,6 +1145,7 @@
                 showToast('팀 배정 완료!');
             };
 
+            // 당첨 기록 저장
             const recordWinHistory = async (winnerObjs) => {
                 if (!eventSettings.enableHistory) return;
                 const updated = [...winHistory];
@@ -1114,12 +1162,14 @@
             const handleStartDraw = async () => {
                 if (currentEvent.type === 'team') { handleTeamDraw(); return; }
                 if (currentEvent.type === 'fcfs') return showToast('선착순 이벤트는 자동 마감됩니다.', true);
+                // 추첨 풀 결정 (퀴즈는 정답자만)
                 let pool = currentEvent.participants || [];
                 if (currentEvent.type === 'quiz') {
                     pool = pool.filter(id => currentEvent.quizSubmissions?.[id]?.correct === true);
                     if (!pool.length) return showToast('정답자가 없습니다.', true);
                 }
                 if (!pool.length) return showToast('참여자가 없습니다.', true);
+                // 가중치 적용
                 let weightedPool = [...pool];
                 if (eventSettings.enableWeighted && winHistory.length > 0) {
                     const maxCount = Math.max(...winHistory.map(h => h.count), 1);
@@ -1135,6 +1185,7 @@
                         const spinningState = { ...currentEvent, status: 'spinning' };
                         setCurrentEvent(spinningState); saveToIDB('events', spinningState);
                         if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/events`).doc('current').update({ status: 'spinning' });
+                        // 룰렛: 당첨자 위치 계산 후 회전
                         const shuffled = [...weightedPool].sort(() => 0.5 - Math.random());
                         const selectedIds = Array.from(new Set(shuffled)).slice(0, currentEvent.winnerCount);
                         if (eventSettings.drawStyle === 'roulette' && pool.length > 0) {
@@ -1162,6 +1213,7 @@
 
             useEffect(() => { let interval; if (currentEvent?.status === 'spinning') { interval = setInterval(() => { const participants = currentEvent.participants || []; if (participants.length > 0) { const randomId = participants[Math.floor(Math.random() * participants.length)]; setSpinDisplay(userMap[randomId]?.name || '...'); } else { setSpinDisplay('참여자 없음'); } }, 80); } return () => clearInterval(interval); }, [currentEvent?.status, currentEvent?.participants, userMap]);
 
+            // 월간 뷰 진입 시 테이블 컨테이너에 자동 포커스 → 키보드 스크롤 즉시 가능
             useEffect(() => {
                 if (view === 'monthly' && tableScrollRef.current) {
                     setTimeout(() => { tableScrollRef.current?.focus(); }, 100);
@@ -1222,9 +1274,10 @@
                 return null;
             };
 
+            // 파트너스 게시판 위젯 전용 상태
             const [wBoardForm, setWBoardForm] = useState({ title: '', content: '', photo: '' });
             const [wBoardEditId, setWBoardEditId] = useState(null);
-            const [wBoardOpenId, setWBoardOpenId] = useState(null);
+            const [wBoardOpenId, setWBoardOpenId] = useState(null); // 열린 위젯 appId
             const [wBoardSelectedPost, setWBoardSelectedPost] = useState(null);
 
             const canManageWidgetBoard = useMemo(() => isAdminAuth || (appUser && appUser.jobTitle === '영업관리자'), [isAdminAuth, appUser]);
@@ -1263,6 +1316,7 @@
                                 {isAdminAuth && <button onClick={() => handleDeleteDynamicApp(app.id)} className="text-stone-400 hover:text-rose-500"><Icon name="trash" size={14}/></button>}
                             </div>
                         </div>
+                        {/* 작성/수정 폼 */}
                         {wBoardOpenId === app.id && canManageWidgetBoard && (
                             <div className="bg-stone-50 dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 space-y-3 fade-in">
                                 <input className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-400" placeholder="제목" value={wBoardForm.title} onChange={e => setWBoardForm({...wBoardForm, title: e.target.value})}/>
@@ -1278,6 +1332,7 @@
                                 </div>
                             </div>
                         )}
+                        {/* 게시글 목록 - 최대 높이 제한으로 무한 길어짐 방지 */}
                         <div className="space-y-2 max-h-[400px] overflow-y-auto scrollbar-hide pr-1">
                             {posts.length === 0 && <p className="text-center py-8 text-stone-300 font-bold text-[11px]">등록된 게시글이 없습니다.</p>}
                             {posts.map(post => (
@@ -1312,8 +1367,7 @@
                     </div>
                 );
             };
-
-            if (loading) return <div className="h-screen w-full flex items-center justify-center bg-[#EBE9E4] dark:bg-stone-950"><div className="text-center animate-pulse"><div className="w-16 h-16 bg-teal-600 rounded-[2rem] mx-auto mb-6 flex items-center justify-center text-white shadow-2xl"><Icon name="shield" size={32}/></div><p className="text-stone-400 font-black uppercase tracking-[0.3em] text-[11px]">로딩 중...</p></div></div>;
+if (loading) return <div className="h-screen w-full flex items-center justify-center bg-[#EBE9E4] dark:bg-stone-950"><div className="text-center animate-pulse"><div className="w-16 h-16 bg-teal-600 rounded-[2rem] mx-auto mb-6 flex items-center justify-center text-white shadow-2xl"><Icon name="shield" size={32}/></div><p className="text-stone-400 font-black uppercase tracking-[0.3em] text-[11px]">로딩 중...</p></div></div>;
             
             return (
                 <div className="flex flex-col h-screen min-h-screen bg-[#EBE9E4] dark:bg-stone-950 text-stone-700 dark:text-stone-300 fade-in">
@@ -1364,7 +1418,7 @@
                                 </div>
                             )}
 
-                            {/* SHARED VIEW */}
+                            {/* SHARED VIEW (협력사 파트너스 뷰) */}
                             {view === 'shared' && (
                                 <div className="space-y-5 max-w-2xl mx-auto pb-10 mt-2">
                                     <div className="flex justify-between items-center mb-4 px-2">
@@ -1377,6 +1431,7 @@
                                         </div>
                                     </div>
                                     
+                                    {/* 위젯 렌더링 - sortOrder < 100 이면 퀵메뉴 위에 표시 */}
                                     {(dynamicApps || []).filter(a => !a.parentId && a.actionType?.startsWith('widget_') && (a.sortOrder||99) < 100).sort((a,b)=>(a.sortOrder||99)-(b.sortOrder||99)).map(app => app.actionType === 'widget_board' ? renderWidgetBoard(app) : renderWidget(app))}
 
                                     <div className="bg-white dark:bg-stone-900 rounded-[2rem] p-5 sm:p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 mt-4">
@@ -1398,6 +1453,7 @@
                                         </div>
                                     </div>
 
+                                    {/* 위젯 렌더링 - sortOrder >= 100 이면 퀵메뉴 아래 표시 */}
                                     {(dynamicApps || []).filter(a => !a.parentId && a.actionType?.startsWith('widget_') && (a.sortOrder||99) >= 100).sort((a,b)=>(a.sortOrder||99)-(b.sortOrder||99)).map(app => app.actionType === 'widget_board' ? renderWidgetBoard(app) : renderWidget(app))}
                                 </div>
                             )}
@@ -1409,14 +1465,33 @@
                                     <div className="bg-white dark:bg-stone-900 p-3 rounded-2xl border border-stone-200 dark:border-stone-800 flex items-center justify-between shadow-sm max-w-4xl mx-auto relative">
                                         <button onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() - 1); setCurrentDate(d); }} className="p-2 bg-stone-50 dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-all btn-press"><Icon name="chevronLeft" size={20}/></button>
                                         <div className="text-center leading-tight flex flex-col justify-center items-center">
-                                            <p className={`text-[10px] tracking-widest font-black mb-1 ${isRedDay(currentDate.getFullYear(), currentDate.getMonth() + 1, currentDate.getDate()) ? 'text-rose-500' : 'text-teal-600'}`}>{currentDate.toLocaleDateString('ko-KR', { weekday: 'long' })}</p>
-                                            <div className="flex items-center justify-center gap-2">
-                                                <p className={`text-xl font-black ${isRedDay(currentDate.getFullYear(), currentDate.getMonth() + 1, currentDate.getDate()) ? 'text-rose-600' : 'text-stone-800 dark:text-stone-200'}`}>{todayStr}</p>
-                                                <button onClick={() => setCurrentDate(new Date())} className="p-1.5 bg-stone-50 dark:bg-stone-800 text-teal-600 border border-stone-200 dark:border-stone-700 rounded-lg btn-press"><Icon name="calendarToday" size={16}/></button>
-                                            </div>
-                                        </div>
+    {/* 요일 표시 부분 */}
+    <p className={`text-[10px] tracking-widest font-black mb-1 ${
+        isRedDay(currentDate.getFullYear(), currentDate.getMonth() + 1, currentDate.getDate()) 
+        ? 'text-rose-500' // 빨간날이면 로즈색
+        : 'text-teal-600'  // 평일이면 테일색
+    }`}>
+        {currentDate.toLocaleDateString('ko-KR', { weekday: 'long' })}
+    </p>
+    
+    <div className="flex items-center justify-center gap-2">
+        {/* 날짜 숫자 부분 (예: 2026-03-02) */}
+        <p className={`text-xl font-black ${
+            isRedDay(currentDate.getFullYear(), currentDate.getMonth() + 1, currentDate.getDate()) 
+            ? 'text-rose-600' 
+            : 'text-stone-800 dark:text-stone-200'
+        }`}>
+            {todayStr}
+        </p>
+        
+        <button onClick={() => setCurrentDate(new Date())} className="p-1.5 bg-stone-50 dark:bg-stone-800 text-teal-600 border border-stone-200 dark:border-stone-700 rounded-lg btn-press">
+            <Icon name="calendarToday" size={16}/>
+        </button>
+    </div>
+</div>
                                         <button onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() + 1); setCurrentDate(d); }} className="p-2 bg-stone-50 dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-all btn-press"><Icon name="chevronRight" size={20}/></button>
                                     </div>
+                                    {/* 🔍 일간 검색창 */}
                                     <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 flex items-center gap-2 px-4 py-2.5 shadow-sm max-w-4xl mx-auto focus-within:border-teal-500 transition-colors">
                                         <Icon name="search" size={15} className="text-stone-400 shrink-0"/>
                                         <input type="text" placeholder="이름, 카테고리, 브랜드 검색..." value={dailySearch} onChange={e => setDailySearch(e.target.value)} className="w-full bg-transparent outline-none text-[12px] font-bold text-stone-700 dark:text-stone-300 placeholder-stone-400"/>
@@ -1455,6 +1530,7 @@
                                                                         )}
                                                                     </div>
                                                                     <div className="flex items-center gap-1.5 shrink-0">
+                                                                        {/* 개인 내선번호 전화 아이콘 */}
                                                                         {(() => { const extNum = u?.extNumber || (extensions||[]).find(e => e?.user?.includes(m.name))?.number; return extNum ? <button onClick={e => { e.stopPropagation(); callExtension(extNum, m.name, e); }} className="text-white bg-teal-500 hover:bg-teal-600 p-1.5 rounded-full btn-press shadow-sm" title={`내선 ${extNum}`}><Icon name="phoneCall" size={13}/></button> : null; })()}
                                                                         {canEdit ? (
                                                                             <select className="text-[11px] font-black bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-2 py-1.5 outline-none focus:border-teal-500 cursor-pointer shadow-sm" value={m.status} onChange={(e) => handleUpdateDuty(m.empId, todayStr, e.target.value, isAdminAuth)}>
@@ -1490,22 +1566,28 @@
                                     </div>
                                     <div ref={tableScrollRef} tabIndex="0" className="overflow-x-auto overflow-y-auto max-h-[70vh] md:max-h-[78vh] scrollbar-hide bg-white dark:bg-stone-900 rounded-b-[2.5rem] focus:outline-none">
                                         <table className="text-[11px] border-separate border-spacing-0" style={{minWidth: 'max-content'}}>
+                                            {/* ⑥ 날짜 계산 중복 제거: thead/tbody에서 각각 계산하던 것을 한 번만 계산 */}
                                             {(() => { const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate(); return (<>
                                             <thead>
                                                 <tr className="bg-stone-100 dark:bg-stone-800 sticky top-0 z-40 font-black text-stone-600 dark:text-stone-300">
                                                     {monthlyFilters.part && <th className="p-2 text-left border-b border-stone-200 dark:border-stone-700" style={{width:'90px',minWidth:'90px',maxWidth:'90px'}}>파트</th>}{monthlyFilters.cat && <th className="p-2 text-left border-b border-stone-200 dark:border-stone-700" style={{width:'90px',minWidth:'90px',maxWidth:'90px'}}>카테고리</th>}{monthlyFilters.id && <th className="p-2 text-left border-b border-stone-200 dark:border-stone-700" style={{width:'72px',minWidth:'72px',maxWidth:'72px'}}>사번</th>}
                                                     <th className="p-2 text-left sticky left-0 bg-stone-100 dark:bg-stone-800 z-50 border-b border-stone-200 dark:border-stone-700 shadow-[2px_0_5px_rgba(0,0,0,0.03)]" style={{width:'110px',minWidth:'110px',maxWidth:'110px'}}>성명</th>
                                                   {[...Array(daysInMonth)].map((_, i) => {
-                                                        const dayNum = i + 1;
-                                                        const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
-                                                        const dayOfWeekStr = ['일', '월', '화', '수', '목', '금', '토'][dateObj.getDay()];
-                                                        const isRed = isRedDay(currentDate.getFullYear(), currentDate.getMonth() + 1, dayNum);
-                                                        return (
-                                                            <th key={i} className={`p-1.5 border-l border-stone-200 dark:border-stone-700 text-center border-b border-stone-200 dark:border-stone-700 ${isRed ? 'text-rose-500 bg-rose-50/20' : 'text-stone-600 dark:text-stone-300'}`} style={{width:'42px', minWidth:'42px', maxWidth:'42px'}}>
-                                                                <div className="text-[11px] leading-tight flex flex-col items-center"><span>{dayNum}</span><span className="text-[9px] opacity-70">{dayOfWeekStr}</span></div>
-                                                            </th>
-                                                        );
-                                                    })}
+    const dayNum = i + 1;
+    const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
+    const dayOfWeekStr = ['일', '월', '화', '수', '목', '금', '토'][dateObj.getDay()];
+    const isRed = isRedDay(currentDate.getFullYear(), currentDate.getMonth() + 1, dayNum);
+    return (
+        <th key={i} className={`p-1.5 border-l border-stone-200 dark:border-stone-700 text-center border-b border-stone-200 dark:border-stone-700 ${
+            isRed ? 'text-rose-500 bg-rose-50/20' : 'text-stone-600 dark:text-stone-300'
+        }`} style={{width:'42px', minWidth:'42px', maxWidth:'42px'}}>
+            <div className="text-[11px] leading-tight flex flex-col items-center">
+                <span>{dayNum}</span>
+                <span className="text-[9px] opacity-70">{dayOfWeekStr}</span>
+            </div>
+        </th>
+    );
+})}
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1523,7 +1605,19 @@
                                                                             {SCHED_STATUS_OPTIONS.map(opt => <option key={opt} value={opt} className="bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300">{opt}</option>)}
                                                                         </select>
                                                                     ) : (
-                                                                        <div className={`w-full h-8 rounded-lg flex items-center justify-center font-black text-[9px] shadow-sm overflow-hidden cursor-pointer select-none ${s ? STATUS_THEME[s.status] : 'bg-stone-50 dark:bg-stone-800 text-stone-200 dark:text-stone-600'}`} style={s ? STATUS_INLINE_STYLE[s.status] : {}} onClick={(e) => { if (!s) return; const rect = e.currentTarget.getBoundingClientRect(); setExpandedCell(prev => prev?.empId === u.empId && prev?.date === dStr ? null : { empId: u.empId, date: dStr, status: s.status, rect }); }}>
+                                                                        <div
+                                                                            className={`w-full h-8 rounded-lg flex items-center justify-center font-black text-[9px] shadow-sm overflow-hidden cursor-pointer select-none ${s ? STATUS_THEME[s.status] : 'bg-stone-50 dark:bg-stone-800 text-stone-200 dark:text-stone-600'}`}
+                                                                            style={s ? STATUS_INLINE_STYLE[s.status] : {}}
+                                                                            onClick={(e) => {
+                                                                                if (!s) return;
+                                                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                                                setExpandedCell(prev =>
+                                                                                    prev?.empId === u.empId && prev?.date === dStr
+                                                                                        ? null
+                                                                                        : { empId: u.empId, date: dStr, status: s.status, rect }
+                                                                                );
+                                                                            }}
+                                                                        >
                                                                             <span className="truncate px-0.5 w-full text-center leading-tight">{s?.status || '-'}</span>
                                                                         </div>
                                                                     )}
@@ -1536,7 +1630,7 @@
                                             </>); })()}
                                         </table>
                                     </div>
-                                </div>
+                            </div>
                             )}
 
                             {/* TASKS VIEW */}
@@ -1590,14 +1684,19 @@
                             {/* EVENT VIEW */}
                             {view === 'event' && (
                                 <div className="space-y-5 fade-in max-w-2xl mx-auto pb-20">
+
+                                    {/* 헤더 배너 */}
                                     <div className="bg-gradient-to-br from-amber-400 to-orange-500 p-6 rounded-[2.5rem] shadow-lg flex items-center justify-between text-white font-black">
                                         <div className="flex items-center gap-5"><Icon name="gift" size={44} className="opacity-90"/><div><h2 className="text-xl tracking-tighter">라이브 이벤트</h2><p className="text-xs font-bold text-amber-100 mt-0.5 tracking-widest">실시간 사내 복지 시스템</p></div></div>
                                         {isAdminAuth && <button onClick={() => setShowEventMgmt(v => !v)} className="bg-white/20 hover:bg-white/30 p-2.5 rounded-xl btn-press transition-colors"><Icon name="settings" size={18}/></button>}
                                     </div>
 
+                                    {/* 🛠 이벤트 기능 관리 패널 */}
                                     {showEventMgmt && isAdminAuth && (
                                         <div className="bg-white dark:bg-stone-900 p-6 rounded-[2.5rem] border border-amber-200 dark:border-stone-700 shadow-lg space-y-5 fade-in">
                                             <p className="text-[13px] font-black text-amber-600 flex items-center gap-2"><Icon name="settings" size={16}/> 이벤트 기능 관리</p>
+
+                                            {/* 추첨 시각 효과 */}
                                             <div className="space-y-2">
                                                 <p className="text-[11px] font-black text-stone-500">추첨 시각 효과</p>
                                                 <div className="flex gap-2">
@@ -1606,6 +1705,8 @@
                                                     ))}
                                                 </div>
                                             </div>
+
+                                            {/* 이벤트 타입 활성화 */}
                                             <div className="space-y-2">
                                                 <p className="text-[11px] font-black text-stone-500">이벤트 타입</p>
                                                 <div className="grid grid-cols-1 gap-2">
@@ -1620,6 +1721,8 @@
                                                     })}
                                                 </div>
                                             </div>
+
+                                            {/* 추가 기능 */}
                                             <div className="space-y-2">
                                                 <p className="text-[11px] font-black text-stone-500">추가 기능</p>
                                                 {[{k:'enableWeighted',l:'⚖️ 미당첨 가중치 보정',d:'오래 못 뽑힌 사람 확률 보정'},{k:'enableHistory',l:'🏆 당첨 이력 기록',d:'직원별 누적 당첨 횟수 저장'}].map(({k,l,d}) => (
@@ -1629,6 +1732,8 @@
                                                     </div>
                                                 ))}
                                             </div>
+
+                                            {/* 점심 메뉴 관리 */}
                                             {eventSettings.enabledTypes.includes('lunch') && (
                                                 <div className="space-y-2">
                                                     <p className="text-[11px] font-black text-stone-500">점심 메뉴 목록</p>
@@ -1643,6 +1748,8 @@
                                                     </div>
                                                 </div>
                                             )}
+
+                                            {/* 당첨 이력 */}
                                             {eventSettings.enableHistory && winHistory.length > 0 && (
                                                 <div className="space-y-2">
                                                     <p className="text-[11px] font-black text-stone-500">당첨 이력</p>
@@ -1660,6 +1767,7 @@
                                         </div>
                                     )}
 
+                                    {/* 🍱 점심 메뉴 뽑기 (이벤트 없을 때도 항상 표시) */}
                                     {eventSettings.enabledTypes.includes('lunch') && (
                                         <div className="bg-white dark:bg-stone-900 p-5 rounded-[2rem] border border-stone-200 dark:border-stone-800 shadow-sm space-y-3">
                                             <p className="text-[12px] font-black text-stone-600 dark:text-stone-300 flex items-center gap-2"><Icon name="coffee" size={16} className="text-amber-500"/> 오늘 점심 메뉴 뽑기</p>
@@ -1675,6 +1783,7 @@
                                         </div>
                                     )}
 
+                                    {/* 최근 종료 이벤트 */}
                                     {currentEvent?.status === 'closed' && (
                                         <div className="bg-white dark:bg-stone-900 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-800 shadow-sm space-y-3">
                                             <div className="flex items-center justify-between"><h3 className="text-sm font-black text-stone-800 dark:text-stone-200 flex items-center gap-2"><Icon name="partyPopper" size={18} className="text-rose-500"/> 최근 종료된 이벤트</h3>{isAdminAuth && <button onClick={handleResetEvent} className="text-white bg-rose-500 p-2 rounded-lg btn-press"><Icon name="trash" size={16}/></button>}</div>
@@ -1684,6 +1793,7 @@
                                         </div>
                                     )}
 
+                                    {/* 이벤트 생성 폼 */}
                                     {(!currentEvent || currentEvent?.status === 'closed') && isAdminAuth && (
                                         <div className="bg-white dark:bg-stone-900 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-800 shadow-sm space-y-5">
                                             <h3 className="text-base font-black text-stone-800 dark:text-stone-200 flex items-center gap-2"><Icon name="zap" size={18} className="text-amber-400"/> 이벤트 오픈</h3>
@@ -1705,6 +1815,7 @@
                                         <div className="bg-white dark:bg-stone-900 p-12 rounded-[2.5rem] border border-stone-200 dark:border-stone-800 shadow-sm text-center"><Icon name="dices" size={48} className="mx-auto text-stone-300 mb-4"/><p className="text-stone-500 font-black">현재 진행 중인 이벤트가 없습니다.</p></div>
                                     )}
 
+                                    {/* 대기 중 이벤트 */}
                                     {currentEvent?.status === 'waiting' && (
                                         <div className="bg-white dark:bg-stone-900 p-7 rounded-[2.5rem] border-4 border-amber-200 shadow-lg text-center relative overflow-hidden">
                                             {currentEvent.type === 'fcfs' && <div className="absolute top-0 left-0 w-full h-1.5 bg-rose-500 animate-pulse"/>}
@@ -1742,6 +1853,7 @@
                                         </div>
                                     )}
 
+                                    {/* 추첨 중 */}
                                     {currentEvent?.status === 'spinning' && (
                                         <div className="bg-stone-800 p-10 rounded-[3rem] shadow-2xl text-center space-y-6">
                                             <p className="text-amber-400 font-black tracking-widest animate-pulse">두구두구두구두구...</p>
@@ -1770,8 +1882,10 @@
                                         </div>
                                     )}
 
+                                    {/* 결과 */}
                                     {currentEvent?.status === 'finished' && (
                                         <div className="bg-white dark:bg-stone-900 p-8 rounded-[3rem] border-4 border-rose-200 dark:border-stone-800 shadow-2xl text-center fade-in">
+                                            {/* 팀 배정 결과 */}
                                             {currentEvent.type === 'team' && currentEvent.teams ? (
                                                 <div className="space-y-4">
                                                     <p className="text-xs font-black text-teal-500 tracking-widest mb-4">👥 팀 배정 완료!</p>
@@ -1808,6 +1922,7 @@
                             )}
 
                             {/* ADMIN VIEW */}
+                            {/* ADMIN VIEW */}
                             {view === 'admin' && (
                                 <div className="max-w-3xl mx-auto pb-20 fade-in">
                                     {!isAdminAuth && !isHealthOnlyAdmin && !appUser ? (
@@ -1831,54 +1946,34 @@
                                                 ))}
                                                 <button onClick={async () => { const pw = prompt('관리자 PIN'); if(pw) { const h = await hashPassword(pw); const sh = masterPinHash || await hashPassword(DEFAULT_PIN); if(h===sh) setIsAdminAuth(true); else showToast('PIN 오류', true); } }} className="snap-center px-4 py-3 rounded-[1.2rem] font-black text-[11px] whitespace-nowrap bg-stone-50 dark:bg-stone-800 text-stone-400 border border-stone-200 dark:border-stone-700 shrink-0">🔐 관리자</button>
                                             </div>
-                                            
-                                            {currentAdminTab === 'apps' && (
+                                            {currentAdminTab === 'content' && (
                                                 <div className="space-y-5 fade-in">
-                                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-5 rounded-[2rem] border border-rose-100 dark:border-rose-900 space-y-4">
-                                                        <p className="text-[12px] font-black text-rose-600 tracking-widest flex items-center gap-2"><Icon name="bellRing" size={16}/> 현장 실시간 공지 등록</p>
-                                                        <textarea className="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-24 resize-none focus:border-rose-400" placeholder="새로운 공지 내용을 입력하세요" value={noticeForm.content} onChange={e => setNoticeForm({...noticeForm, content: e.target.value})}></textarea>
-                                                        <div className="flex justify-between items-center gap-2">
-                                                            <label className="flex-1 bg-white dark:bg-stone-800 text-stone-500 font-black py-4 rounded-2xl flex items-center justify-center gap-1.5 cursor-pointer shadow-sm btn-press text-[11px] border border-stone-100 dark:border-stone-700"><Icon name="camera" size={16}/> {noticeForm.photos.length > 0 ? `${noticeForm.photos.length}장 첨부됨` : '사진 첨부'}<input type="file" multiple className="hidden" accept="image/*" onChange={(e) => handlePhotoUpload(e, setNoticeForm)} /></label>
-                                                            <label className="flex items-center gap-2 shrink-0 pr-2 cursor-pointer group"><input type="checkbox" checked={noticeForm.isPinned} onChange={e => setNoticeForm({...noticeForm, isPinned: e.target.checked})} className="w-4 h-4 text-rose-500 rounded border-stone-300 focus:ring-rose-500" /><span className="text-[11px] font-black text-stone-500 group-hover:text-rose-500">📌 중요 고정</span></label>
-                                                        </div>
-                                                        <button onClick={handleNoticeSubmit} className="w-full bg-rose-500 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[12px]">공지 등록</button>
-                                                    </div>
-
-                                                    <div className="bg-white dark:bg-stone-900 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-800">
-                                                        <div className="flex items-center justify-between mb-4">
-                                                            <p className="text-[12px] font-black text-stone-500 flex items-center gap-2"><Icon name="box" size={16}/> 앱/폴더/위젯 관리</p>
-                                                            {isAdminAuth && <button onClick={() => {
-                                                                setEditingAppId(null);
-                                                                setAppManagerForm({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', viewPermission: 'admin', notifyTarget: 'none', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 1, sortOrder: 99 });
-                                                            }} className="bg-teal-500 text-white font-black px-4 py-2 rounded-xl text-[10px] btn-press shadow-md">새 항목 추가</button>}
-                                                        </div>
-
-                                                        <div className="space-y-3 max-h-[400px] overflow-y-auto scrollbar-hide pr-1">
-                                                            {(dynamicApps || []).filter(app => isAdminAuth || canWrite(app)).sort((a,b) => (a.sortOrder||99) - (b.sortOrder||99)).map(app => (
-                                                                <div key={app.id} className="flex justify-between items-center bg-stone-50 dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700">
-                                                                    <div className="flex items-center gap-3">
-                                                                        <div className={`w-10 h-10 ${app.bg} rounded-xl flex items-center justify-center`}><Icon name={app.icon} size={20} className={app.color} /></div>
-                                                                        <div className="flex flex-col">
-                                                                            <span className="text-xs font-black text-stone-800 dark:text-stone-200">{app.name} {app.isFolder ? '📁' : ''}</span>
-                                                                            <span className="text-[9px] font-bold text-stone-400 mt-0.5">
-                                                                                {app.actionType === 'guide' ? '안내형' : app.actionType === 'board' ? '게시판형' : app.actionType === 'notice' ? '자료형' : app.actionType === 'form' ? '제출형' : app.actionType === 'reservation' ? '예약형' : app.actionType === 'link' ? '링크형' : '위젯/기타'}
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
+                                                    <p className="text-[12px] font-black text-teal-600 flex items-center gap-2"><Icon name="edit" size={16}/> 권한 부여된 콘텐츠 작성/관리</p>
+                                                    {(dynamicApps || []).filter(a => ['board','form','notice','widget_board'].includes(a.actionType) && canWrite(a)).length === 0 ? (
+                                                        <div className="text-center py-12 text-stone-400 font-bold text-sm">작성 권한이 부여된 앱이 없습니다.</div>
+                                                    ) : (dynamicApps || []).filter(a => ['board','form','notice','widget_board'].includes(a.actionType) && canWrite(a)).map(app => (
+                                                        <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2rem] p-5 border border-stone-200 dark:border-stone-800 shadow-sm space-y-3">
+                                                            <div className="flex items-center justify-between">
+                                                                <h3 className={`text-[13px] font-black flex items-center gap-2 ${app.color}`}><Icon name={app.icon} size={16}/> {app.name}</h3>
+                                                                <span className="text-[9px] text-stone-400 font-bold">{app.actionType === 'widget_board' ? '파트너스 게시판' : app.actionType === 'notice' ? '공지/자료' : '게시판'}</span>
+                                                            </div>
+                                                            {app.actionType === 'notice' && (
+                                                                <div className="space-y-2">
+                                                                    <input className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-500" placeholder="제목" value={adminBoardForm.title} onChange={e => setAdminBoardForm({...adminBoardForm, title: e.target.value})}/>
+                                                                    <textarea className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl p-3 text-xs font-bold h-20 resize-none outline-none focus:border-teal-500" placeholder="내용" value={adminBoardForm.content} onChange={e => setAdminBoardForm({...adminBoardForm, content: e.target.value})}></textarea>
                                                                     <div className="flex gap-2">
-                                                                        <button onClick={() => handleEditDynamicApp(app)} className="bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 p-2 rounded-xl text-stone-500 dark:text-stone-300 hover:text-teal-500 btn-press"><Icon name="edit" size={14}/></button>
-                                                                        {isAdminAuth && <button onClick={() => handleDeleteDynamicApp(app.id)} className="bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 p-2 rounded-xl text-stone-500 dark:text-stone-300 hover:text-rose-500 btn-press"><Icon name="trash" size={14}/></button>}
+                                                                        <button onClick={() => { setOpenedAdminBoard(app); setSelectedAdminPost(null); }} className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-600 font-black py-2.5 rounded-xl btn-press text-xs">기존 글 보기</button>
+                                                                        <button onClick={() => handleAdminBoardPost(app.id)} className="flex-1 bg-teal-600 text-white font-black py-2.5 rounded-xl btn-press text-xs shadow-md">등록</button>
                                                                     </div>
                                                                 </div>
-                                                            ))}
-                                                            {(dynamicApps || []).filter(app => isAdminAuth || canWrite(app)).length === 0 && (
-                                                                <p className="text-center text-[11px] text-stone-400 font-bold py-6">관리할 수 있는 앱/메뉴가 없습니다.</p>
+                                                            )}
+                                                            {(app.actionType === 'board' || app.actionType === 'widget_board') && (
+                                                                <button onClick={() => { if(app.actionType === 'widget_board') { setWBoardOpenId(app.id); setWBoardForm({title:'',content:'',photo:''}); setWBoardEditId(null); } else { setOpenedDynamicApp(app); } }} className="w-full bg-teal-50 dark:bg-teal-900/20 text-teal-600 font-black py-3 rounded-xl btn-press text-xs border border-teal-200 dark:border-teal-800">게시판 열기 / 글쓰기</button>
                                                             )}
                                                         </div>
-                                                    </div>
+                                                    ))}
                                                 </div>
                                             )}
-
                                             {currentAdminTab === 'posts' && (
                                                 <div className="space-y-6 fade-in">
                                                     <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-4">
@@ -1889,18 +1984,195 @@
                                                                 const canView = canViewPosts(app);
                                                                 return (
                                                                     <div key={app.id} className={`bg-white dark:bg-stone-900 p-4 rounded-2xl border shadow-sm flex items-center justify-between transition-colors ${canView ? 'border-stone-200 dark:border-stone-700 cursor-pointer btn-press hover:border-indigo-300' : 'border-stone-100 dark:border-stone-800 opacity-50'}`} onClick={() => { if (!canView) return showToast('열람 권한이 없습니다.', true); if (app.actionType === 'notice') { setOpenedAdminBoard(app); setSelectedAdminPost(null); } else if (app.actionType === 'reservation') { setOpenedReservationApp(app); setResSelectedDate(todayStr); setResConfigMode(false); } else { setOpenedDynamicApp(app); } }}>
-                                                                        <div className="flex items-center gap-3"><div className={`w-9 h-9 ${app.bg} ${app.color} rounded-xl flex items-center justify-center`}><Icon name={app.icon} size={16}/></div><div className="flex flex-col"><span className="text-xs font-black text-stone-800 dark:text-stone-200">{app.name}</span><span className="text-[9px] font-bold text-stone-400">{app.actionType === 'form' ? '폼' : app.actionType === 'reservation' ? '예약' : '게시판'} · {canView ? `${postsCount}건` : '🔒 열람 제한'}</span></div></div>
+                                                                        <div className="flex items-center gap-3"><div className={`w-9 h-9 ${app.bg} ${app.color} rounded-xl flex items-center justify-center`}><Icon name={app.icon} size={16}/></div><div className="flex flex-col"><span className="text-xs font-black text-stone-800 dark:text-stone-200">{app.name}</span><span className="text-[9px] font-bold text-stone-400">{canView ? `${postsCount}건` : '🔒 열람 제한'}</span></div></div>
                                                                         {canView && <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 font-black text-[10px] px-2.5 py-1 rounded-full shrink-0">{postsCount}건</span>}
                                                                     </div>
                                                                 );
                                                             })}
                                                         </div>
-                                                        {isAdminAuth && <div className="pt-4 border-t border-stone-200 dark:border-stone-700"><button onClick={handleClearAllPosts} className="bg-rose-50 dark:bg-rose-900/30 text-rose-500 font-black px-5 py-2.5 rounded-2xl flex items-center justify-center gap-2 mx-auto btn-press text-xs"><Icon name="trash" size={14}/> 모든 데이터 영구 삭제</button></div>}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="bg-white dark:bg-stone-900 p-6 md:p-10 rounded-[3.5rem] shadow-2xl border border-stone-200 dark:border-stone-800 space-y-6 fade-in">
+                                            <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide border-b border-stone-100 dark:border-stone-700 snap-x">
+                                                {AVAILABLE_TABS.map(tab => (
+                                                    <button key={tab.id} onClick={() => setAdminTab(tab.id)} className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${currentAdminTab === tab.id ? 'bg-stone-800 text-white shadow-md' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'}`}>{tab.name}</button>
+                                                ))}
+                                            </div>
+
+                                            {currentAdminTab === 'health' && (
+                                                <div className="space-y-6 fade-in">
+                                                    <div className="bg-indigo-50/50 dark:bg-indigo-900/20 p-6 rounded-[2.5rem] border border-indigo-100 dark:border-indigo-800 shadow-sm flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 bg-indigo-200 text-indigo-700 rounded-full flex items-center justify-center"><Icon name="search" size={20}/></div>
+                                                            <div>
+                                                                <p className="text-[13px] font-black text-indigo-700 dark:text-indigo-400">저시력자용 큰 글씨 모드</p>
+                                                                <p className="text-[10px] text-indigo-500 mt-0.5">예약 목록의 이름, 시간이 매우 크게 보입니다.</p>
+                                                            </div>
+                                                        </div>
+                                                        <button onClick={() => setIsLargeTextMode(!isLargeTextMode)} className={`w-14 h-8 flex items-center rounded-full p-1 transition-colors ${isLargeTextMode ? 'bg-indigo-500' : 'bg-stone-300 dark:bg-stone-600'}`}>
+                                                            <div className={`bg-white w-6 h-6 rounded-full shadow-md transform transition-transform ${isLargeTextMode ? 'translate-x-6' : ''}`}></div>
+                                                        </button>
+                                                    </div>
+
+                                                    <div className="bg-indigo-50/50 dark:bg-indigo-900/20 p-6 rounded-[2.5rem] border border-indigo-100 dark:border-indigo-800 shadow-sm">
+                                                        <h3 className="text-[13px] font-black text-indigo-700 dark:text-indigo-400 mb-4 flex items-center gap-2"><Icon name="settings" size={18}/> 예약 시스템 설정 (시간 및 리드타임 변경)</h3>
+                                                        {(dynamicApps || []).filter(a => a.actionType === 'reservation').map(resApp => (
+                                                            <div key={resApp.id} className="space-y-4 border-t border-indigo-100 dark:border-indigo-800/50 pt-4 mt-2">
+                                                                <p className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mb-2">[{resApp.name}] 예약 설정</p>
+                                                                <div><label className="text-[10px] font-bold text-stone-500 ml-1">운영 시간대 (콤마 구분 입력)</label><input className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400 shadow-inner" value={resForm.slots} onChange={e => setResForm({...resForm, slots: e.target.value})} /></div>
+                                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                                                    <div><label className="text-[10px] font-bold text-stone-500 ml-1">타임당 예약 허용 인원</label><input type="number" min="1" className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400 shadow-inner" value={resForm.max} onChange={e => setResForm({...resForm, max: parseInt(e.target.value)||1})} /></div>
+                                                                    <div><label className="text-[10px] font-bold text-stone-500 ml-1">예약 마감 (일 전)</label><input type="number" min="0" className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400 shadow-inner" value={resForm.lDays} onChange={e => setResForm({...resForm, lDays: parseInt(e.target.value)||0})} /></div>
+                                                                    <div><label className="text-[10px] font-bold text-stone-500 ml-1">예약 마감 (시간 전)</label><input type="number" min="0" className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400 shadow-inner" value={resForm.lHours} onChange={e => setResForm({...resForm, lHours: parseInt(e.target.value)||0})} /></div>
+                                                                </div>
+                                                                <button onClick={() => handleUpdateResApp(resApp.id)} className="w-full bg-indigo-600 text-white font-black py-4 rounded-xl text-[12px] shadow-md btn-press mt-2">이 설정으로 즉시 반영하기</button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+
+                                                    <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-700">
+                                                        <h3 className="text-[13px] font-black text-stone-800 dark:text-stone-200 mb-4 flex items-center gap-2"><Icon name="calendar" size={18} className="text-pink-500"/> 전체 예약 내역 및 강제 취소</h3>
+                                                        <div className="max-h-[500px] overflow-y-auto scrollbar-hide space-y-3 pr-1">
+                                                            {dynamicPosts.filter(p => p.type === 'reservation').length === 0 ? <p className="text-[11px] text-center text-stone-400 py-6">예약 내역이 없습니다.</p> : 
+                                                                dynamicPosts.filter(p => p.type === 'reservation').map(res => (
+                                                                    <div key={res.id} className="bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm flex justify-between items-center group">
+                                                                        <div className="flex flex-col gap-1 w-full mr-2">
+                                                                            <span className={`${isLargeTextMode ? 'text-2xl mb-1' : 'text-[13px]'} font-black text-stone-800 dark:text-stone-200`}>
+                                                                                {res.author} <span className={`${isLargeTextMode ? 'text-base font-bold' : 'text-[10px] font-normal'} text-stone-400`}>({res.ext || '내선없음'})</span>
+                                                                            </span>
+                                                                            <span className={`${isLargeTextMode ? 'text-lg bg-pink-50 dark:bg-pink-900/30 p-2 rounded-xl mt-1 inline-block' : 'text-[10px]'} font-bold text-pink-600 w-fit`}>
+                                                                                {res.resDate} {res.resTime}
+                                                                            </span>
+                                                                            {res.content && <span className={`${isLargeTextMode ? 'text-sm mt-2 font-bold p-3 bg-stone-50 dark:bg-stone-800 rounded-xl' : 'text-[10px] line-clamp-1 mt-1'} text-stone-500`}>비고: {res.content}</span>}
+                                                                        </div>
+                                                                        <button onClick={() => handleReservationCancel(res.id)} className={`bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white ${isLargeTextMode ? 'p-4' : 'p-2.5'} rounded-xl transition-colors btn-press shrink-0`}><Icon name="trash" size={isLargeTextMode ? 24 : 16}/></button>
+                                                                    </div>
+                                                                ))
+                                                            }
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                        <div className="bg-indigo-50 dark:bg-indigo-900/20 p-6 rounded-[2.5rem] border border-indigo-100 dark:border-indigo-800">
+                                                            <h3 className="text-[13px] font-black text-indigo-700 dark:text-indigo-400 mb-4 flex items-center gap-2"><Icon name="barChart" size={18}/> 이용 횟수 통계 (Top 10)</h3>
+                                                            <div className="space-y-2">
+                                                                {(() => {
+                                                                    const resCounts = {};
+                                                                    dynamicPosts.filter(p => p.type === 'reservation').forEach(p => { resCounts[p.author] = (resCounts[p.author] || 0) + 1; });
+                                                                    const sortedStats = Object.entries(resCounts).sort((a,b) => b[1] - a[1]).slice(0, 10);
+                                                                    if (sortedStats.length === 0) return <p className="text-[11px] text-center text-indigo-400 py-6">통계 데이터가 없습니다.</p>;
+                                                                    return sortedStats.map(([name, count], idx) => (
+                                                                        <div key={name} className="flex justify-between items-center text-[11px] font-bold bg-white/50 dark:bg-stone-900/50 p-2 rounded-xl border border-indigo-200/50">
+                                                                            <span className="text-stone-700 dark:text-stone-300">{idx+1}. {name}</span><span className="text-indigo-600 bg-indigo-100 dark:bg-indigo-900 px-2 py-0.5 rounded-md">{count}회</span>
+                                                                        </div>
+                                                                    ));
+                                                                })()}
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="bg-rose-50 dark:bg-rose-900/20 p-6 rounded-[2.5rem] border border-rose-100 dark:border-rose-800">
+                                                            <h3 className="text-[13px] font-black text-rose-600 dark:text-rose-400 mb-4 flex items-center gap-2"><Icon name="shield" size={18}/> 악성 예약자 블랙리스트</h3>
+                                                            <div className="flex gap-2 mb-4">
+                                                                <input className="w-1/2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-2 text-[10px] font-bold outline-none focus:border-rose-400" placeholder="브랜드명" value={blacklistInput.brand} onChange={e => setBlacklistInput({...blacklistInput, brand: e.target.value})} />
+                                                                <input className="w-1/2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-2 text-[10px] font-bold outline-none focus:border-rose-400" placeholder="성명" value={blacklistInput.name} onChange={e => setBlacklistInput({...blacklistInput, name: e.target.value})} />
+                                                                <button onClick={async () => {
+                                                                    if(!blacklistInput.brand || !blacklistInput.name) return showToast('브랜드와 성명을 입력하세요', true);
+                                                                    const newBl = { id: `bl_${Date.now()}`, brand: blacklistInput.brand, name: blacklistInput.name, createdAt: new Date().toISOString() };
+                                                                    setBlacklists([newBl, ...blacklists]); saveToIDB('blacklists', newBl);
+                                                                    if(db && fbUser) await db.collection(`artifacts/${appId}/public/data/blacklists`).doc(newBl.id).set(newBl);
+                                                                    setBlacklistInput({brand: '', name: ''}); showToast('블랙리스트에 추가되었습니다.');
+                                                                }} className="bg-rose-600 text-white px-3 py-2 rounded-xl text-[10px] font-black shrink-0">추가</button>
+                                                            </div>
+                                                            <div className="space-y-2 max-h-32 overflow-y-auto scrollbar-hide">
+                                                                {blacklists.length === 0 ? <p className="text-[10px] text-center text-rose-400 py-2">등록된 블랙리스트가 없습니다.</p> : blacklists.map(bl => (
+                                                                    <div key={bl.id} className="flex justify-between items-center text-[10px] font-bold bg-white/50 dark:bg-stone-900/50 p-2 rounded-xl border border-rose-200/50">
+                                                                        <span className="text-stone-700 dark:text-stone-300">{bl.brand} - {bl.name}</span>
+                                                                        <button onClick={async () => {
+                                                                            setBlacklists(blacklists.filter(b => b.id !== bl.id)); deleteFromIDB('blacklists', bl.id);
+                                                                            if(db && fbUser) await db.collection(`artifacts/${appId}/public/data/blacklists`).doc(bl.id).delete();
+                                                                        }} className="text-rose-500 hover:text-rose-700"><Icon name="x" size={14}/></button>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             )}
 
-                                            {currentAdminTab === 'extensions' && (
+                                            {currentAdminTab === 'schedules' && (
+                                                <div className="space-y-6 fade-in">
+                                                    <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-5">
+                                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-stone-200 dark:border-stone-700 pb-4 gap-4"><div className="flex flex-wrap items-center gap-3 w-full sm:w-auto"><p className="text-[13px] font-black text-indigo-500 tracking-widest flex items-center gap-2 whitespace-nowrap"><Icon name="calendar" size={18}/> 스케줄 엑셀 업로드</p><input type="month" value={bulkScheduleMonth} onChange={e => setBulkScheduleMonth(e.target.value)} className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-2 text-xs font-bold shadow-sm outline-none text-stone-600 dark:text-stone-300 focus:border-indigo-400" /></div><button onClick={handleDownloadScheduleTemplate} className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-4 py-2.5 rounded-xl text-[11px] font-black shadow-sm btn-press whitespace-nowrap"><Icon name="download" size={14}/> 양식 다운로드</button></div>
+                                                        <label className="flex w-full bg-indigo-500 text-white font-black px-6 py-5 rounded-2xl shadow-md text-[13px] cursor-pointer btn-press items-center justify-center gap-2 mt-4"><Icon name="calendar" size={18}/> 엑셀(.xlsx) 파일 업로드<input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleScheduleExcelUpload} /></label>
+                                                    </div>
+                                                    <div className="bg-white dark:bg-stone-900 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-800 shadow-sm mt-4">
+                                                        <p className="text-[12px] font-black text-rose-500 mb-4 flex items-center gap-2"><Icon name="edit" size={18}/> 개별 스케줄 강제 수정</p>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3"><input type="date" className="bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-rose-400" value={adminSchedForm.date} onChange={e => setAdminSchedForm({...adminSchedForm, date: e.target.value})} /><select className="bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-rose-400 col-span-1 sm:col-span-2" value={adminSchedForm.empId} onChange={e => setAdminSchedForm({...adminSchedForm, empId: e.target.value})}><option value="">직원 선택</option>{users.map(u => <option key={u.empId} value={u.empId}>{u.name} ({u.part})</option>)}</select><select className="bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-rose-400" value={adminSchedForm.status} onChange={e => setAdminSchedForm({...adminSchedForm, status: e.target.value})}>{SCHED_STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select><button onClick={() => { if(!adminSchedForm.empId) return showToast('직원을 선택하세요.', true); handleUpdateDuty(adminSchedForm.empId, adminSchedForm.date, adminSchedForm.status, true); }} className="col-span-1 sm:col-span-4 bg-stone-800 text-white font-black py-4 rounded-2xl text-xs btn-press shadow-md">업데이트</button></div>
+                                                    </div>
+                                                    
+                                                    <div className="bg-white dark:bg-stone-900 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-800 shadow-sm mt-4">
+                                                        <p className="text-[12px] font-black text-indigo-500 mb-2 flex items-center gap-2"><Icon name="edit" size={18}/> 근무조(상태) 커스텀 관리</p>
+                                                        <p className="text-[11px] text-stone-500 dark:text-stone-400 mb-6 leading-relaxed">기존에 입력된 스케줄 데이터는 삭제해도 텍스트로 유지됩니다. 수정할 근무조를 선택하거나 새롭게 추가하세요.</p>
+                                                        
+                                                        <div className="flex flex-col gap-4">
+                                                            <select className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400" value={editingStatusId || ''} onChange={e => {
+                                                                if(e.target.value === '') { setEditingStatusId(null); setStatusForm({label: '', bg: 'bg-stone-700 dark:bg-stone-600', text: 'text-white', isWork: 'true'}); return; }
+                                                                const opt = statusOptions.find(o => o.id === e.target.value);
+                                                                if(opt) { setEditingStatusId(opt.id); setStatusForm({label: opt.label, bg: opt.bg, text: opt.text, isWork: opt.isWork ? 'true' : 'false'}); }
+                                                            }}>
+                                                                <option value="">✨ [새로운 근무조 추가하기]</option>
+                                                                <optgroup label="기존 근무조 선택 (수정/삭제)">
+                                                                    {statusOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.label} ({opt.isWork ? '근무' : '휴무'})</option>)}
+                                                                </optgroup>
+                                                            </select>
+
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                                                <input className="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400" placeholder="예: 오전 당직" value={statusForm.label} onChange={e => setStatusForm({...statusForm, label: e.target.value})} />
+                                                                <select className="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400" value={statusForm.isWork} onChange={e => setStatusForm({...statusForm, isWork: e.target.value})}>
+                                                                    <option value="true">일간 뷰 표시 (출근)</option>
+                                                                    <option value="false">일간 뷰 숨김 (휴무)</option>
+                                                                </select>
+                                                                <select className="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400" value={statusForm.bg} onChange={e => setStatusForm({...statusForm, bg: e.target.value})}>
+                                                                    <option value="bg-stone-700 dark:bg-stone-600">다크 그레이 (진하게)</option>
+                                                                    <option value="bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800">라이트 그레이 (연하게/테두리)</option>
+                                                                    <option value="bg-teal-500">청록색</option><option value="bg-rose-500">빨간색</option><option value="bg-amber-500">노란색</option><option value="bg-sky-500">하늘색</option><option value="bg-purple-500">보라색</option>
+                                                                </select>
+                                                                <select className="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400" value={statusForm.text} onChange={e => setStatusForm({...statusForm, text: e.target.value})}><option value="text-white">흰색 글자</option><option value="text-stone-600 dark:text-stone-300">어두운 글자</option></select>
+                                                            </div>
+                                                            <div className="flex gap-2 mt-2">
+                                                                {editingStatusId && <button onClick={() => handleDeleteStatusOption(editingStatusId)} className="flex-1 bg-rose-50 text-rose-500 font-black py-4 rounded-2xl text-xs btn-press">삭제</button>}
+                                                                <button onClick={handleAddStatusOption} className={`${editingStatusId ? 'flex-[2]' : 'w-full'} bg-indigo-600 text-white font-black py-4 rounded-2xl text-xs btn-press shadow-md`}>{editingStatusId ? '수정 내용 저장' : '새 근무조 추가'}</button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {currentAdminTab === 'apps' && (
+                                                <div className="space-y-5 fade-in">
+                                                    {/* 공지사항 관리 섹션 */}
+                                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-5 rounded-[2rem] border border-rose-100 dark:border-rose-900 space-y-4">
+                                                        <p className="text-[12px] font-black text-rose-600 tracking-widest flex items-center gap-2"><Icon name="bellRing" size={16}/> 공지사항 관리</p>
+                                                        <textarea className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold h-24 shadow-inner outline-none focus:border-rose-400 resize-none" placeholder="공지 내용 입력" value={noticeForm.content} onChange={e => setNoticeForm({...noticeForm, content: e.target.value})}></textarea>
+                                                        <div className="flex items-center justify-between">
+                                                            <label className="flex items-center gap-2 text-xs font-black cursor-pointer text-rose-500"><input type="checkbox" checked={noticeForm.isPinned} onChange={e => setNoticeForm({...noticeForm, isPinned: e.target.checked})} className="w-4 h-4" /> 상단 고정</label>
+                                                            <div className="flex gap-2">
+                                                                {editingNoticeId && <button onClick={() => { setEditingNoticeId(null); setNoticeForm({ content: '', photos: [], isPinned: false }); }} className="bg-stone-200 dark:bg-stone-700 text-stone-600 font-black px-4 py-2 rounded-xl btn-press text-xs">취소</button>}
+                                                                <button onClick={handleNoticeSubmit} className="bg-rose-600 text-white font-black px-4 py-2 rounded-xl btn-press text-xs">{editingNoticeId ? '수정 완료' : '등록'}</button>
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-hide">
+                                                            {notices.map(n => (
+                                                                <div key={n.id} className="bg-white dark:bg-stone-900 p-3 rounded-2xl border border-stone-100 dark:border-stone-700 flex justify-between items-center gap-2">
+                                                                    <div className="flex items-center gap-2 min-w-0"><div className={`w-1.5 h-1.5 rounded-full shrink-0 ${n.isPinned ? 'bg-rose-500' : 'bg-stone-300'}`}/><span className="text-[11px] font-bold text-stone-700 dark:text-stone-200 truncate">{n.content}</span></div>
+                                                                    <div className="flex gap-1 shrink-0"><button onClick={() => { setNoticeForm({ content: n.content, photos: n.photos || [], isPinned: !!n.isPinned }); setEditingNoticeId(n.id); }} className="text-white bg-teal-500 p-1.5 rounded-lg btn-press"><Icon name="edit" size={13}/></button><button onClick={() => handleDeleteNotice(n.id)} className="text-white bg-rose-400 p-1.5 rounded-lg btn-press"><Icon name="trash" size={13}/></button></div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
                                                 <div className="space-y-6 fade-in">
                                                     <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-5">
                                                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-stone-200 dark:border-stone-700 pb-4 gap-4">
@@ -1949,8 +2221,78 @@
                                                         </div>
                                                     </div>
                                                 </div>
+                                                 </div>
                                             )}
 
+                                            {currentAdminTab === 'security' && (
+                                                <div className="space-y-6 fade-in">
+                                                    <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-5">
+                                                        <p className="text-[12px] font-black text-rose-600 tracking-widest flex items-center gap-2"><Icon name="shield" size={18}/> 마스터 PIN(비밀번호) 변경</p>
+                                                        <input type="password" placeholder="새로운 PIN 입력 (숫자 4자리 권장)" className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-rose-400" id="newPinInput" />
+                                                        <div className="grid grid-cols-2 gap-3 mt-4">
+                                                            <button onClick={async () => { const val = document.getElementById('newPinInput').value; if(val) { const h = await hashPassword(val); setMasterPinHash(h); localStorage.setItem('hmood_master_pin_hash', h); localStorage.removeItem('hmood_master_pin'); showToast('변경되었습니다.'); document.getElementById('newPinInput').value = ''; } else { showToast('입력해주세요.', true); } }} className="w-full bg-stone-800 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[12px]">PIN 변경</button>
+                                                            <button onClick={async () => { const h = await hashPassword(DEFAULT_PIN); setMasterPinHash(h); localStorage.setItem('hmood_master_pin_hash', h); localStorage.removeItem('hmood_master_pin'); showToast('초기화되었습니다. (기본: 6011)'); }} className="w-full bg-rose-50 dark:bg-rose-900/30 text-rose-500 font-black py-4 rounded-2xl border border-rose-100 dark:border-rose-800 shadow-sm btn-press text-[12px]">공장 초기화 (6011)</button>
+                                                        </div>
+                                                    </div>
+                                                    <div className="bg-rose-50 dark:bg-rose-900/20 p-7 rounded-[2.5rem] border border-rose-200 dark:border-rose-800 space-y-5 mt-6">
+                                                        <p className="text-[12px] font-black text-rose-600 dark:text-rose-400 tracking-widest flex items-center gap-2"><Icon name="alertCircle" size={18}/> 시스템 데이터 관리 (위험)</p>
+                                                        <p className="text-[11px] text-stone-600 dark:text-stone-300 leading-relaxed">모든 데이터(구성원, 스케줄, 게시글 등)를 삭제하고 초기 상태(기본 메뉴 복구)로 되돌립니다. 이 작업은 되돌릴 수 없습니다.</p>
+                                                        <button onClick={handleResetData} className="w-full bg-rose-500 hover:bg-rose-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[12px]">시스템 완전 초기화 (모든 데이터 삭제)</button>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {currentAdminTab === 'members' && (
+                                                <div className="space-y-6 fade-in">
+                                                    <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-5">
+                                                        <p className="text-[12px] font-black text-indigo-600 tracking-widest flex items-center gap-2"><Icon name="users" size={18}/> 구성원 수동 추가 및 강제 수정</p>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="사번 (필수)" value={memberForm.empId} onChange={e => setMemberForm({...memberForm, empId: e.target.value})} /><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="성명 (필수)" value={memberForm.name} onChange={e => setMemberForm({...memberForm, name: e.target.value})} /><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="소속 파트" value={memberForm.part} onChange={e => setMemberForm({...memberForm, part: e.target.value})} /><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="직급 (사원, 대리...)" value={memberForm.position} onChange={e => setMemberForm({...memberForm, position: e.target.value})} /><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="담당 카테고리 (예: C&P, LTSF)" value={memberForm.category} onChange={e => setMemberForm({...memberForm, category: e.target.value})} /><select className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-4 text-xs font-bold outline-none focus:border-indigo-400" value={memberForm.jobTitle} onChange={e => setMemberForm({...memberForm, jobTitle: e.target.value})}><option value="일반">일반 사원</option><option value="영업관리자">영업관리자</option><option value="파트장">파트장</option><option value="점장">점장</option></select><input className="col-span-1 sm:col-span-2 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="담당 브랜드 (예: 샤넬, 디올, 에스티로더)" value={memberForm.brands || ''} onChange={e => setMemberForm({...memberForm, brands: e.target.value})} /><input className="col-span-1 sm:col-span-2 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="비밀번호 재설정 (비워둘 시 기존 유지 또는 사번)" value={memberForm.password || ''} onChange={e => setMemberForm({...memberForm, password: e.target.value})} /></div>
+                                                        <button onClick={handleMemberSubmit} className="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-xs">저장</button>
+                                                    </div>
+                                                    <div className="bg-white dark:bg-stone-900 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-800">
+                                                        <div className="flex justify-between items-center mb-4">
+                                                            <p className="text-[11px] font-black text-stone-500">구성원 목록 ({filteredAdminMembers.length}명)</p>
+                                                            <input type="text" placeholder="이름 / 사번 검색" value={adminMemberSearch} onChange={e => setAdminMemberSearch(e.target.value)} className="bg-stone-50 dark:bg-stone-800 px-3 py-1.5 rounded-xl border border-stone-100 dark:border-stone-700 text-[11px] font-bold outline-none focus:border-indigo-400 w-36" />
+                                                        </div>
+                                                        <div className="space-y-3 max-h-64 overflow-y-auto scrollbar-hide">
+                                                            {filteredAdminMembers.map(u => (
+                                                                <div key={u.empId} className="flex justify-between items-center bg-stone-50 dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm group">
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-sm font-black text-stone-800 dark:text-stone-200">{u.name} <span className="text-[10px] text-stone-400">({u.empId})</span></span>
+                                                                        <span className="text-[10px] font-bold text-teal-600 mt-1">{u.part} · {u.jobTitle}</span>
+                                                                    </div>
+                                                                    <div className="flex gap-2">
+                                                                        <button onClick={() => handleResetPassword(u.empId)} className="text-white bg-amber-500 hover:bg-amber-600 p-2 rounded-lg btn-press shadow-sm" title="비밀번호 초기화"><Icon name="wrench" size={16}/></button>
+                                                                        <button onClick={() => { setMemberForm({ empId: u.empId, name: u.name, part: u.part, position: u.position, jobTitle: u.jobTitle, category: u.category, brands: u.brands || '', password: u.password }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="text-white bg-teal-500 hover:bg-teal-600 p-2 rounded-lg btn-press shadow-sm" title="수정"><Icon name="edit" size={16}/></button>
+                                                                        <button onClick={() => handleDeleteMember(u.empId)} className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg btn-press shadow-sm" title="삭제"><Icon name="trash" size={16}/></button>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {currentAdminTab === 'posts' && (
+                                                <div className="space-y-6 fade-in">
+                                                    <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-4">
+                                                        <p className="text-[12px] font-black text-indigo-600 tracking-widest flex items-center gap-2"><Icon name="clipboardList" size={18}/> 게시판/폼 데이터 조회</p>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                            {(dynamicApps || []).filter(a => a.actionType === 'board' || a.actionType === 'form' || a.actionType === 'notice' || a.actionType === 'reservation').map(app => {
+                                                                const postsCount = (dynamicPosts || []).filter(p => p.appId === app.id).length;
+                                                                const canView = canViewPosts(app);
+                                                                return (
+                                                                    <div key={app.id} className={`bg-white dark:bg-stone-900 p-4 rounded-2xl border shadow-sm flex items-center justify-between transition-colors ${canView ? 'border-stone-200 dark:border-stone-700 cursor-pointer btn-press hover:border-indigo-300' : 'border-stone-100 dark:border-stone-800 opacity-50'}`} onClick={() => { if (!canView) return showToast('열람 권한이 없습니다.', true); if (app.actionType === 'notice') { setOpenedAdminBoard(app); setSelectedAdminPost(null); } else if (app.actionType === 'reservation') { setOpenedReservationApp(app); setResSelectedDate(todayStr); setResConfigMode(false); } else { setOpenedDynamicApp(app); } }}>
+                                                                        <div className="flex items-center gap-3"><div className={`w-9 h-9 ${app.bg} ${app.color} rounded-xl flex items-center justify-center`}><Icon name={app.icon} size={16}/></div><div className="flex flex-col"><span className="text-xs font-black text-stone-800 dark:text-stone-200">{app.name}</span><span className="text-[9px] font-bold text-stone-400">{app.actionType === 'form' ? '폼' : app.actionType === 'reservation' ? '예약' : '게시판'} · {canView ? `${postsCount}건` : '🔒 열람 제한'}</span></div></div>
+                                                                        {canView && <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 font-black text-[10px] px-2.5 py-1 rounded-full shrink-0">{postsCount}건</span>}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                        {isAdminAuth && <div className="pt-4 border-t border-stone-200 dark:border-stone-700"><button onClick={handleClearAllPosts} className="bg-rose-50 dark:bg-rose-900/30 text-rose-500 font-black px-5 py-2.5 rounded-2xl flex items-center justify-center gap-2 mx-auto btn-press text-xs"><Icon name="trash" size={14}/> 모든 데이터 영구 삭제</button></div>}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -1959,6 +2301,7 @@
 
                     </main>
 
+                    {/* 💡 파트너스 페이지(shared) 및 로그인 화면에서는 하단 탭 숨김 */}
                     {view !== 'shared' && view !== 'login' && (
                         <nav className="flex-none w-full bg-[#F9F8F6]/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200 dark:border-stone-800 flex items-center justify-around z-50 px-2 md:px-12 shadow-[0_-10px_30px_rgba(0,0,0,0.03)] font-black pb-[env(safe-area-inset-bottom,1rem)] pt-2">
                             <button onClick={() => setView('daily')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'daily' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><Icon name="calendar" size={24}/><span className="text-[10px] tracking-tighter">일간</span></button>
@@ -1971,6 +2314,7 @@
                     )}
 
                     {/* MODALS */}
+                    {/* 💡 새로운 공지사항 전용 작성/수정 모달 */}
                     {isNoticeModalOpen && (
                         <ModalWrapper title="공지사항 작성" icon="edit" color="text-rose-500" onClose={() => { setIsNoticeModalOpen(false); setEditingNoticeId(null); setNoticeForm({content: '', photos: [], isPinned: false}); }}>
                             <div className="space-y-4">
@@ -2040,11 +2384,13 @@
                     {showProfileEdit && (
                         <ModalWrapper title="내 정보" icon="user" color="text-teal-500" onClose={() => { setShowProfileEdit(false); setProfileTab('pw'); }}>
                             <div className="space-y-4">
+                                {/* 탭 */}
                                 <div className="flex gap-2 bg-stone-100 dark:bg-stone-800 p-1 rounded-2xl">
                                     <button onClick={() => setProfileTab('pw')} className={`flex-1 py-2.5 rounded-xl text-[12px] font-black transition-all btn-press ${profileTab === 'pw' ? 'bg-white dark:bg-stone-700 text-teal-600 shadow-sm' : 'text-stone-400'}`}>🔑 비밀번호 변경</button>
                                     <button onClick={() => setProfileTab('info')} className={`flex-1 py-2.5 rounded-xl text-[12px] font-black transition-all btn-press ${profileTab === 'info' ? 'bg-white dark:bg-stone-700 text-teal-600 shadow-sm' : 'text-stone-400'}`}>👤 내 정보 수정</button>
                                 </div>
 
+                                {/* 비밀번호 변경 탭 */}
                                 {profileTab === 'pw' && (
                                     <div className="space-y-4 fade-in">
                                         <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 p-4 rounded-2xl">
@@ -2071,6 +2417,7 @@
                                     </div>
                                 )}
 
+                                {/* 내 정보 수정 탭 */}
                                 {profileTab === 'info' && (
                                     <div className="space-y-3 fade-in">
                                         <div><label className="text-[10px] font-black text-stone-500 ml-2">성명</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" value={profileForm.name} onChange={e => setProfileForm({...profileForm, name: e.target.value})} /></div>
