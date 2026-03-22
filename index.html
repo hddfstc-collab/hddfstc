@@ -887,9 +887,11 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 try { setDynamicPosts([newPost, ...(dynamicPosts || [])]); saveToIDB('dynamicPosts', newPost); setSubmitFormState({ content: '', photo: '', authorName: '' }); if(openedSubmitForm) setOpenedSubmitForm(null); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newPost.id).set(newPost); showToast('등록되었습니다.'); } catch(e) { showToast('등록 실패', true); }
             };
 
-            const handleAdminBoardPost = async () => {
+            const handleAdminBoardPost = async (targetAppId) => {
                 if (!adminBoardForm.title || !adminBoardForm.content) return showToast('제목과 내용을 입력해주세요.', true);
-                const newPost = { id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5), appId: openedAdminBoard.id, title: adminBoardForm.title, content: adminBoardForm.content, photo: adminBoardForm.photo, author: appUser?.name || '관리자', createdAt: new Date().toISOString(), type: 'admin_board' };
+                const useAppId = targetAppId || openedAdminBoard?.id;
+                if (!useAppId) return showToast('앱을 선택해주세요.', true);
+                const newPost = { id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5), appId: useAppId, title: adminBoardForm.title, content: adminBoardForm.content, photo: adminBoardForm.photo, author: appUser?.name || '관리자', createdAt: new Date().toISOString(), type: 'admin_board' };
                 try { setDynamicPosts([newPost, ...(dynamicPosts || [])]); saveToIDB('dynamicPosts', newPost); setAdminBoardForm({ title: '', content: '', photo: '' }); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newPost.id).set(newPost); showToast('게시글이 등록되었습니다.'); } catch(e) { showToast('게시글 등록 실패', true); }
             };
 
@@ -1920,7 +1922,6 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                             )}
                                         </div>
                                     ) : !isAdminAuth && !isHealthOnlyAdmin && AVAILABLE_TABS.length > 0 ? (
-                                        // 영업관리자/파트장: PIN 없이 바로 탭 표시
                                         <div className="bg-white dark:bg-stone-900 p-6 md:p-8 rounded-[3.5rem] shadow-2xl border border-stone-200 dark:border-stone-800 space-y-6 fade-in">
                                             <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide border-b border-stone-100 dark:border-stone-700 snap-x">
                                                 {AVAILABLE_TABS.map(tab => (
@@ -1948,7 +1949,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                                     <textarea className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl p-3 text-xs font-bold h-20 resize-none outline-none focus:border-teal-500" placeholder="내용" value={adminBoardForm.content} onChange={e => setAdminBoardForm({...adminBoardForm, content: e.target.value})}/>
                                                                     <div className="flex gap-2">
                                                                         <button onClick={() => { setOpenedAdminBoard(app); setSelectedAdminPost(null); }} className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-600 font-black py-2.5 rounded-xl btn-press text-xs">기존 글 보기</button>
-                                                                        <button onClick={() => handleAdminBoardPost()} className="flex-1 bg-teal-600 text-white font-black py-2.5 rounded-xl btn-press text-xs shadow-md">등록</button>
+                                                                        <button onClick={() => handleAdminBoardPost(app.id)} className="flex-1 bg-teal-600 text-white font-black py-2.5 rounded-xl btn-press text-xs shadow-md">등록</button>
                                                                     </div>
                                                                 </div>
                                                             )}
