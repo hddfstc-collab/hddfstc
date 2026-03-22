@@ -424,20 +424,19 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                 return appUser && (dynamicApps || []).some(app => app.actionType === 'reservation' && app.resOperatorId === appUser.empId);
             }, [appUser, dynamicApps]);
 
-const AVAILABLE_TABS = useMemo(() => {
+            const AVAILABLE_TABS = useMemo(() => {
                 return [ 
                     { id: 'health', name: '🏥 헬스키퍼 관리', show: isHealthOnlyAdmin || isAdminAuth || isHealthAdmin }, 
-                    // content 탭을 없애고 apps로 통합
-                    { id: 'apps', name: '공지 및 앱/폴더 관리', show: isAdminAuth || (!isHealthOnlyAdmin && appUser && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) }, 
+                    { id: 'content', name: '📝 콘텐츠 관리', show: !isAdminAuth && !isHealthOnlyAdmin && appUser && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장') },
+                    { id: 'apps', name: '앱/공지 관리', show: isAdminAuth && !isHealthOnlyAdmin }, 
                     { id: 'members', name: '구성원/조직 관리', show: isAdminAuth && !isHealthOnlyAdmin }, 
                     { id: 'schedules', name: '스케줄 관리', show: isAdminAuth && !isHealthOnlyAdmin }, 
-                    // 내선번호를 원래 위치로 복구
                     { id: 'extensions', name: '내선번호', show: isAdminAuth && !isHealthOnlyAdmin }, 
-                    // 영업관리자도 제출 데이터(posts) 탭을 볼 수 있게 권한 추가
                     { id: 'posts', name: '제출 데이터', show: (isAdminAuth && !isHealthOnlyAdmin) || (appUser && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) }, 
                     { id: 'security', name: '보안 설정', show: isAdminAuth && !isHealthOnlyAdmin } 
                 ].filter(t => t.show);
             }, [isHealthOnlyAdmin, isAdminAuth, isHealthAdmin, appUser]);
+
             const currentAdminTab = useMemo(() => {
                 if (AVAILABLE_TABS.find(t => t.id === adminTab)) return adminTab;
                 return AVAILABLE_TABS[0]?.id || 'health';
@@ -456,28 +455,13 @@ const AVAILABLE_TABS = useMemo(() => {
             const showToast = (m, isError = false) => { setToast(m); setToastError(isError); setTimeout(() => { setToast(''); setToastError(false); }, 3000); };
             const showConfirm = (options) => { setConfirmDialog({ ...options, isOpen: true }); };
 
- const canViewPosts = useCallback((appItem) => {
+            // 제출 데이터 열람 권한
+            const canViewPosts = useCallback((appItem) => {
                 if (!appItem) return false;
                 if (isAdminAuth) return true;
                 if (!appUser) return false;
                 const vp = appItem.viewPermission || 'admin';
-                
-                // 관리자 전용 데이터라도 영업관리자에게 작성/관리 권한이 있다면 열람 허용
-                if (vp === 'admin') {
-                    const p = appItem.writePermission;
-                    if (p === 'all' && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) return true; 
-                    if (Array.isArray(p)) {
-                         if (p.includes('manager') && appUser.jobTitle === '영업관리자') return true;
-                         if (p.some(x => x.startsWith('PART_') && appUser.part === x.replace('PART_', ''))) return true;
-                         if (p.some(x => x.startsWith('USER_') && appUser.empId === x.replace('USER_', ''))) return true;
-                    } else {
-                         if (p === 'manager' && appUser.jobTitle === '영업관리자') return true;
-                         if (p.startsWith('PART_') && appUser.part === p.replace('PART_', '')) return true;
-                         if (p.startsWith('USER_') && appUser.empId === p.replace('USER_', '')) return true;
-                    }
-                    return false;
-                }
-                
+                if (vp === 'admin') return false;
                 if (vp === 'manager') return appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장';
                 if (vp === 'member') return true;
                 if (vp.startsWith('PART_')) return appUser.part === vp.replace('PART_', '');
@@ -1630,7 +1614,6 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                             </>); })()}
                                         </table>
                                     </div>
-                            </div>
                             )}
 
                             {/* TASKS VIEW */}
