@@ -1932,6 +1932,9 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                                                 {isAdminAuth && <div className="flex gap-2"><button onClick={handleArchiveEvent} className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-4 rounded-2xl btn-press text-xs">종료 처리</button><button onClick={handleResetEvent} className="flex-1 bg-rose-50 dark:bg-rose-900/30 text-rose-500 font-black py-4 rounded-2xl btn-press text-xs border border-rose-200 dark:border-rose-800">완전 삭제</button></div>}
                                             </div>
                                         </div>
+                                    )}
+                                </div>
+                            )}
  {/* ADMIN VIEW */}
  {view === 'admin' && (
                                 <div className="max-w-3xl mx-auto pb-20 fade-in">
