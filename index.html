@@ -348,7 +348,7 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const [bulkScheduleMonth, setBulkScheduleMonth] = useState(todayStr.slice(0, 7));
             
             const [memberForm, setMemberForm] = useState({ empId: '', name: '', part: '', position: '사원', jobTitle: '일반', category: '', brands: '', password: '' });
-            const [appManagerForm, setAppManagerForm] = useState({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', viewPermission: 'admin', notifyTarget: 'none', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 1, sortOrder: 99 });
+            const [appManagerForm, setAppManagerForm] = useState({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', editPermission: '', deletePermission: '', viewPermission: 'admin', notifyTarget: 'none', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 1, sortOrder: 99 });
             const [editingAppId, setEditingAppId] = useState(null);
             const [submitFormState, setSubmitFormState] = useState({ content: '', photo: '', authorName: '' });
 
@@ -490,6 +490,36 @@ const AVAILABLE_TABS = useMemo(() => {
                 return false;
             }, [appUser, isAdminAuth]);
 
+            const hasPermission = useCallback((permRaw, appItem) => {
+                if (!permRaw) return false;
+                if (isAdminAuth) return true;
+
+                if (Array.isArray(permRaw)) {
+                    if (permRaw.includes('admin')) return isAdminAuth;
+                    if (!appUser) return false;
+                    if (permRaw.includes('all')) return true;
+                    if (permRaw.includes('member')) return true;
+                    if (permRaw.includes('manager') && appUser.jobTitle === '영업관리자') return true;
+                    if (permRaw.some(x => typeof x === 'string' && x.startsWith('PART_') && appUser.part === x.replace('PART_', ''))) return true;
+                    if (permRaw.some(x => typeof x === 'string' && x.startsWith('USER_') && appUser.empId === x.replace('USER_', ''))) return true;
+                    if (permRaw.some(x => typeof x === 'string' && x.startsWith('JOB_') && appUser.jobTitle === x.replace('JOB_', ''))) return true;
+                    if (permRaw.some(x => typeof x === 'string' && x.startsWith('CAT_') && (appUser.category || '') === x.replace('CAT_', ''))) return true;
+                    return false;
+                }
+
+                const p = String(permRaw).trim();
+                if (!p) return false;
+                if (p === 'all') return true;
+                if (!appUser) return false;
+                if (p === 'member') return true;
+                if (p === 'manager') return appUser.jobTitle === '영업관리자';
+                if (p.startsWith('PART_')) return appUser.part === p.replace('PART_', '');
+                if (p.startsWith('USER_')) return appUser.empId === p.replace('USER_', '');
+                if (p.startsWith('JOB_')) return appUser.jobTitle === p.replace('JOB_', '');
+                if (p.startsWith('CAT_')) return (appUser.category || '') === p.replace('CAT_', '');
+                return false;
+            }, [appUser, isAdminAuth]);
+
             const canWrite = useCallback((appItem) => {
                 if (!appItem) return false;
                 const p = appItem.writePermission;
@@ -499,29 +529,18 @@ const AVAILABLE_TABS = useMemo(() => {
                     if ((appItem.actionType === 'widget_notices' || appItem.actionType === 'widget_board') && appUser && appUser.jobTitle === '영업관리자') return true;
                     return false;
                 }
+                return hasPermission(p, appItem);
+            }, [appUser, hasPermission]);
 
-                // 배열인 경우 (notice 타입 다중 선택)
-                if (Array.isArray(p)) {
-                    if (p.includes('admin')) { if (isAdminAuth) return true; }
-                    if (!appUser) return false;
-                    if (p.includes('manager') && appUser.jobTitle === '영업관리자') return true;
-                    if (p.includes('member')) return true;
-                    if (p.some(x => typeof x === 'string' && x.startsWith('PART_') && appUser.part === x.replace('PART_', ''))) return true;
-                    if (p.some(x => typeof x === 'string' && x.startsWith('USER_') && appUser.empId === x.replace('USER_', ''))) return true;
-                    return false;
-                }
+            const canEdit = useCallback((appItem) => {
+                if (!appItem) return false;
+                return hasPermission(appItem.editPermission || appItem.writePermission, appItem);
+            }, [hasPermission]);
 
-                if (p === 'all') return true;
-                if (!appUser) return false;
-                if (p === 'member') return true;
-                if (p === 'manager') return appUser.jobTitle === '영업관리자';
-
-                if (typeof p === 'string') {
-                    if (p.startsWith('PART_')) return appUser.part === p.replace('PART_', '');
-                    if (p.startsWith('USER_')) return appUser.empId === p.replace('USER_', '');
-                }
-                return false;
-            }, [appUser, isAdminAuth]);
+            const canDelete = useCallback((appItem) => {
+                if (!appItem) return false;
+                return hasPermission(appItem.deletePermission || appItem.editPermission || appItem.writePermission, appItem);
+            }, [hasPermission]);
 
             const writeBlockedMsg = useCallback((appItem) => {
                 if (!appItem) return '권한이 없습니다.';
@@ -827,7 +846,7 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
             const handleEditDynamicApp = (app) => {
                 let mappedType = app.actionType;
                 if (mappedType === 'simple_guide') mappedType = 'guide'; if (mappedType === 'custom_board') mappedType = 'board'; if (mappedType === 'admin_board') mappedType = 'notice'; if (mappedType === 'custom_form') mappedType = 'form'; if (mappedType === 'external_url') mappedType = 'link'; if (mappedType === 'link_ext') mappedType = 'popup_ext';
-                setAppManagerForm({ name: app.name, icon: app.icon, color: app.color, bg: app.bg, isFolder: app.isFolder ? 'true' : 'false', parentId: app.parentId || '', actionType: mappedType || 'guide', url: app.url || '', writePermission: app.writePermission || 'all', viewPermission: app.viewPermission || 'admin', notifyTarget: app.notifyTarget || 'none', guideContent: app.guideContent || '', guideImage: app.guideImage || '', resOperatorId: app.resOperatorId || '', resTimeSlots: app.resTimeSlots || '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: app.resMaxPerSlot || 1, resLeadTimeDays: app.resLeadTimeDays || 0, resLeadTimeHours: app.resLeadTimeHours || 0, sortOrder: app.sortOrder || 99 });
+                setAppManagerForm({ name: app.name, icon: app.icon, color: app.color, bg: app.bg, isFolder: app.isFolder ? 'true' : 'false', parentId: app.parentId || '', actionType: mappedType || 'guide', url: app.url || '', writePermission: app.writePermission || 'all', editPermission: app.editPermission || '', deletePermission: app.deletePermission || '', viewPermission: app.viewPermission || 'admin', notifyTarget: app.notifyTarget || 'none', guideContent: app.guideContent || '', guideImage: app.guideImage || '', resOperatorId: app.resOperatorId || '', resTimeSlots: app.resTimeSlots || '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: app.resMaxPerSlot || 1, resLeadTimeDays: app.resLeadTimeDays || 0, resLeadTimeHours: app.resLeadTimeHours || 0, sortOrder: app.sortOrder || 99 });
                 setEditingAppId(app.id); setAdminTab('apps'); window.scrollTo({ top: 0, behavior: 'smooth' });
             };
 
@@ -839,13 +858,13 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                     const newApp = { id, ...appData };
                     setDynamicApps(prev => editingAppId ? prev.map(a => a.id === id ? newApp : a) : [...prev, newApp]); saveToIDB('dynamicApps', newApp);
                     if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_apps`).doc(id).set(newApp, { merge: true });
-                    showToast('저장되었습니다.'); setEditingAppId(null); setAppManagerForm({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', notifyTarget: 'none', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 0, sortOrder: 99 }); 
+                    showToast('저장되었습니다.'); setEditingAppId(null); setAppManagerForm({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', editPermission: '', deletePermission: '', viewPermission: 'admin', notifyTarget: 'none', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 0, sortOrder: 99 }); 
                 } catch(e) { showToast('저장 실패', true); }
             };
 
             const handleCancelEditDynamicApp = () => { 
                 setEditingAppId(null); 
-                setAppManagerForm({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', notifyTarget: 'none', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 0, sortOrder: 99 }); 
+                setAppManagerForm({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', editPermission: '', deletePermission: '', viewPermission: 'admin', notifyTarget: 'none', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 0, sortOrder: 99 }); 
             };
 
             const handleUpdateResApp = async (targetAppId) => {
@@ -1267,7 +1286,7 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                             <div className="flex items-center justify-between"><h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}><Icon name={app.icon} size={16}/> {app.name}</h3>
                             {isAdminAuth && <div className="flex gap-2"><button onClick={() => handleEditDynamicApp(app)} className="text-stone-400 hover:text-teal-500"><Icon name="edit" size={14}/></button><button onClick={() => handleDeleteDynamicApp(app.id)} className="text-stone-400 hover:text-rose-500"><Icon name="trash" size={14}/></button></div>}</div>
                             {activeManagers.length === 0 ? <p className="text-center py-6 text-stone-300 font-bold text-[11px]">오늘 출근한 영업관리자가 없습니다.</p> : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                     {activeManagers.map(m => { const ext = (extensions || []).find(e => e?.user?.includes(m.name)); return (
                                         <div key={m.empId} className="bg-stone-50 dark:bg-stone-800 rounded-2xl p-4 border border-stone-100 dark:border-stone-700 flex flex-col gap-2 shadow-sm"><div className="flex justify-between items-center w-full"><div className="flex flex-col"><p className="text-[15px] font-black text-stone-800 dark:text-stone-200">{m.name}</p><p className="text-[10px] text-stone-500 font-bold">{m.user?.position} · {m.user?.jobTitle}</p></div>{ext && <button onClick={(e) => callExtension(ext.number, m.name, e)} className="text-white bg-teal-500 p-2.5 rounded-full btn-press shadow-md"><Icon name="phoneCall" size={14} /></button>}</div><div className="mt-1"><span className={`px-3 py-1 rounded-lg text-[9px] font-black shadow-sm ${STATUS_THEME[m.status] || 'bg-stone-200 text-stone-500'}`}>{m.status}</span></div></div>
                                     );})}
@@ -1293,17 +1312,17 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                             </div>
                             <div className="space-y-3 overflow-y-auto scrollbar-hide pr-1" style={{ maxHeight: widgetNoticesExpanded ? '480px' : '220px' }}>
                                 {(notices || []).length === 0 ? <p className="text-center py-10 text-stone-300 font-bold text-[11px]">공지사항이 없습니다.</p> : notices.slice(0, 5).map(n => { const images = n.photos || (n.photo ? [n.photo] : []); const isUnread = !readNoticeIds.includes(n.id); return (
-                                    <div key={n.id} className={`p-5 rounded-3xl border space-y-4 shadow-sm relative ${n.isPinned ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800' : 'bg-stone-50 dark:bg-stone-800 border-stone-100 dark:border-stone-700'}`} onClick={() => { if(isUnread) { const next = [...readNoticeIds, n.id]; setReadNoticeIds(next); localStorage.setItem('hmood_read_notices', JSON.stringify(next)); } }}>
+                                    <div key={n.id} className={`p-3 md:p-5 rounded-2xl md:rounded-3xl border space-y-2 md:space-y-4 shadow-sm relative ${n.isPinned ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800' : 'bg-stone-50 dark:bg-stone-800 border-stone-100 dark:border-stone-700'}`} onClick={() => { if(isUnread) { const next = [...readNoticeIds, n.id]; setReadNoticeIds(next); localStorage.setItem('hmood_read_notices', JSON.stringify(next)); } }}>
                                         <div className="flex items-center justify-between mb-2">
                                             <div className="flex items-center gap-2">{n.isPinned && <div className="text-[10px] font-black text-rose-500 flex items-center gap-1"><Icon name="pin" size={14}/> <span>중요 공지</span></div>}{isUnread && <div className="w-2 h-2 bg-rose-500 rounded-full"/>}</div>
-                                            {canWrite(app) && (
+                                            {canEdit(app) && (
                                                 <div className="flex gap-2">
                                                     <button onClick={() => { setNoticeForm({ content: n.content, photos: n.photos || [], isPinned: !!n.isPinned }); setEditingNoticeId(n.id); setIsNoticeModalOpen(true); }} className="text-stone-400 hover:text-teal-500 btn-press"><Icon name="edit" size={14}/></button>
-                                                    <button onClick={() => handleDeleteNotice(n.id)} className="text-stone-400 hover:text-rose-500 btn-press"><Icon name="trash" size={14}/></button>
+                                                    {canDelete(app) && <button onClick={() => handleDeleteNotice(n.id)} className="text-stone-400 hover:text-rose-500 btn-press"><Icon name="trash" size={14}/></button>}
                                                 </div>
                                             )}
                                         </div>
-                                        <p className="text-[13px] font-bold leading-relaxed whitespace-pre-wrap text-stone-800 dark:text-stone-200">{n.content}</p>
+                                        <p className="text-[12px] md:text-[13px] font-bold leading-relaxed whitespace-pre-wrap text-stone-800 dark:text-stone-200 line-clamp-1 md:line-clamp-2">{n.content}</p>
                                         {images.length > 0 && (<div className="flex gap-2 overflow-x-auto py-1 scrollbar-hide">{images.map((imgSrc, idx) => (<div key={idx} className="relative w-16 h-16 shrink-0 rounded-xl border border-stone-200 dark:border-stone-700 shadow-sm cursor-pointer btn-press" onClick={() => setExpandedImage(imgSrc)}><img src={imgSrc} className="w-full h-full object-cover rounded-xl" /></div>))}</div>)}
                                         <div className="flex justify-between text-[9px] text-stone-400 font-black mt-2"><span>{n.author}</span><span>{formatLocalTime(n.createdAt)}</span></div>
                                     </div>
@@ -1387,10 +1406,10 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                                                 </div>
                                                 <p className="text-[10px] text-stone-400 font-bold mt-0.5 line-clamp-1">{post.content}</p>
                                             </div>
-                                            {canWrite(app) && (
+                                            {canEdit(app) && (
                                                 <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                                                     <button onClick={() => { setWBoardForm({ title: post.title, content: post.content, photo: post.photo||'' }); setWBoardEditId(post.id); setWBoardOpenId(app.id); }} className="text-stone-400 hover:text-teal-500 p-1"><Icon name="edit" size={13}/></button>
-                                                    <button onClick={() => handleDeleteWidgetPost(post.id)} className="text-stone-400 hover:text-rose-500 p-1"><Icon name="trash" size={13}/></button>
+                                                    {canDelete(app) && <button onClick={() => handleDeleteWidgetPost(post.id)} className="text-stone-400 hover:text-rose-500 p-1"><Icon name="trash" size={13}/></button>}
                                                 </div>
                                             )}
                                         </div>
@@ -1486,7 +1505,12 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                     <div className={`w-14 h-14 sm:w-16 sm:h-16 ${app.bg} ${app.color} rounded-[1.2rem] shadow-sm flex items-center justify-center transition-all group-hover:shadow-md relative`}>
                                                         <Icon name={app.icon} size={26} className="transition-colors"/>
                                                         {app.isFolder && <div className="absolute top-0 right-0 w-3.5 h-3.5 bg-white border border-stone-200 rounded-full flex items-center justify-center"><div className="w-1.5 h-1.5 bg-stone-300 rounded-full"/></div>}
-                                                        {(app.actionType === 'widget_notices' || app.actionType === 'notice') && (() => { const unread = (notices||[]).filter(n => !readNoticeIds.includes(n.id)).length; return unread > 0 ? <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-black rounded-full min-w-[17px] h-[17px] flex items-center justify-center px-1 shadow">{unread > 9 ? '9+' : unread}</span> : null; })()}
+                                                        {(app.actionType === 'widget_notices' || app.actionType === 'notice') && (() => {
+                                                            const unread = app.actionType === 'widget_notices'
+                                                                ? (notices || []).filter(n => !readNoticeIds.includes(n.id)).length
+                                                                : (dynamicPosts || []).filter(p => p.appId === app.id).length;
+                                                            return unread > 0 ? <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-black rounded-full min-w-[17px] h-[17px] flex items-center justify-center px-1 shadow">{unread > 9 ? '9+' : unread}</span> : null;
+                                                        })()}
                                                     </div>
                                                     <span className="text-[10px] sm:text-[11px] font-black text-stone-600 tracking-tighter whitespace-nowrap overflow-hidden text-ellipsis w-full text-center">{app.name}</span>
                                                 </button>
@@ -1538,7 +1562,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                         <input type="text" placeholder="이름, 카테고리, 브랜드 검색..." value={dailySearch} onChange={e => setDailySearch(e.target.value)} className="w-full bg-transparent outline-none text-[12px] font-bold text-stone-700 dark:text-stone-300 placeholder-stone-400"/>
                                         {dailySearch && <button onClick={() => setDailySearch('')} className="text-stone-300 hover:text-stone-500 font-black text-[12px]">✕</button>}
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-20">
+                                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 pb-20">
                                         {(() => {
                                             const q = dailySearch.toLowerCase().trim();
                                             const filtered = sortedDailyGroups.map(([part, members]) => {
@@ -2278,6 +2302,18 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
 </select>
                                                             </div>
 
+                                                            <div className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 space-y-3">
+                                                                <p className="text-[10px] font-black text-stone-400">권한 설정 (작성/수정/삭제)</p>
+                                                                <div className="grid grid-cols-1 gap-2">
+                                                                    <input className="bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none focus:border-teal-500" placeholder="작성 권한 예: all / manager / PART_영업1파트 / JOB_영업관리자 / CAT_C&P" value={appManagerForm.writePermission || ''} onChange={e => setAppManagerForm({...appManagerForm, writePermission: e.target.value})} />
+                                                                    <input className="bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none focus:border-teal-500" placeholder="수정 권한 (비우면 작성 권한과 동일)" value={appManagerForm.editPermission || ''} onChange={e => setAppManagerForm({...appManagerForm, editPermission: e.target.value})} />
+                                                                    <input className="bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none focus:border-teal-500" placeholder="삭제 권한 (비우면 수정/작성 권한과 동일)" value={appManagerForm.deletePermission || ''} onChange={e => setAppManagerForm({...appManagerForm, deletePermission: e.target.value})} />
+                                                                </div>
+                                                                <p className="text-[10px] text-stone-400 font-bold leading-relaxed">
+                                                                    팀/파트는 <b>PART_파트명</b>, 카테고리는 <b>CAT_카테고리명</b>, 직책은 <b>JOB_직책명</b> 형식으로 입력하세요.
+                                                                </p>
+                                                            </div>
+
                                                             <div className="flex gap-2">
                                                                 {editingAppId && <button onClick={handleCancelEditDynamicApp} className="flex-1 bg-stone-200 dark:bg-stone-700 text-stone-600 font-black py-4 rounded-2xl text-xs btn-press">취소</button>}
                                                                 <button onClick={handleSaveDynamicApp} className="flex-[2] bg-teal-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-xs">{editingAppId ? '수정 내용 저장' : '새 앱/폴더 생성'}</button>
@@ -2621,7 +2657,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                     return filtered.map(post => (
                                         <div key={post.id} className="bg-white dark:bg-stone-800 p-5 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm space-y-3">
                                             <p className="text-[12px] font-bold text-stone-800 dark:text-stone-200 whitespace-pre-wrap">{post.content}</p>{post.photo && <img src={post.photo} className="w-full h-auto rounded-xl object-cover cursor-pointer border border-stone-100 dark:border-stone-700" onClick={() => setExpandedImage(post.photo)} />}
-                                            <div className="flex justify-between items-center text-[9px] text-stone-400 font-black mt-2 pt-2 border-t border-stone-50 dark:border-stone-700"><span>{post.author}</span><div className="flex items-center gap-2"><span>{formatLocalTime(post.createdAt)}</span>{isAdminAuth && (<button onClick={(e) => handleDeleteDynamicPost(e, post.id)} className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg ml-2 btn-press shadow-sm"><Icon name="trash" size={14}/></button>)}</div></div>
+                                            <div className="flex justify-between items-center text-[9px] text-stone-400 font-black mt-2 pt-2 border-t border-stone-50 dark:border-stone-700"><span>{post.author}</span><div className="flex items-center gap-2"><span>{formatLocalTime(post.createdAt)}</span>{canDelete(openedDynamicApp) && (<button onClick={(e) => handleDeleteDynamicPost(e, post.id)} className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg ml-2 btn-press shadow-sm"><Icon name="trash" size={14}/></button>)}</div></div>
                                         </div>
                                     ));
                                 })()}
@@ -2687,7 +2723,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                         {(dynamicPosts || []).filter(p => p.appId === openedAdminBoard.id).map(post => (
                                             <div key={post.id} className="flex items-center justify-between bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm group hover:border-indigo-200 transition-colors">
                                                 <button onClick={() => setSelectedAdminPost(post)} className="flex-1 text-left btn-press"><p className="text-[13px] font-black text-stone-800 dark:text-stone-200 truncate group-hover:text-indigo-600">{post.title}</p><p className="text-[10px] text-stone-400 font-bold mt-1">{post.author} · {formatLocalTime(post.createdAt)}</p></button>
-                                                {canWrite(openedAdminBoard) && (<button onClick={(e) => handleDeleteDynamicPost(e, post.id)} className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg ml-2 btn-press shadow-sm"><Icon name="trash" size={14}/></button>)}
+                                                {canDelete(openedAdminBoard) && (<button onClick={(e) => handleDeleteDynamicPost(e, post.id)} className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg ml-2 btn-press shadow-sm"><Icon name="trash" size={14}/></button>)}
                                             </div>
                                         ))}
                                     </div>
