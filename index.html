@@ -1453,8 +1453,9 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                                             <h2 className="text-xl font-black flex items-center gap-2 text-stone-800 dark:text-stone-200">
                                                 <Icon name="shield" className="text-teal-600" size={24}/> 파트너스 채널
                                             </h2>
-                                            <button onClick={() => handleNavClick('daily')} className="bg-stone-800 dark:bg-stone-700 text-white px-2 py-1 rounded-lg text-[10px] font-black shadow flex items-center gap-1 btn-press ml-1 transition-transform">
-                                                <Icon name="calendar" size={12}/> 직영채널 이동
+                                            {/* 직영채널 이동 버튼을 작은 아이콘으로 변경 */}
+                                            <button onClick={() => handleNavClick('daily')} className="bg-stone-800 dark:bg-stone-700 text-white p-1.5 rounded-lg shadow flex items-center justify-center btn-press ml-1 transition-transform" title="직영채널 이동">
+                                                <Icon name="calendar" size={16}/>
                                             </button>
                                         </div>
                                         <div className="flex gap-2">
@@ -2026,6 +2027,10 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                                                 {AVAILABLE_TABS.map(tab => (
                                                     <button key={tab.id} onClick={() => setAdminTab(tab.id)} className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${currentAdminTab === tab.id ? 'bg-stone-800 text-white shadow-md' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'}`}>{tab.name}</button>
                                                 ))}
+                                                {/* 관리자 모드 종료 버튼 추가 */}
+                                                <button onClick={() => { setIsAdminAuth(false); setIsHealthOnlyAdmin(false); setView('daily'); showToast('관리자 모드가 종료되었습니다.'); }} className="snap-center px-4 py-3 rounded-[1.2rem] font-black text-[11px] whitespace-nowrap bg-rose-50 dark:bg-rose-900/30 text-rose-500 border border-rose-200 dark:border-rose-800 shrink-0 flex items-center gap-1.5 ml-auto btn-press hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors">
+                                                    <Icon name="logout" size={14}/> 관리자 종료
+                                                </button>
                                             </div>
 
                                             {currentAdminTab === 'health' && (
