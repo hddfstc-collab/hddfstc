@@ -703,8 +703,31 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                     return (a.name||'').localeCompare(b.name||'', 'ko');
                 });
             }, [sortedUsers, viewMode, appUser]);
-            
+
+ // 1. 잃어버렸던 dailyGroups (원본 데이터 그룹화)
+ const dailyGroups = useMemo(() => { 
+                const act = (schedules || []).filter(s => {
+                    if(s?.date !== todayStr) return false;
+                    const opt = (statusOptions || []).find(o => o.label === s.status);
+                    if (opt && opt.isWork !== undefined) return opt.isWork === true || opt.isWork === 'true';
+                    return !['휴무', '연차', '대체 휴무'].includes(s.status);
+                }); 
+                return act.reduce((acc, s) => { 
+                    let p = userMap[s.empId]?.part || s.part || '';
+                    if (p === 'undefined' || p === 'null') p = '';
+                    p = p.trim();
+                    if (!p) p = '미지정'; // 소속이 없으면 무조건 '미지정'
+
+                    if (!acc[p]) acc[p] = []; 
+                    acc[p].push(s); 
+                    return acc; 
+                }, {}); 
+            }, [schedules, todayStr, statusOptions, userMap]);
+
+            // 2. 완벽하게 정렬된 sortedDailyGroups (직책 -> 직급 -> 카테고리 -> 이름 순)
             const sortedDailyGroups = useMemo(() => {
+                if (!dailyGroups) return []; // 에러 방지용 안전장치
+                
                 return Object.entries(dailyGroups).sort(([pA], [pB]) => {
                     const isUnassignedA = (pA === '미지정');
                     const isUnassignedB = (pB === '미지정');
@@ -741,7 +764,7 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                         const rankB = RANK_W[uB.position] || 99;
                         if (rankA !== rankB) return rankA - rankB;
 
-                        // 3순위: 카테고리 (가나다순 - 기존 코드 복구)
+                        // 3순위: 카테고리 (가나다순)
                         const cA = uA.category || ''; 
                         const cB = uB.category || '';
                         if (cA !== cB) return cA.localeCompare(cB, 'ko');
