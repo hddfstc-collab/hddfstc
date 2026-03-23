@@ -378,6 +378,7 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const [profileForm, setProfileForm] = useState({ name: '', part: '', category: '', brands: '', extNumber: '', position: '', jobTitle: '', password: '', targetEmpId: '' });
             const [expandedImage, setExpandedImage] = useState(null);
             const [expandedCell, setExpandedCell] = useState(null);
+            const [widgetNoticesExpanded, setWidgetNoticesExpanded] = useState(false);
             const [dailySearch, setDailySearch] = useState(''); // 일간 검색
             const [expandedDailyCard, setExpandedDailyCard] = useState(null); // 클릭 시 카테고리/브랜드 전체 표시
             // 미읽은 공지 추적
@@ -456,52 +457,69 @@ const AVAILABLE_TABS = useMemo(() => {
             const showToast = (m, isError = false) => { setToast(m); setToastError(isError); setTimeout(() => { setToast(''); setToastError(false); }, 3000); };
             const showConfirm = (options) => { setConfirmDialog({ ...options, isOpen: true }); };
 
- const canViewPosts = useCallback((appItem) => {
+            const canViewPosts = useCallback((appItem) => {
                 if (!appItem) return false;
                 if (isAdminAuth) return true;
                 if (!appUser) return false;
                 const vp = appItem.viewPermission || 'admin';
-                
-                // 관리자 전용 데이터라도 영업관리자에게 작성/관리 권한이 있다면 열람 허용
+                const p = appItem.writePermission;
+
+                // 관리자 전용 데이터라도 (앱별) 작성 권한이 있으면 열람 허용
                 if (vp === 'admin') {
-                    const p = appItem.writePermission;
-                    if (p === 'all' && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) return true; 
+                    if (!p) return false;
+                    if (p === 'all' && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) return true;
+
                     if (Array.isArray(p)) {
-                         if (p.includes('manager') && appUser.jobTitle === '영업관리자') return true;
-                         if (p.some(x => x.startsWith('PART_') && appUser.part === x.replace('PART_', ''))) return true;
-                         if (p.some(x => x.startsWith('USER_') && appUser.empId === x.replace('USER_', ''))) return true;
-                    } else {
-                         if (p === 'manager' && appUser.jobTitle === '영업관리자') return true;
-                         if (p.startsWith('PART_') && appUser.part === p.replace('PART_', '')) return true;
-                         if (p.startsWith('USER_') && appUser.empId === p.replace('USER_', '')) return true;
+                        if (p.includes('manager') && appUser.jobTitle === '영업관리자') return true;
+                        if (p.some(x => typeof x === 'string' && x.startsWith('PART_') && appUser.part === x.replace('PART_', ''))) return true;
+                        if (p.some(x => typeof x === 'string' && x.startsWith('USER_') && appUser.empId === x.replace('USER_', ''))) return true;
+                        return false;
+                    }
+
+                    if (typeof p === 'string') {
+                        if (p === 'manager' && appUser.jobTitle === '영업관리자') return true;
+                        if (p.startsWith('PART_') && appUser.part === p.replace('PART_', '')) return true;
+                        if (p.startsWith('USER_') && appUser.empId === p.replace('USER_', '')) return true;
                     }
                     return false;
                 }
-                
+
                 if (vp === 'manager') return appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장';
                 if (vp === 'member') return true;
-                if (vp.startsWith('PART_')) return appUser.part === vp.replace('PART_', '');
+                if (typeof vp === 'string' && vp.startsWith('PART_')) return appUser.part === vp.replace('PART_', '');
                 return false;
             }, [appUser, isAdminAuth]);
 
             const canWrite = useCallback((appItem) => {
                 if (!appItem) return false;
                 const p = appItem.writePermission;
+                if (!p) {
+                    // 기존 데이터(기본 위젯 등)에서 writePermission이 비어있을 수 있으므로,
+                    // widget 용도는 레거시로 영업관리자에게만 임시 허용합니다.
+                    if ((appItem.actionType === 'widget_notices' || appItem.actionType === 'widget_board') && appUser && appUser.jobTitle === '영업관리자') return true;
+                    return false;
+                }
+
                 // 배열인 경우 (notice 타입 다중 선택)
                 if (Array.isArray(p)) {
                     if (p.includes('admin')) { if (isAdminAuth) return true; }
                     if (!appUser) return false;
                     if (p.includes('manager') && appUser.jobTitle === '영업관리자') return true;
                     if (p.includes('member')) return true;
-                    if (p.some(x => x.startsWith('PART_') && appUser.part === x.replace('PART_', ''))) return true;
-                    if (p.some(x => x.startsWith('USER_') && appUser.empId === x.replace('USER_', ''))) return true;
+                    if (p.some(x => typeof x === 'string' && x.startsWith('PART_') && appUser.part === x.replace('PART_', ''))) return true;
+                    if (p.some(x => typeof x === 'string' && x.startsWith('USER_') && appUser.empId === x.replace('USER_', ''))) return true;
                     return false;
                 }
+
                 if (p === 'all') return true;
                 if (!appUser) return false;
                 if (p === 'member') return true;
-                if (p.startsWith('PART_')) return appUser.part === p.replace('PART_', '');
-                if (p.startsWith('USER_')) return appUser.empId === p.replace('USER_', '');
+                if (p === 'manager') return appUser.jobTitle === '영업관리자';
+
+                if (typeof p === 'string') {
+                    if (p.startsWith('PART_')) return appUser.part === p.replace('PART_', '');
+                    if (p.startsWith('USER_')) return appUser.empId === p.replace('USER_', '');
+                }
                 return false;
             }, [appUser, isAdminAuth]);
 
@@ -509,8 +527,8 @@ const AVAILABLE_TABS = useMemo(() => {
                 if (!appItem) return '권한이 없습니다.';
                 const p = appItem.writePermission;
                 if (!appUser) return '로그인이 필요합니다.';
-                if (p.startsWith('PART_')) return `[${p.replace('PART_', '')}] 파트 직원만 작성 가능합니다.`;
-                if (p.startsWith('USER_')) return '지정된 권한자만 작성 가능합니다.';
+                if (typeof p === 'string' && p.startsWith('PART_')) return `[${p.replace('PART_', '')}] 파트 직원만 작성 가능합니다.`;
+                if (typeof p === 'string' && p.startsWith('USER_')) return '지정된 권한자만 작성 가능합니다.';
                 return '권한이 없습니다.';
             }, [appUser]);
 
@@ -996,10 +1014,22 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 try {
                     const id = editingNoticeId || Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5);
                     const newNotice = { id, content: noticeForm.content, photos: noticeForm.photos, isPinned: noticeForm.isPinned, createdAt: editingNoticeId ? notices.find(n=>n.id===id).createdAt : new Date().toISOString(), author: appUser?.name || '관리자', isEdited: !!editingNoticeId, updatedAt: editingNoticeId ? new Date().toISOString() : null };
-                    setNotices(prev => { const n = editingNoticeId ? prev.map(x=>x.id===id?newNotice:x) : [newNotice, ...prev]; return n.sort((a,b) => { if (a.isPinned && !b.isPinned) return -1; if (!a.isPinned && b.isPinned) return 1; return (b.createdAt||'').localeCompare(a.createdAt||''); }); });
-                    // 수정된 공지는 미읽음으로 리셋
-                    const nextRead = readNoticeIds.filter(rid => rid !== id);
-                    setReadNoticeIds(nextRead); localStorage.setItem('hmood_read_notices', JSON.stringify(nextRead));
+                    setNotices(prev => {
+                        const list = prev || [];
+                        const map = new Map(list.map(n => [n.id, n]));
+                        map.set(id, newNotice);
+                        return [...map.values()].sort((a,b) => {
+                            if (a.isPinned && !b.isPinned) return -1;
+                            if (!a.isPinned && b.isPinned) return 1;
+                            return (b.createdAt||'').localeCompare(a.createdAt||'');
+                        });
+                    });
+                    // (편집/추가) 공지는 다시 미읽음으로 리셋
+                    setReadNoticeIds(prev => {
+                        const next = (prev || []).filter(rid => rid !== id);
+                        try { localStorage.setItem('hmood_read_notices', JSON.stringify(next)); } catch (e) {}
+                        return next;
+                    });
                     saveToIDB('notices', newNotice); setEditingNoticeId(null); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/notices`).doc(id).set(newNotice, { merge: true }); showToast('저장되었습니다.'); setNoticeForm({ content: '', photos: [], isPinned: false });
                 } catch (err) { showToast('저장 실패', true); }
             };
@@ -1221,6 +1251,13 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
             }, [view]);
 
             const handlePhotoSingle = async (e, setter) => { if(e.target.files[0]) { const base64Img = await resizeImage(e.target.files[0]); setter(prev => ({ ...prev, photo: base64Img })); } };
+            const handleNoticePhotoSingle = async (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+                const base64Img = await resizeImage(file);
+                setNoticeForm(prev => ({ ...prev, photos: [base64Img] }));
+                e.target.value = '';
+            };
             const handleGuideImageUpload = async (e) => { if(e.target.files[0]) { const base64Img = await resizeImage(e.target.files[0]); setAppManagerForm(prev => ({ ...prev, guideImage: base64Img })); } };
 
             const renderWidget = (app) => {
@@ -1243,19 +1280,23 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                     return (
                         <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in">
                             <div className="flex items-center justify-between">
-                                <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}><Icon name={app.icon} size={16}/> {app.name}</h3>
+                                <h3
+                                    className={`text-xs font-black flex items-center gap-2 ${app.color} cursor-pointer`}
+                                    onClick={() => setWidgetNoticesExpanded(v => !v)}
+                                    title="클릭해서 높이 확장/축소"
+                                ><Icon name={app.icon} size={16}/> {app.name}</h3>
                                 <div className="flex gap-2">
-                                    {canManageNotice && <button onClick={() => { setEditingNoticeId(null); setNoticeForm({content:'', photos:[], isPinned:false}); setIsNoticeModalOpen(true); }} className="text-[10px] font-black text-rose-500 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg btn-press transition-colors">공지 등록</button>}
+                                    {canWrite(app) && <button onClick={() => { setEditingNoticeId(null); setNoticeForm({content:'', photos:[], isPinned:false}); setIsNoticeModalOpen(true); }} className="text-[10px] font-black text-rose-500 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg btn-press transition-colors">공지 등록</button>}
                                     {isAdminAuth && <button onClick={() => handleEditDynamicApp(app)} className="text-stone-400 hover:text-teal-500"><Icon name="edit" size={14}/></button>}
                                     {isAdminAuth && <button onClick={() => handleDeleteDynamicApp(app.id)} className="text-stone-400 hover:text-rose-500"><Icon name="trash" size={14}/></button>}
                                 </div>
                             </div>
-                            <div className="space-y-3 max-h-[480px] overflow-y-auto scrollbar-hide pr-1">
+                            <div className="space-y-3 overflow-y-auto scrollbar-hide pr-1" style={{ maxHeight: widgetNoticesExpanded ? '480px' : '220px' }}>
                                 {(notices || []).length === 0 ? <p className="text-center py-10 text-stone-300 font-bold text-[11px]">공지사항이 없습니다.</p> : notices.slice(0, 5).map(n => { const images = n.photos || (n.photo ? [n.photo] : []); const isUnread = !readNoticeIds.includes(n.id); return (
                                     <div key={n.id} className={`p-5 rounded-3xl border space-y-4 shadow-sm relative ${n.isPinned ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800' : 'bg-stone-50 dark:bg-stone-800 border-stone-100 dark:border-stone-700'}`} onClick={() => { if(isUnread) { const next = [...readNoticeIds, n.id]; setReadNoticeIds(next); localStorage.setItem('hmood_read_notices', JSON.stringify(next)); } }}>
                                         <div className="flex items-center justify-between mb-2">
                                             <div className="flex items-center gap-2">{n.isPinned && <div className="text-[10px] font-black text-rose-500 flex items-center gap-1"><Icon name="pin" size={14}/> <span>중요 공지</span></div>}{isUnread && <div className="w-2 h-2 bg-rose-500 rounded-full"/>}</div>
-                                            {canManageNotice && (
+                                            {canWrite(app) && (
                                                 <div className="flex gap-2">
                                                     <button onClick={() => { setNoticeForm({ content: n.content, photos: n.photos || [], isPinned: !!n.isPinned }); setEditingNoticeId(n.id); setIsNoticeModalOpen(true); }} className="text-stone-400 hover:text-teal-500 btn-press"><Icon name="edit" size={14}/></button>
                                                     <button onClick={() => handleDeleteNotice(n.id)} className="text-stone-400 hover:text-rose-500 btn-press"><Icon name="trash" size={14}/></button>
@@ -1308,16 +1349,16 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 const posts = (dynamicPosts || []).filter(p => p.appId === app.id).sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||''));
                 return (
                     <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in">
-                        <div className="flex items-center justify-between">
-                            <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}><Icon name={app.icon} size={16}/> {app.name}</h3>
+                            <div className="flex items-center justify-between">
+                                <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}><Icon name={app.icon} size={16}/> {app.name}</h3>
                             <div className="flex gap-2">
-                                {canManageWidgetBoard && <button onClick={() => { setWBoardForm({ title:'', content:'', photo:'' }); setWBoardEditId(null); setWBoardOpenId(wBoardOpenId === app.id ? null : app.id); }} className="text-[10px] font-black text-teal-600 bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 px-3 py-1.5 rounded-lg btn-press transition-colors">{wBoardOpenId===app.id?'닫기':'글쓰기'}</button>}
+                                    {canWrite(app) && <button onClick={() => { setWBoardForm({ title:'', content:'', photo:'' }); setWBoardEditId(null); setWBoardOpenId(wBoardOpenId === app.id ? null : app.id); }} className="text-[10px] font-black text-teal-600 bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 px-3 py-1.5 rounded-lg btn-press transition-colors">{wBoardOpenId===app.id?'닫기':'글쓰기'}</button>}
                                 {isAdminAuth && <button onClick={() => handleEditDynamicApp(app)} className="text-stone-400 hover:text-teal-500"><Icon name="edit" size={14}/></button>}
                                 {isAdminAuth && <button onClick={() => handleDeleteDynamicApp(app.id)} className="text-stone-400 hover:text-rose-500"><Icon name="trash" size={14}/></button>}
                             </div>
                         </div>
                         {/* 작성/수정 폼 */}
-                        {wBoardOpenId === app.id && canManageWidgetBoard && (
+                        {wBoardOpenId === app.id && canWrite(app) && (
                             <div className="bg-stone-50 dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 space-y-3 fade-in">
                                 <input className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-400" placeholder="제목" value={wBoardForm.title} onChange={e => setWBoardForm({...wBoardForm, title: e.target.value})}/>
                                 <textarea className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-400 h-24 resize-none" placeholder="내용" value={wBoardForm.content} onChange={e => setWBoardForm({...wBoardForm, content: e.target.value})}/>
@@ -1346,7 +1387,7 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                                                 </div>
                                                 <p className="text-[10px] text-stone-400 font-bold mt-0.5 line-clamp-1">{post.content}</p>
                                             </div>
-                                            {canManageWidgetBoard && (
+                                            {canWrite(app) && (
                                                 <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                                                     <button onClick={() => { setWBoardForm({ title: post.title, content: post.content, photo: post.photo||'' }); setWBoardEditId(post.id); setWBoardOpenId(app.id); }} className="text-stone-400 hover:text-teal-500 p-1"><Icon name="edit" size={13}/></button>
                                                     <button onClick={() => handleDeleteWidgetPost(post.id)} className="text-stone-400 hover:text-rose-500 p-1"><Icon name="trash" size={13}/></button>
@@ -1949,13 +1990,13 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                             {currentAdminTab === 'apps' && (
                                                 <div className="space-y-5 fade-in">
                                                     <p className="text-[12px] font-black text-teal-600 flex items-center gap-2"><Icon name="edit" size={16}/> 권한 부여된 콘텐츠 작성/관리</p>
-                                                    {(dynamicApps || []).filter(a => ['board','form','notice','widget_board'].includes(a.actionType) && canWrite(a)).length === 0 ? (
+                                                    {(dynamicApps || []).filter(a => ['board','form','notice','widget_board','widget_notices'].includes(a.actionType) && canWrite(a)).length === 0 ? (
                                                         <div className="text-center py-12 text-stone-400 font-bold text-sm">작성 권한이 부여된 앱이 없습니다.</div>
-                                                    ) : (dynamicApps || []).filter(a => ['board','form','notice','widget_board'].includes(a.actionType) && canWrite(a)).map(app => (
+                                                    ) : (dynamicApps || []).filter(a => ['board','form','notice','widget_board','widget_notices'].includes(a.actionType) && canWrite(a)).map(app => (
                                                         <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2rem] p-5 border border-stone-200 dark:border-stone-800 shadow-sm space-y-3">
                                                             <div className="flex items-center justify-between">
                                                                 <h3 className={`text-[13px] font-black flex items-center gap-2 ${app.color}`}><Icon name={app.icon} size={16}/> {app.name}</h3>
-                                                                <span className="text-[9px] text-stone-400 font-bold">{app.actionType === 'widget_board' ? '파트너스 게시판' : app.actionType === 'notice' ? '공지/자료' : '게시판'}</span>
+                                                                <span className="text-[9px] text-stone-400 font-bold">{app.actionType === 'widget_board' ? '파트너스 게시판' : (app.actionType === 'notice' || app.actionType === 'widget_notices') ? '공지/자료' : '게시판'}</span>
                                                             </div>
                                                             {app.actionType === 'notice' && (
                                                                 <div className="space-y-2">
@@ -1967,8 +2008,21 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                                     </div>
                                                                 </div>
                                                             )}
-                                                            {(app.actionType === 'board' || app.actionType === 'widget_board') && (
-                                                                <button onClick={() => { if(app.actionType === 'widget_board') { setWBoardOpenId(app.id); setWBoardForm({title:'',content:'',photo:''}); setWBoardEditId(null); } else { setOpenedDynamicApp(app); } }} className="w-full bg-teal-50 dark:bg-teal-900/20 text-teal-600 font-black py-3 rounded-xl btn-press text-xs border border-teal-200 dark:border-teal-800">게시판 열기 / 글쓰기</button>
+                                                            {app.actionType === 'form' && (
+                                                                <button onClick={() => setOpenedSubmitForm(app)} className="w-full bg-teal-50 dark:bg-teal-900/20 text-teal-600 font-black py-3 rounded-xl btn-press text-xs border border-teal-200 dark:border-teal-800">폼 열기 / 제출</button>
+                                                            )}
+                                                            {app.actionType === 'board' && (
+                                                                <button onClick={() => setOpenedDynamicApp(app)} className="w-full bg-teal-50 dark:bg-teal-900/20 text-teal-600 font-black py-3 rounded-xl btn-press text-xs border border-teal-200 dark:border-teal-800">게시판 열기 / 글쓰기</button>
+                                                            )}
+                                                            {app.actionType === 'widget_board' && (
+                                                                <div className="pt-2">
+                                                                    {renderWidgetBoard(app)}
+                                                                </div>
+                                                            )}
+                                                            {app.actionType === 'widget_notices' && (
+                                                                <div className="pt-2">
+                                                                    {renderWidget(app)}
+                                                                </div>
                                                             )}
                                                         </div>
                                                     ))}
@@ -2157,6 +2211,19 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                     <div className="bg-rose-50 dark:bg-rose-900/10 p-5 rounded-[2rem] border border-rose-100 dark:border-rose-900 space-y-4">
                                                         <p className="text-[12px] font-black text-rose-600 tracking-widest flex items-center gap-2"><Icon name="bellRing" size={16}/> 공지사항 관리</p>
                                                         <textarea className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold h-24 shadow-inner outline-none focus:border-rose-400 resize-none" placeholder="공지 내용 입력" value={noticeForm.content} onChange={e => setNoticeForm({...noticeForm, content: e.target.value})}></textarea>
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <label className="flex items-center gap-2 cursor-pointer bg-white dark:bg-stone-800 border border-stone-200/70 dark:border-stone-700 rounded-xl px-4 py-2 btn-press text-[11px] font-black text-rose-500 hover:bg-white/70 transition-colors">
+                                                                <Icon name="camera" size={14} className="text-stone-500"/>
+                                                                {noticeForm.photos && noticeForm.photos.length > 0 ? '사진 변경' : '사진 첨부 (선택)'}
+                                                                <input type="file" accept="image/*" className="hidden" onChange={handleNoticePhotoSingle} />
+                                                            </label>
+                                                            {noticeForm.photos && noticeForm.photos.length > 0 && (
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-[11px] font-bold text-stone-400 flex items-center gap-1"><Icon name="imageIcon" size={14}/> {noticeForm.photos.length}</span>
+                                                                    <button onClick={() => setNoticeForm(prev => ({ ...prev, photos: [] }))} className="text-rose-500 hover:text-rose-700 font-black text-[13px] btn-press w-7 h-7 flex items-center justify-center rounded-full bg-rose-50 dark:bg-rose-900/20">×</button>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                         <div className="flex items-center justify-between">
                                                             <label className="flex items-center gap-2 text-xs font-black cursor-pointer text-rose-500"><input type="checkbox" checked={noticeForm.isPinned} onChange={e => setNoticeForm({...noticeForm, isPinned: e.target.checked})} className="w-4 h-4" /> 상단 고정</label>
                                                             <div className="flex gap-2">
@@ -2386,6 +2453,19 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                             <div className="space-y-4">
                                 <div className="bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-800 p-4 rounded-2xl mb-4"><p className="text-[10px] font-bold text-rose-600 dark:text-rose-300 leading-relaxed text-center">현장 근무자와 파트너스 전체에 노출되는 공지사항입니다.</p></div>
                                 <textarea className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-5 text-xs font-bold shadow-inner outline-none h-32 resize-none focus:border-rose-400" placeholder="공지할 내용을 입력하세요." value={noticeForm.content} onChange={e => setNoticeForm({...noticeForm, content: e.target.value})}></textarea>
+                                <div className="flex items-center justify-between gap-3">
+                                    <label className="flex items-center gap-2 cursor-pointer bg-white dark:bg-stone-800 border border-stone-200/70 dark:border-stone-700 rounded-xl px-4 py-2 btn-press text-[11px] font-black text-rose-500 hover:bg-white/70 transition-colors">
+                                        <Icon name="camera" size={14} className="text-stone-500"/>
+                                        {noticeForm.photos && noticeForm.photos.length > 0 ? '사진 변경' : '사진 첨부 (선택)'}
+                                        <input type="file" accept="image/*" className="hidden" onChange={handleNoticePhotoSingle} />
+                                    </label>
+                                    {noticeForm.photos && noticeForm.photos.length > 0 && (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[11px] font-bold text-stone-400 flex items-center gap-1"><Icon name="imageIcon" size={14}/> {noticeForm.photos.length}</span>
+                                            <button onClick={() => setNoticeForm(prev => ({ ...prev, photos: [] }))} className="text-rose-500 hover:text-rose-700 font-black text-[13px] btn-press w-7 h-7 flex items-center justify-center rounded-full bg-rose-50 dark:bg-rose-900/20">×</button>
+                                        </div>
+                                    )}
+                                </div>
                                 <label className="flex items-center gap-2 text-xs font-black cursor-pointer text-rose-500 px-2"><input type="checkbox" checked={noticeForm.isPinned} onChange={e => setNoticeForm({...noticeForm, isPinned: e.target.checked})} className="w-4 h-4" /> 중요 공지로 상단에 고정</label>
                                 <div className="flex gap-2 mt-4">
                                     <button onClick={() => { setIsNoticeModalOpen(false); setEditingNoticeId(null); setNoticeForm({content: '', photos: [], isPinned: false}); }} className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-4 rounded-2xl btn-press text-[12px]">취소</button>
