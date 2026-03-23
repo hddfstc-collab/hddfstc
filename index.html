@@ -716,10 +716,21 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
 
             const sortedDailyGroups = useMemo(() => {
                 return Object.entries(dailyGroups).sort(([pA], [pB]) => {
+                    // 1. 파트가 없는('미지정') 그룹은 무조건 맨 아래로 내림
+                    if (pA === '미지정' && pB !== '미지정') return 1;
+                    if (pA !== '미지정' && pB === '미지정') return -1;
+
+                    // 2. 점장이 포함된 그룹을 최상단으로 올림
                     const hasManagerA = dailyGroups[pA].some(m => userMap[m.empId]?.jobTitle === '점장');
                     const hasManagerB = dailyGroups[pB].some(m => userMap[m.empId]?.jobTitle === '점장');
-                    if (hasManagerA && !hasManagerB) return -1; if (!hasManagerA && hasManagerB) return 1;
-                    return (PART_W[pA] || 99) - (PART_W[pB] || 99);
+                    if (hasManagerA && !hasManagerB) return -1; 
+                    if (!hasManagerA && hasManagerB) return 1;
+                    
+                    // 3. 파트 가중치(PART_W)에 따라 정렬, 지정 안 된 파트끼리는 가나다순
+                    const wA = PART_W[pA] || 99;
+                    const wB = PART_W[pB] || 99;
+                    if (wA !== wB) return wA - wB;
+                    return pA.localeCompare(pB, 'ko');
                 }).map(([part, members]) => {
                     const sorted = [...members].sort((a, b) => {
                         const uA = userMap[a.empId]; const uB = userMap[b.empId];
