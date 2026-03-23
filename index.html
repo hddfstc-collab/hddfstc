@@ -716,6 +716,8 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
             }, [users]);
 
             const uniqueParts = useMemo(() => Array.from(new Set((users || []).map(u => u?.part).filter(Boolean))).sort((a,b) => (PART_W[a]||99) - (PART_W[b]||99)), [users]);
+            const uniqueJobTitles = useMemo(() => Array.from(new Set((users || []).map(u => u?.jobTitle).filter(Boolean))).sort((a,b) => (a||'').localeCompare(b||'', 'ko')), [users]);
+            const uniqueCategories = useMemo(() => Array.from(new Set((users || []).map(u => u?.category).filter(Boolean))).sort((a,b) => (a||'').localeCompare(b||'', 'ko')), [users]);
             const searchedUsers = useMemo(() => { if (!profileSearch.trim()) return sortedUsers; const q = profileSearch.toLowerCase(); return sortedUsers.filter(u => (u.name || '').toLowerCase().includes(q) || (u.part || '').toLowerCase().includes(q) || (u.empId || '').toLowerCase().includes(q) || (u.category || '').toLowerCase().includes(q) || (u.brands || '').toLowerCase().includes(q)); }, [sortedUsers, profileSearch]);
             const filteredAdminMembers = useMemo(() => { if (!adminMemberSearch.trim()) return sortedUsers; const q = adminMemberSearch.toLowerCase(); return sortedUsers.filter(u => (u.name || '').toLowerCase().includes(q) || (u.empId || '').toLowerCase().includes(q) || (u.category || '').toLowerCase().includes(q) || (u.brands || '').toLowerCase().includes(q)); }, [sortedUsers, adminMemberSearch]);
             
@@ -1322,8 +1324,23 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                                                 </div>
                                             )}
                                         </div>
-                                        <p className="text-[12px] md:text-[13px] font-bold leading-relaxed whitespace-pre-wrap text-stone-800 dark:text-stone-200 line-clamp-1 md:line-clamp-2">{n.content}</p>
-                                        {images.length > 0 && (<div className="flex gap-2 overflow-x-auto py-1 scrollbar-hide">{images.map((imgSrc, idx) => (<div key={idx} className="relative w-16 h-16 shrink-0 rounded-xl border border-stone-200 dark:border-stone-700 shadow-sm cursor-pointer btn-press" onClick={() => setExpandedImage(imgSrc)}><img src={imgSrc} className="w-full h-full object-cover rounded-xl" /></div>))}</div>)}
+                                        <div className="flex items-start gap-2">
+                                            <p className="text-[12px] md:text-[13px] font-bold leading-relaxed whitespace-pre-wrap text-stone-800 dark:text-stone-200 line-clamp-1 md:line-clamp-2 flex-1 min-w-0">{n.content}</p>
+                                            {images.length > 0 && (
+                                                <div className="flex gap-1 shrink-0">
+                                                    {images.slice(0, 3).map((imgSrc, idx) => (
+                                                        <div key={idx} className="relative w-10 h-10 shrink-0 rounded-lg border border-stone-200 dark:border-stone-700 shadow-sm cursor-pointer btn-press" onClick={() => setExpandedImage(imgSrc)}>
+                                                            <img src={imgSrc} className="w-full h-full object-cover rounded-lg" />
+                                                        </div>
+                                                    ))}
+                                                    {images.length > 3 && (
+                                                        <div className="w-10 h-10 rounded-lg border border-dashed border-stone-300 dark:border-stone-700 flex items-center justify-center text-[10px] font-black text-stone-400 bg-stone-50/60 dark:bg-stone-800/40">
+                                                            +{images.length - 3}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                         <div className="flex justify-between text-[9px] text-stone-400 font-black mt-2"><span>{n.author}</span><span>{formatLocalTime(n.createdAt)}</span></div>
                                     </div>
                                 )})}
@@ -1508,7 +1525,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                         {(app.actionType === 'widget_notices' || app.actionType === 'notice') && (() => {
                                                             const unread = app.actionType === 'widget_notices'
                                                                 ? (notices || []).filter(n => !readNoticeIds.includes(n.id)).length
-                                                                : (dynamicPosts || []).filter(p => p.appId === app.id).length;
+                                                                : (dynamicPosts || []).filter(p => p.appId === app.id && p.type === 'admin_board').length;
                                                             return unread > 0 ? <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-black rounded-full min-w-[17px] h-[17px] flex items-center justify-center px-1 shadow">{unread > 9 ? '9+' : unread}</span> : null;
                                                         })()}
                                                     </div>
@@ -1579,7 +1596,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                         const u = userMap[m.empId]; const canEdit = canEditProfile(m.empId);
                                                         const hasDetail = u?.category || u?.brands;
                                                         return (
-                                                            <div key={m.empId} className={`bg-white dark:bg-stone-900 p-3 rounded-[1.2rem] shadow-sm border ${canEdit ? 'border-teal-500/40 ring-2 ring-teal-500/10' : 'border-stone-100 dark:border-stone-800'}`}>
+                                                            <div key={m.empId} className={`bg-white dark:bg-stone-900 p-4 rounded-[1.2rem] shadow-sm border ${canEdit ? 'border-teal-500/40 ring-2 ring-teal-500/10' : 'border-stone-100 dark:border-stone-800'}`}>
                                                                 <div className="flex items-center justify-between">
                                                                     <div className="flex flex-col pl-1 py-0.5 min-w-0 flex-1 mr-2">
                                                                         <div className="flex items-center gap-1.5 mb-0.5">
@@ -1588,9 +1605,17 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                                         </div>
                                                                         <span className="text-[9px] text-teal-600 font-bold truncate">{u?.jobTitle}</span>
                                                                         {hasDetail && (
-                                                                            <div className="flex items-center gap-1 mt-1 min-w-0">
-                                                                                {u?.category && <span className="text-[9px] font-bold text-stone-400 bg-stone-50 dark:bg-stone-800 px-1.5 py-0.5 rounded-md truncate max-w-[80px] cursor-pointer" onClick={e => { e.stopPropagation(); const rect = e.currentTarget.getBoundingClientRect(); setExpandedCell({empId: m.empId+'-cat', date:'', status: u.category + (u.brands ? `\n브랜드: ${u.brands}` : ''), rect}); }}>{u.category}</span>}
-                                                                                {u?.brands && <span className="text-[9px] font-bold text-teal-500 bg-teal-50 dark:bg-teal-900/20 px-1.5 py-0.5 rounded-md truncate max-w-[90px] cursor-pointer" onClick={e => { e.stopPropagation(); const rect = e.currentTarget.getBoundingClientRect(); setExpandedCell({empId: m.empId+'-br', date:'', status: u.brands, rect}); }}>{u.brands}</span>}
+                                                                            <div className="bg-stone-50 dark:bg-stone-800 p-2 rounded-xl border border-stone-100 dark:border-stone-700 mt-2 space-y-1.5">
+                                                                                <div className="flex items-center justify-between">
+                                                                                    <p className="text-[9px] font-bold text-stone-400">카테고리</p>
+                                                                                </div>
+                                                                                <p className="text-[11px] font-black text-stone-700 dark:text-stone-300 leading-snug truncate">{u?.category || '-'}</p>
+                                                                                {u?.brands && (
+                                                                                    <>
+                                                                                        <p className="text-[9px] font-bold text-teal-500">담당 브랜드</p>
+                                                                                        <p className="text-[11px] font-black text-teal-700 dark:text-teal-400 leading-snug whitespace-pre-wrap break-words truncate">{u?.brands}</p>
+                                                                                    </>
+                                                                                )}
                                                                             </div>
                                                                         )}
                                                                     </div>
@@ -1735,10 +1760,16 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                     <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl flex items-center gap-2 px-4 py-3 shadow-sm focus-within:border-teal-500 mt-2"><Icon name="search" size={16} className="text-stone-400 shrink-0" /><input type="text" placeholder="번호, 층, 사용자 검색..." value={extSearch} onChange={(e) => setExtSearch(e.target.value)} className="w-full bg-transparent outline-none text-[13px] font-bold text-stone-700 dark:text-stone-300 placeholder-stone-400" /></div>
                                     <div className="bg-rose-50 dark:bg-rose-900/20 p-4 rounded-2xl border border-rose-200 dark:border-rose-800 shadow-sm flex justify-between items-center cursor-pointer btn-press hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors" onClick={(e) => callExtension('6112', '면세보안 (안전실)', e)}><div className="flex flex-col ml-3"><span className="text-[14px] font-black text-rose-700 dark:text-rose-400">면세보안 (안전실)</span><span className="text-[10px] font-bold text-rose-500 mt-0.5">긴급 연락처 고정</span></div><button className="text-[14px] font-black text-white bg-rose-500 px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2"><Icon name="phoneCall" size={16}/> 6112</button></div>
                                     <h4 className="text-[11px] font-black text-stone-400 tracking-widest mb-3 pt-2">전체 연락처</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
                                         {filteredExtensions.map(ext => (
                                             <div key={ext.id} className="bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-100 dark:border-stone-800 shadow-sm flex justify-between items-center cursor-pointer hover:border-teal-200 transition-colors" onClick={(e) => callExtension(ext?.number, ext?.user, e)}>
-                                                <div className="flex items-center gap-3"><button onClick={(e) => { e.stopPropagation(); toggleFavExt(ext.id); }} className={`${favoriteExts.includes(ext.id) ? 'text-amber-400' : 'text-stone-300'} hover:scale-110 transition-all`}><Icon name={favoriteExts.includes(ext.id) ? 'starFilled' : 'star'} size={20}/></button><div className="flex flex-col"><span className="text-[14px] font-black text-stone-700 dark:text-stone-300">{ext?.user}</span><span className="text-[11px] font-bold text-stone-400 mt-0.5">{ext?.floor}</span></div></div>
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <button onClick={(e) => { e.stopPropagation(); toggleFavExt(ext.id); }} className={`${favoriteExts.includes(ext.id) ? 'text-amber-400' : 'text-stone-300'} hover:scale-110 transition-all`}><Icon name={favoriteExts.includes(ext.id) ? 'starFilled' : 'star'} size={20}/></button>
+                                                    <div className="flex flex-col min-w-0">
+                                                        <span className="text-[14px] font-black text-stone-700 dark:text-stone-300 truncate max-w-[120px]">{ext?.user}</span>
+                                                        <span className="text-[11px] font-bold text-stone-400 mt-0.5 truncate max-w-[120px]">{ext?.floor}</span>
+                                                    </div>
+                                                </div>
                                                 <button className="text-[13px] font-black text-stone-600 dark:text-stone-300 bg-stone-50 dark:bg-stone-800 px-4 py-2.5 rounded-xl btn-press border border-stone-200 dark:border-stone-700 flex items-center gap-2"><Icon name="phoneCall" size={14}/> {ext?.number}</button>
                                             </div>
                                         ))}
@@ -2305,9 +2336,46 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                             <div className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 space-y-3">
                                                                 <p className="text-[10px] font-black text-stone-400">권한 설정 (작성/수정/삭제)</p>
                                                                 <div className="grid grid-cols-1 gap-2">
-                                                                    <input className="bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none focus:border-teal-500" placeholder="작성 권한 예: all / manager / PART_영업1파트 / JOB_영업관리자 / CAT_C&P" value={appManagerForm.writePermission || ''} onChange={e => setAppManagerForm({...appManagerForm, writePermission: e.target.value})} />
-                                                                    <input className="bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none focus:border-teal-500" placeholder="수정 권한 (비우면 작성 권한과 동일)" value={appManagerForm.editPermission || ''} onChange={e => setAppManagerForm({...appManagerForm, editPermission: e.target.value})} />
-                                                                    <input className="bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none focus:border-teal-500" placeholder="삭제 권한 (비우면 수정/작성 권한과 동일)" value={appManagerForm.deletePermission || ''} onChange={e => setAppManagerForm({...appManagerForm, deletePermission: e.target.value})} />
+                                                                    <select
+                                                                        className="bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none focus:border-teal-500"
+                                                                        value={appManagerForm.writePermission || 'all'}
+                                                                        onChange={e => setAppManagerForm({...appManagerForm, writePermission: e.target.value})}
+                                                                    >
+                                                                        <option value="all">전체 (all)</option>
+                                                                        <option value="member">구성원 (member)</option>
+                                                                        <option value="manager">영업관리자 (manager)</option>
+                                                                        {uniqueParts.map(p => <option key={`wP_${p}`} value={`PART_${p}`}>팀/파트: PART_{p}</option>)}
+                                                                        {uniqueCategories.map(c => <option key={`wC_${c}`} value={`CAT_${c}`}>카테고리: CAT_{c}</option>)}
+                                                                        {uniqueJobTitles.map(jt => <option key={`wJ_${jt}`} value={`JOB_${jt}`}>직책: JOB_{jt}</option>)}
+                                                                    </select>
+
+                                                                    <select
+                                                                        className="bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none focus:border-teal-500"
+                                                                        value={appManagerForm.editPermission || ''}
+                                                                        onChange={e => setAppManagerForm({...appManagerForm, editPermission: e.target.value})}
+                                                                    >
+                                                                        <option value="">수정 권한: (작성과 동일)</option>
+                                                                        <option value="all">전체 (all)</option>
+                                                                        <option value="member">구성원 (member)</option>
+                                                                        <option value="manager">영업관리자 (manager)</option>
+                                                                        {uniqueParts.map(p => <option key={`eP_${p}`} value={`PART_${p}`}>팀/파트: PART_{p}</option>)}
+                                                                        {uniqueCategories.map(c => <option key={`eC_${c}`} value={`CAT_${c}`}>카테고리: CAT_{c}</option>)}
+                                                                        {uniqueJobTitles.map(jt => <option key={`eJ_${jt}`} value={`JOB_${jt}`}>직책: JOB_{jt}</option>)}
+                                                                    </select>
+
+                                                                    <select
+                                                                        className="bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none focus:border-teal-500"
+                                                                        value={appManagerForm.deletePermission || ''}
+                                                                        onChange={e => setAppManagerForm({...appManagerForm, deletePermission: e.target.value})}
+                                                                    >
+                                                                        <option value="">삭제 권한: (수정/작성과 동일)</option>
+                                                                        <option value="all">전체 (all)</option>
+                                                                        <option value="member">구성원 (member)</option>
+                                                                        <option value="manager">영업관리자 (manager)</option>
+                                                                        {uniqueParts.map(p => <option key={`dP_${p}`} value={`PART_${p}`}>팀/파트: PART_{p}</option>)}
+                                                                        {uniqueCategories.map(c => <option key={`dC_${c}`} value={`CAT_${c}`}>카테고리: CAT_{c}</option>)}
+                                                                        {uniqueJobTitles.map(jt => <option key={`dJ_${jt}`} value={`JOB_${jt}`}>직책: JOB_{jt}</option>)}
+                                                                    </select>
                                                                 </div>
                                                                 <p className="text-[10px] text-stone-400 font-bold leading-relaxed">
                                                                     팀/파트는 <b>PART_파트명</b>, 카테고리는 <b>CAT_카테고리명</b>, 직책은 <b>JOB_직책명</b> 형식으로 입력하세요.
