@@ -50,6 +50,7 @@
             logout: <><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></>,
             chevronLeft: <polyline points="15 18 9 12 15 6"/>,
             chevronRight: <polyline points="9 18 15 12 9 6"/>,
+            chevronDown: <polyline points="6 9 12 15 18 9"/>,
             settings: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></>,
             alertCircle: <><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></>,
             checkCircle: <><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>,
@@ -96,7 +97,8 @@
             shoppingBag: <><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></>,
             truck: <><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></>,
             smile: <><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></>,
-            pin: <><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24z"/></>
+            pin: <><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24z"/></>,
+            layout: <><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></>
         };
 
         const Icon = ({ name, size = 20, className = "" }) => (
@@ -129,8 +131,6 @@
             {v:'purple', l:'보라색', t:'text-purple-500', b:'bg-purple-50'}, {v:'indigo', l:'남색', t:'text-indigo-500', b:'bg-indigo-50'}, 
             {v:'cyan', l:'시안색', t:'text-cyan-500', b:'bg-cyan-50'} 
         ];
-        
-        const ACTION_OPTIONS = [ {v:'guide', l:'📘 안내형'}, {v:'board', l:'📝 게시판형'}, {v:'notice', l:'📢 공지/자료형'}, {v:'form', l:'📮 폼 제출형'}, {v:'reservation', l:'📅 스마트 예약형'}, {v:'link', l:'🔗 링크형'}, {v:'popup_ext', l:'📞 내장 연결'}, {v:'widget_managers', l:'🧩 위젯: 오늘 근무 영업관리자'}, {v:'widget_notices', l:'🧩 위젯: 실시간 공지사항'}, {v:'widget_board', l:'🧩 위젯: 파트너스 게시판'} ];
 
 const firebaseConfig = {
   apiKey: "AIzaSyCDW2TzDtMDfAVmSRHM7a-IZDhsBlkRMEQ",
@@ -141,7 +141,6 @@ const firebaseConfig = {
   appId: "1:549765421476:web:ef48192ccce302b1c38931"
 };
 
-// 🚨🚨🚨 이 한 줄이 핵심입니다! (이게 없어서 뻗었던 거예요) 🚨🚨🚨
 const appId = firebaseConfig.appId;
 
 const PART_W = { '영업1파트': 1, '영업2파트': 2, '고객관리파트': 3, '무역센터':4 };
@@ -154,26 +153,21 @@ const RANK_W = { '부장': 1, '차장': 2, '과장': 3, '대리': 4, '주임': 5
     const sM = String(m).padStart(2, '0');
     const sD = String(d).padStart(2, '0');
     
-    const yyyymmdd = `${sY}-${sM}-${sD}`; // 예: "2026-03-02"
-    const mmdd = `${sM}-${sD}`;           // 예: "03-01"
+    const yyyymmdd = `${sY}-${sM}-${sD}`; 
+    const mmdd = `${sM}-${sD}`;
 
     const dateObj = new Date(y, m - 1, d);
     const dayOfWeek = dateObj.getDay();
 
-    // 1. 고정 공휴일 목록 (양력)
     const fixedHolidays = ['01-01', '03-01', '05-05', '06-06', '08-15', '10-03', '10-09', '12-25'];
-
-    // 2. 대체공휴일 및 변동 휴무일 목록
     const customHolidays = [
         '2026-02-16', '2026-02-17', '2026-02-18', 
-        '2026-03-02', // 👈 3.1절 대체공휴일
+        '2026-03-02', 
         '2026-05-24', '2026-05-25', 
         '2026-06-03', 
         '2026-09-24', '2026-09-25', '2026-09-28'
     ];
 
-    // [체크 시작] 
-    // 주말(일=0, 토=6)이거나, 고정공휴일에 포함되거나, 커스텀휴일(대체공휴일)에 포함되면 "빨간날"이다!
     if (dayOfWeek === 0 || dayOfWeek === 6 || fixedHolidays.includes(mmdd) || customHolidays.includes(yyyymmdd)) {
         return true;
     }
@@ -222,16 +216,13 @@ const RANK_W = { '부장': 1, '차장': 2, '과장': 3, '대리': 4, '주임': 5
             { id: 'sopt_9', label: '기념일반반차', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: true },
             { id: 'sopt_10', label: '대체 휴무', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: false }
         ];
-// 🔐 SHA-256 해시 (비밀번호 평문 저장 방지)
+
 const hashPassword = async (plain) => {
     const enc = new TextEncoder();
     const buf = await crypto.subtle.digest('SHA-256', enc.encode(String(plain)));
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
 };
 
-// ──────────────────────────────────────────
-// 🎉 라이브 이벤트 설정 기본값
-// ──────────────────────────────────────────
 const DEFAULT_EVENT_SETTINGS = {
     id: 'evtSettings',
     drawStyle: 'roulette',
@@ -248,7 +239,6 @@ const EVENT_TYPE_META = {
     lunch:  { label: '🍱 점심 메뉴 뽑기',  desc: '오늘 점심 메뉴 랜덤 결정' },
 };
 
-// 🎡 룰렛 휠 SVG 컴포넌트
 const RouletteWheel = ({ names, rotation }) => {
     const n = names.length;
     if (!n) return null;
@@ -310,13 +300,11 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const [winHistory, setWinHistory] = useState([]);
             const [lunchPick, setLunchPick] = useState(null);
             const [lunchMenuInput, setLunchMenuInput] = useState('');
-            const [quizAnswer, setQuizAnswer] = useState('');
             const [showEventMgmt, setShowEventMgmt] = useState(false);
             const [monthlyFilters, setMonthlyFilters] = useState({ part: true, cat: true, id: true });
             const [viewMode, setViewMode] = useState('all'); 
             
             const [isAdminAuth, setIsAdminAuth] = useState(false);
-            // 🔐 PIN은 평문 대신 해시로 localStorage에 저장
             const [masterPinHash, setMasterPinHash] = useState(() => localStorage.getItem('hmood_master_pin_hash') || null);
             const DEFAULT_PIN = '6011';
             const [pinInput, setPinInput] = useState('');
@@ -325,7 +313,6 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const [toast, setToast] = useState('');
             const [toastError, setToastError] = useState(false);
             const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null, onCancel: null, telHref: null, title: '' });
-            const [showSharedPopup, setShowSharedPopup] = useState(false);
             
             const [loginForm, setLoginForm] = useState({ id: '', pw: '' });
             const [rememberMe, setRememberMe] = useState(false);
@@ -348,8 +335,9 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const [bulkScheduleMonth, setBulkScheduleMonth] = useState(todayStr.slice(0, 7));
             
             const [memberForm, setMemberForm] = useState({ empId: '', name: '', part: '', position: '사원', jobTitle: '일반', category: '', brands: '', password: '' });
-            const [appManagerForm, setAppManagerForm] = useState({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', editPermission: '', deletePermission: '', viewPermission: 'admin', notifyTarget: 'none', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 1, sortOrder: 99 });
+            const [appManagerForm, setAppManagerForm] = useState({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 1, sortOrder: 99 });
             const [editingAppId, setEditingAppId] = useState(null);
+            const [showPerms, setShowPerms] = useState(false); // 권한 설정 모달 토글
             const [submitFormState, setSubmitFormState] = useState({ content: '', photo: '', authorName: '' });
 
             const [openedFolder, setOpenedFolder] = useState(null); 
@@ -374,14 +362,13 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const [adminSchedForm, setAdminSchedForm] = useState({ empId: '', date: todayStr, status: 'A' });
             const [showExtModal, setShowExtModal] = useState(false);
             const [showProfileEdit, setShowProfileEdit] = useState(false);
-            const [profileTab, setProfileTab] = useState('pw'); // 'pw' | 'info'
+            const [profileTab, setProfileTab] = useState('pw'); 
             const [profileForm, setProfileForm] = useState({ name: '', part: '', category: '', brands: '', extNumber: '', position: '', jobTitle: '', password: '', targetEmpId: '' });
             const [expandedImage, setExpandedImage] = useState(null);
             const [expandedCell, setExpandedCell] = useState(null);
             const [widgetNoticesExpanded, setWidgetNoticesExpanded] = useState(false);
-            const [dailySearch, setDailySearch] = useState(''); // 일간 검색
-            const [expandedDailyCard, setExpandedDailyCard] = useState(null); // 클릭 시 카테고리/브랜드 전체 표시
-            // 미읽은 공지 추적
+            const [dailySearch, setDailySearch] = useState(''); 
+            
             const [readNoticeIds, setReadNoticeIds] = useState(() => {
                 try { return JSON.parse(localStorage.getItem('hmood_read_notices') || '[]'); } catch(e) { return []; }
             });
@@ -405,7 +392,6 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             
             const SCHED_STATUS_OPTIONS = useMemo(() => (statusOptions || []).map(o => o?.label).filter(Boolean), [statusOptions]);
             const STATUS_THEME = useMemo(() => { const theme = {}; (statusOptions || []).forEach(o => { if(o) theme[o.label] = `${o.bg} ${o.text}`; }); return theme; }, [statusOptions]);
-            // ① 대체 휴무 등 글자색 수정: Tailwind text 클래스가 브라우저 네이티브 select 스타일에 묻히는 문제를 inline style로 확실히 해결
             const STATUS_INLINE_STYLE = useMemo(() => {
                 const map = {};
                 (statusOptions || []).forEach(o => {
@@ -419,22 +405,17 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                 return map;
             }, [statusOptions, isDarkMode]);
 
-            const canManageNotice = useMemo(() => isAdminAuth || (appUser && appUser.jobTitle === '영업관리자'), [isAdminAuth, appUser]);
-
             const isHealthAdmin = useMemo(() => {
                 return appUser && (dynamicApps || []).some(app => app.actionType === 'reservation' && app.resOperatorId === appUser.empId);
             }, [appUser, dynamicApps]);
 
-const AVAILABLE_TABS = useMemo(() => {
+            const AVAILABLE_TABS = useMemo(() => {
                 return [ 
                     { id: 'health', name: '🏥 헬스키퍼 관리', show: isHealthOnlyAdmin || isAdminAuth || isHealthAdmin }, 
-                    // content 탭을 없애고 apps로 통합
                     { id: 'apps', name: '공지 및 앱/폴더 관리', show: isAdminAuth || (!isHealthOnlyAdmin && appUser && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) }, 
                     { id: 'members', name: '구성원/조직 관리', show: isAdminAuth && !isHealthOnlyAdmin }, 
                     { id: 'schedules', name: '스케줄 관리', show: isAdminAuth && !isHealthOnlyAdmin }, 
-                    // 내선번호를 원래 위치로 복구
                     { id: 'extensions', name: '내선번호', show: isAdminAuth && !isHealthOnlyAdmin }, 
-                    // 영업관리자도 제출 데이터(posts) 탭을 볼 수 있게 권한 추가
                     { id: 'posts', name: '제출 데이터', show: (isAdminAuth && !isHealthOnlyAdmin) || (appUser && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) }, 
                     { id: 'security', name: '보안 설정', show: isAdminAuth && !isHealthOnlyAdmin } 
                 ].filter(t => t.show);
@@ -457,38 +438,13 @@ const AVAILABLE_TABS = useMemo(() => {
             const showToast = (m, isError = false) => { setToast(m); setToastError(isError); setTimeout(() => { setToast(''); setToastError(false); }, 3000); };
             const showConfirm = (options) => { setConfirmDialog({ ...options, isOpen: true }); };
 
-            const canViewPosts = useCallback((appItem) => {
-                if (!appItem) return false;
-                if (isAdminAuth) return true;
-                if (!appUser) return false;
-                const vp = appItem.viewPermission || 'admin';
-                const p = appItem.writePermission;
-
-                // 관리자 전용 데이터라도 (앱별) 작성 권한이 있으면 열람 허용
-                if (vp === 'admin') {
-                    if (!p) return false;
-                    if (p === 'all' && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) return true;
-
-                    if (Array.isArray(p)) {
-                        if (p.includes('manager') && appUser.jobTitle === '영업관리자') return true;
-                        if (p.some(x => typeof x === 'string' && x.startsWith('PART_') && appUser.part === x.replace('PART_', ''))) return true;
-                        if (p.some(x => typeof x === 'string' && x.startsWith('USER_') && appUser.empId === x.replace('USER_', ''))) return true;
-                        return false;
-                    }
-
-                    if (typeof p === 'string') {
-                        if (p === 'manager' && appUser.jobTitle === '영업관리자') return true;
-                        if (p.startsWith('PART_') && appUser.part === p.replace('PART_', '')) return true;
-                        if (p.startsWith('USER_') && appUser.empId === p.replace('USER_', '')) return true;
-                    }
-                    return false;
+            const markAsRead = (id) => {
+                if (!readNoticeIds.includes(id)) {
+                    const next = [...readNoticeIds, id];
+                    setReadNoticeIds(next);
+                    localStorage.setItem('hmood_read_notices', JSON.stringify(next));
                 }
-
-                if (vp === 'manager') return appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장';
-                if (vp === 'member') return true;
-                if (typeof vp === 'string' && vp.startsWith('PART_')) return appUser.part === vp.replace('PART_', '');
-                return false;
-            }, [appUser, isAdminAuth]);
+            };
 
             const hasPermission = useCallback((permRaw, appItem) => {
                 if (!permRaw) return false;
@@ -520,72 +476,73 @@ const AVAILABLE_TABS = useMemo(() => {
                 return false;
             }, [appUser, isAdminAuth]);
 
+            const canViewPosts = useCallback((appItem) => {
+                if (!appItem) return false;
+                if (isAdminAuth) return true;
+                if (!appUser) return false;
+                return hasPermission(appItem.writePermission, appItem) || appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장';
+            }, [appUser, isAdminAuth, hasPermission]);
+
             const canWrite = useCallback((appItem) => {
                 if (!appItem) return false;
                 const p = appItem.writePermission;
                 if (!p) {
-                    // 기존 데이터(기본 위젯 등)에서 writePermission이 비어있을 수 있으므로,
-                    // widget 용도는 레거시로 영업관리자에게만 임시 허용합니다.
                     if ((appItem.actionType === 'widget_notices' || appItem.actionType === 'widget_board') && appUser && appUser.jobTitle === '영업관리자') return true;
                     return false;
                 }
                 return hasPermission(p, appItem);
             }, [appUser, hasPermission]);
 
-            const canEdit = useCallback((appItem) => {
-                if (!appItem) return false;
-                return hasPermission(appItem.editPermission || appItem.writePermission, appItem);
-            }, [hasPermission]);
-
-            const canDelete = useCallback((appItem) => {
-                if (!appItem) return false;
-                return hasPermission(appItem.deletePermission || appItem.editPermission || appItem.writePermission, appItem);
-            }, [hasPermission]);
+            const canEdit = canWrite;
+            const canDelete = canWrite;
 
             const writeBlockedMsg = useCallback((appItem) => {
                 if (!appItem) return '권한이 없습니다.';
-                const p = appItem.writePermission;
                 if (!appUser) return '로그인이 필요합니다.';
-                if (typeof p === 'string' && p.startsWith('PART_')) return `[${p.replace('PART_', '')}] 파트 직원만 작성 가능합니다.`;
-                if (typeof p === 'string' && p.startsWith('USER_')) return '지정된 권한자만 작성 가능합니다.';
                 return '권한이 없습니다.';
             }, [appUser]);
 
-// ✅ 핸드폰(사파리 등) 보안을 뚫어주는 마법의 코드입니다.
-useEffect(() => {
-    if (firebaseConfig && !firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    if (firebase.apps.length > 0) {
-        setDb(firebase.firestore());
-        const auth = firebase.auth();
-        const initAuth = async () => {
-            try { 
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await auth.signInWithCustomToken(__initial_auth_token); 
-                else await auth.signInAnonymously();
-            } catch (error) { 
-                console.log("모바일 보안 차단 우회");
-                setIsAuthReady(true); 
-            }
-        };
-        initAuth();
-        const unsubscribe = auth.onAuthStateChanged(user => { 
-            if (user) setFbUser(user);
-            setIsAuthReady(true); 
-        });
-        return () => unsubscribe();
-    } else { setIsAuthReady(true); }
-}, []);
+            useEffect(() => {
+                if (firebaseConfig && !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+                if (firebase.apps.length > 0) {
+                    setDb(firebase.firestore());
+                    const auth = firebase.auth();
+                    const initAuth = async () => {
+                        try { 
+                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await auth.signInWithCustomToken(__initial_auth_token); 
+                            else await auth.signInAnonymously();
+                        } catch (error) { 
+                            console.log("모바일 보안 차단 우회");
+                            setIsAuthReady(true); 
+                        }
+                    };
+                    initAuth();
+                    const unsubscribe = auth.onAuthStateChanged(user => { 
+                        if (user) setFbUser(user);
+                        setIsAuthReady(true); 
+                    });
+                    return () => unsubscribe();
+                } else { setIsAuthReady(true); }
+            }, []);
 
             useEffect(() => {
                 const savedEmpId = localStorage.getItem('hmood_empId');
                 if (savedEmpId) { setLoginForm(prev => ({ ...prev, id: savedEmpId })); setRememberMe(true); }
-                if (new URLSearchParams(window.location.search).get('mode') === 'shared') { setView('shared'); setShowSharedPopup(true); }
+                const mode = new URLSearchParams(window.location.search).get('mode');
+                if (mode === 'shared') {
+                    setView('shared');
+                } else if (!localStorage.getItem('hmood_session')) {
+                    setView('login');
+                }
             }, []);
 
-            // 새로고침 후 자동 로그인 복원 (users 로딩 완료 후 실행)
             useEffect(() => {
                 if (!users || users.length === 0) return;
                 const savedSession = localStorage.getItem('hmood_session');
-                if (!savedSession) return;
+                if (!savedSession) {
+                    if (view !== 'shared' && view !== 'login') setView('login');
+                    return;
+                }
                 try {
                     const { empId } = JSON.parse(savedSession);
                     if (!empId) return;
@@ -593,10 +550,19 @@ useEffect(() => {
                     if (found && !appUser) {
                         setAppUser(found);
                         const mode = new URLSearchParams(window.location.search).get('mode');
-                        if (mode !== 'shared') setView('daily');
+                        if (mode !== 'shared' && view === 'login') setView('daily');
                     }
                 } catch(e) { localStorage.removeItem('hmood_session'); }
             }, [users]);
+
+            const handleNavClick = (targetView) => {
+                if (!appUser && targetView !== 'shared' && targetView !== 'login') {
+                    setView('login');
+                    showToast('로그인이 필요합니다.', true);
+                } else {
+                    setView(targetView);
+                }
+            };
 
             useEffect(() => {
                 const initLocalDB = async () => {
@@ -660,7 +626,6 @@ useEffect(() => {
                 const unsubStatusOpts = db.collection(`artifacts/${appId}/public/data/status_options`).onSnapshot((snapshot) => {
                         const newOpts = snapshot.docs.map(d => d.data());
                         if(newOpts.length > 0) {
-                            // 🔑 replace 대신 merge: Firestore에 없는 기존 IDB 항목(기본값들)이 증발하는 버그 수정
                             setStatusOptions(prev => {
                                 const merged = [...prev];
                                 newOpts.forEach(o => {
@@ -672,12 +637,11 @@ useEffect(() => {
                             newOpts.forEach(o => saveToIDB('statusOptions', o));
                         }
                     });
-const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists`).onSnapshot((snapshot) => {
+                const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists`).onSnapshot((snapshot) => {
                         const newBls = snapshot.docs.map(d => d.data());
                         setBlacklists(newBls); newBls.forEach(b => saveToIDB('blacklists', b));
                     });
 
-                // 🌟🌟 [추가된 부분] 직원, 스케줄, 내선번호 데이터를 실시간으로 가져옵니다! 🌟🌟
                 const unsubUsers = db.collection(`artifacts/${appId}/public/data/users`).onSnapshot((snapshot) => {
                     const newUsers = snapshot.docs.map(d => d.data());
                     if(newUsers.length > 0) { setUsers(newUsers); newUsers.forEach(u => saveToIDB('users', u)); }
@@ -693,7 +657,6 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                     if(newExts.length > 0) { setExtensions(newExts); newExts.forEach(e => saveToIDB('extensions', e)); }
                 });
 
-                // 🌟🌟 [수정된 부분] 앱을 끌 때 통신도 깔끔하게 끊어줍니다. 🌟🌟
                 return () => { unsubApps(); unsubEvent(); unsubNotices(); unsubPosts(); unsubStatusOpts(); unsubBlacklists(); unsubUsers(); unsubSchedules(); unsubExtensions(); };
             }, [db, fbUser, isAuthReady]);
             
@@ -728,16 +691,12 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                     if (viewMode.startsWith('PART_')) return u.part === viewMode.replace('PART_', '');
                     return true;
                 }).sort((a, b) => {
-                    // 파트 순서 우선
                     const wA = PART_W[a.part||''] || 99; const wB = PART_W[b.part||''] || 99;
                     if (wA !== wB) return wA - wB;
-                    // 점장 최상위
                     if (a.jobTitle === '점장' && b.jobTitle !== '점장') return -1;
                     if (a.jobTitle !== '점장' && b.jobTitle === '점장') return 1;
-                    // 파트장 최상위
                     if (a.jobTitle === '파트장' && b.jobTitle !== '파트장') return -1;
                     if (a.jobTitle !== '파트장' && b.jobTitle === '파트장') return 1;
-                    // 동일 카테고리 묶기 (가나다순)
                     const cA = a.category || ''; const cB = b.category || '';
                     if (cA !== cB) return cA.localeCompare(cB, 'ko');
                     return (a.name||'').localeCompare(b.name||'', 'ko');
@@ -763,12 +722,10 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 }).map(([part, members]) => {
                     const sorted = [...members].sort((a, b) => {
                         const uA = userMap[a.empId]; const uB = userMap[b.empId];
-                        // 파트장 최상위
                         if (uA?.jobTitle === '점장' && uB?.jobTitle !== '점장') return -1;
                         if (uA?.jobTitle !== '점장' && uB?.jobTitle === '점장') return 1;
                         if (uA?.jobTitle === '파트장' && uB?.jobTitle !== '파트장') return -1;
                         if (uA?.jobTitle !== '파트장' && uB?.jobTitle === '파트장') return 1;
-                        // 동일 카테고리끼리 묶기 (가나다순)
                         const cA = uA?.category || ''; const cB = uB?.category || '';
                         if (cA !== cB) return cA.localeCompare(cB, 'ko');
                         return (a.name || '').localeCompare(b.name || '', 'ko');
@@ -782,9 +739,8 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 const working = (schedules || []).filter(s => {
                     if (s?.date !== todayStr) return false;
                     const opt = (statusOptions || []).find(o => o.label === s?.status);
-                    // statusOptions의 isWork 기준으로 판단 (하드코딩 제거)
                     if (opt && opt.isWork !== undefined) return opt.isWork === true || opt.isWork === 'true';
-                    return ['A', 'B', '당직'].includes(s?.status); // fallback
+                    return ['A', 'B', '당직'].includes(s?.status); 
                 });
                 return working.map(s => ({ ...s, user: userMap[s.empId] })).filter(s => s.user && s.user.jobTitle === '영업관리자').sort((a, b) => (a.user.name||'').localeCompare(b.user.name||'')); 
             }, [schedules, todayStr, userMap, statusOptions]);
@@ -806,7 +762,6 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 e.preventDefault(); const loginId = String(loginForm.id || '').trim(); const loginPw = String(loginForm.pw || '').trim();
                 if (!loginId || !loginPw) return showToast('사원번호와 비밀번호를 모두 입력해주세요.', true);
                 const pwHash = await hashPassword(loginPw);
-                // 해시 비밀번호 우선 비교, 없으면 평문 비교(마이그레이션 호환)
                 const f = (users || []).find(u => String(u?.empId) === loginId && (u?.password === pwHash || u?.password === loginPw));
                 if(f) { if (rememberMe) localStorage.setItem('hmood_empId', loginForm.id); else localStorage.removeItem('hmood_empId'); localStorage.setItem('hmood_session', JSON.stringify({ empId: f.empId })); setAppUser(f); setView('daily'); setCurrentDate(new Date()); showToast(`${f.name}님 환영합니다!`); } else showToast('사원번호 또는 비밀번호가 올바르지 않습니다.', true);
             };
@@ -848,7 +803,7 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
             const handleEditDynamicApp = (app) => {
                 let mappedType = app.actionType;
                 if (mappedType === 'simple_guide') mappedType = 'guide'; if (mappedType === 'custom_board') mappedType = 'board'; if (mappedType === 'admin_board') mappedType = 'notice'; if (mappedType === 'custom_form') mappedType = 'form'; if (mappedType === 'external_url') mappedType = 'link'; if (mappedType === 'link_ext') mappedType = 'popup_ext';
-                setAppManagerForm({ name: app.name, icon: app.icon, color: app.color, bg: app.bg, isFolder: app.isFolder ? 'true' : 'false', parentId: app.parentId || '', actionType: mappedType || 'guide', url: app.url || '', writePermission: app.writePermission || 'all', editPermission: app.editPermission || '', deletePermission: app.deletePermission || '', viewPermission: app.viewPermission || 'admin', notifyTarget: app.notifyTarget || 'none', guideContent: app.guideContent || '', guideImage: app.guideImage || '', resOperatorId: app.resOperatorId || '', resTimeSlots: app.resTimeSlots || '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: app.resMaxPerSlot || 1, resLeadTimeDays: app.resLeadTimeDays || 0, resLeadTimeHours: app.resLeadTimeHours || 0, sortOrder: app.sortOrder || 99 });
+                setAppManagerForm({ name: app.name, icon: app.icon, color: app.color, bg: app.bg, isFolder: app.isFolder ? 'true' : 'false', parentId: app.parentId || '', actionType: mappedType || 'guide', url: app.url || '', writePermission: app.writePermission || 'all', resOperatorId: app.resOperatorId || '', resTimeSlots: app.resTimeSlots || '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: app.resMaxPerSlot || 1, resLeadTimeDays: app.resLeadTimeDays || 0, resLeadTimeHours: app.resLeadTimeHours || 0, sortOrder: app.sortOrder || 99 });
                 setEditingAppId(app.id); setAdminTab('apps'); window.scrollTo({ top: 0, behavior: 'smooth' });
             };
 
@@ -860,13 +815,36 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                     const newApp = { id, ...appData };
                     setDynamicApps(prev => editingAppId ? prev.map(a => a.id === id ? newApp : a) : [...prev, newApp]); saveToIDB('dynamicApps', newApp);
                     if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_apps`).doc(id).set(newApp, { merge: true });
-                    showToast('저장되었습니다.'); setEditingAppId(null); setAppManagerForm({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', editPermission: '', deletePermission: '', viewPermission: 'admin', notifyTarget: 'none', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 0, sortOrder: 99 }); 
+                    showToast('저장되었습니다.'); setEditingAppId(null); setAppManagerForm({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 0, sortOrder: 99 }); 
+                    setShowPerms(false);
                 } catch(e) { showToast('저장 실패', true); }
             };
 
             const handleCancelEditDynamicApp = () => { 
                 setEditingAppId(null); 
-                setAppManagerForm({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', editPermission: '', deletePermission: '', viewPermission: 'admin', notifyTarget: 'none', guideContent: '', guideImage: '', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 0, sortOrder: 99 }); 
+                setAppManagerForm({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 0, sortOrder: 99 }); 
+                setShowPerms(false);
+            };
+
+            const toggleUserPerm = (empId) => {
+                let current = Array.isArray(appManagerForm.writePermission) ? appManagerForm.writePermission : [];
+                if (current.includes('all')) current = []; 
+                const userKey = `USER_${empId}`;
+                if (current.includes(userKey)) {
+                    setAppManagerForm({...appManagerForm, writePermission: current.filter(k => k !== userKey)});
+                } else {
+                    setAppManagerForm({...appManagerForm, writePermission: [...current, userKey]});
+                }
+            };
+
+            const handlePermChange = (type) => {
+                if (type === 'all') setAppManagerForm({...appManagerForm, writePermission: 'all'});
+                else if (type === 'manager') setAppManagerForm({...appManagerForm, writePermission: ['manager']});
+                else if (type === 'custom') {
+                    const current = Array.isArray(appManagerForm.writePermission) ? appManagerForm.writePermission : [];
+                    const isManager = current.includes('manager') && current.length === 1;
+                    setAppManagerForm({...appManagerForm, writePermission: isManager ? [] : current.filter(x => x !== 'all')}); 
+                }
             };
 
             const handleUpdateResApp = async (targetAppId) => {
@@ -887,9 +865,7 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 const isResAdmin = isAdminAuth || (appUser && appUser.empId === openedReservationApp?.resOperatorId);
 
                 if (!isResAdmin) {
-                    // ✅ 로컬 state 대신 Firestore 직접 조회 (동시 예약 경쟁 방지)
                     const maxPerSlot = openedReservationApp?.resMaxPerSlot || 1;
-
                     try {
                         let liveCount = 0;
                         if (db && fbUser) {
@@ -901,27 +877,14 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                                 .get();
                             liveCount = snap.size;
                         } else {
-                            // 오프라인 fallback: 로컬 state 사용
-                            liveCount = (dynamicPosts || []).filter(p =>
-                                p.appId === openedReservationApp?.id &&
-                                p.type === 'reservation' &&
-                                p.resDate === resSelectedDate &&
-                                p.resTime === resPrompt
-                            ).length;
+                            liveCount = (dynamicPosts || []).filter(p => p.appId === openedReservationApp?.id && p.type === 'reservation' && p.resDate === resSelectedDate && p.resTime === resPrompt).length;
                         }
                         if (liveCount >= maxPerSlot) return showToast('방금 마감되었습니다. 다른 시간을 선택해주세요.', true);
                     } catch(e) {
-                        // 조회 실패 시 로컬 state로 fallback
-                        const localCount = (dynamicPosts || []).filter(p =>
-                            p.appId === openedReservationApp?.id &&
-                            p.type === 'reservation' &&
-                            p.resDate === resSelectedDate &&
-                            p.resTime === resPrompt
-                        ).length;
+                        const localCount = (dynamicPosts || []).filter(p => p.appId === openedReservationApp?.id && p.type === 'reservation' && p.resDate === resSelectedDate && p.resTime === resPrompt).length;
                         if (localCount >= maxPerSlot) return showToast('해당 시간은 이미 마감되었습니다.', true);
                     }
 
-                    // 시간 마감 체크
                     const leadTimeMs = ((openedReservationApp?.resLeadTimeDays || 0) * 24 + (openedReservationApp?.resLeadTimeHours || 0)) * 60 * 60 * 1000;
                     const [y, m, d] = resSelectedDate.split('-');
                     const [hr, min] = resPrompt.split(':');
@@ -1045,13 +1008,12 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                             return (b.createdAt||'').localeCompare(a.createdAt||'');
                         });
                     });
-                    // (편집/추가) 공지는 다시 미읽음으로 리셋
                     setReadNoticeIds(prev => {
                         const next = (prev || []).filter(rid => rid !== id);
                         try { localStorage.setItem('hmood_read_notices', JSON.stringify(next)); } catch (e) {}
                         return next;
                     });
-                    saveToIDB('notices', newNotice); setEditingNoticeId(null); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/notices`).doc(id).set(newNotice, { merge: true }); showToast('저장되었습니다.'); setNoticeForm({ content: '', photos: [], isPinned: false });
+                    saveToIDB('notices', newNotice); setEditingNoticeId(null); setIsNoticeModalOpen(false); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/notices`).doc(id).set(newNotice, { merge: true }); showToast('저장되었습니다.'); setNoticeForm({ content: '', photos: [], isPinned: false });
                 } catch (err) { showToast('저장 실패', true); }
             };
 
@@ -1159,7 +1121,6 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 if (currentEvent.target === 'daily') { const mySched = scheduleMap[appUser.empId]?.[todayStr]; eligible = mySched && ['A', 'B', '당직'].includes(mySched.status); }
                 if (!eligible) return showToast('참여 대상자가 아닙니다.', true);
                 if (currentEvent?.participants?.includes(appUser?.empId)) return showToast('이미 참여하셨습니다.', true);
-                // 퀴즈 타입: 답 검증
                 if (currentEvent.type === 'quiz') {
                     if (!quizAnswer.trim()) return showToast('정답을 입력해주세요.', true);
                     const isCorrect = quizAnswer.trim().toLowerCase() === (currentEvent.quizAnswer || '').trim().toLowerCase();
@@ -1180,7 +1141,6 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 } catch(e) { showToast('참여 실패', true); }
             };
 
-            // 팀 배정 뽑기
             const handleTeamDraw = async () => {
                 const pool = currentEvent?.target === 'daily'
                     ? (schedules || []).filter(s => s.date === todayStr && (statusOptions.find(o => o.label === s.status)?.isWork !== false)).map(s => s.empId)
@@ -1196,7 +1156,6 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 showToast('팀 배정 완료!');
             };
 
-            // 당첨 기록 저장
             const recordWinHistory = async (winnerObjs) => {
                 if (!eventSettings.enableHistory) return;
                 const updated = [...winHistory];
@@ -1213,14 +1172,12 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
             const handleStartDraw = async () => {
                 if (currentEvent.type === 'team') { handleTeamDraw(); return; }
                 if (currentEvent.type === 'fcfs') return showToast('선착순 이벤트는 자동 마감됩니다.', true);
-                // 추첨 풀 결정 (퀴즈는 정답자만)
                 let pool = currentEvent.participants || [];
                 if (currentEvent.type === 'quiz') {
                     pool = pool.filter(id => currentEvent.quizSubmissions?.[id]?.correct === true);
                     if (!pool.length) return showToast('정답자가 없습니다.', true);
                 }
                 if (!pool.length) return showToast('참여자가 없습니다.', true);
-                // 가중치 적용
                 let weightedPool = [...pool];
                 if (eventSettings.enableWeighted && winHistory.length > 0) {
                     const maxCount = Math.max(...winHistory.map(h => h.count), 1);
@@ -1236,7 +1193,6 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                         const spinningState = { ...currentEvent, status: 'spinning' };
                         setCurrentEvent(spinningState); saveToIDB('events', spinningState);
                         if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/events`).doc('current').update({ status: 'spinning' });
-                        // 룰렛: 당첨자 위치 계산 후 회전
                         const shuffled = [...weightedPool].sort(() => 0.5 - Math.random());
                         const selectedIds = Array.from(new Set(shuffled)).slice(0, currentEvent.winnerCount);
                         if (eventSettings.drawStyle === 'roulette' && pool.length > 0) {
@@ -1264,7 +1220,6 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
 
             useEffect(() => { let interval; if (currentEvent?.status === 'spinning') { interval = setInterval(() => { const participants = currentEvent.participants || []; if (participants.length > 0) { const randomId = participants[Math.floor(Math.random() * participants.length)]; setSpinDisplay(userMap[randomId]?.name || '...'); } else { setSpinDisplay('참여자 없음'); } }, 80); } return () => clearInterval(interval); }, [currentEvent?.status, currentEvent?.participants, userMap]);
 
-            // 월간 뷰 진입 시 테이블 컨테이너에 자동 포커스 → 키보드 스크롤 즉시 가능
             useEffect(() => {
                 if (view === 'monthly' && tableScrollRef.current) {
                     setTimeout(() => { tableScrollRef.current?.focus(); }, 100);
@@ -1279,8 +1234,7 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 setNoticeForm(prev => ({ ...prev, photos: [base64Img] }));
                 e.target.value = '';
             };
-            const handleGuideImageUpload = async (e) => { if(e.target.files[0]) { const base64Img = await resizeImage(e.target.files[0]); setAppManagerForm(prev => ({ ...prev, guideImage: base64Img })); } };
-
+            
             const renderWidget = (app) => {
                 if (app.actionType === 'widget_managers') {
                     return (
@@ -1314,7 +1268,7 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                             </div>
                             <div className="space-y-3 overflow-y-auto scrollbar-hide pr-1" style={{ maxHeight: widgetNoticesExpanded ? '480px' : '220px' }}>
                                 {(notices || []).length === 0 ? <p className="text-center py-10 text-stone-300 font-bold text-[11px]">공지사항이 없습니다.</p> : notices.slice(0, 5).map(n => { const images = n.photos || (n.photo ? [n.photo] : []); const isUnread = !readNoticeIds.includes(n.id); return (
-                                    <div key={n.id} className={`p-3 md:p-5 rounded-2xl md:rounded-3xl border space-y-2 md:space-y-4 shadow-sm relative ${n.isPinned ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800' : 'bg-stone-50 dark:bg-stone-800 border-stone-100 dark:border-stone-700'}`} onClick={() => { if(isUnread) { const next = [...readNoticeIds, n.id]; setReadNoticeIds(next); localStorage.setItem('hmood_read_notices', JSON.stringify(next)); } }}>
+                                    <div key={n.id} className={`p-3 md:p-5 rounded-2xl md:rounded-3xl border space-y-2 md:space-y-4 shadow-sm relative ${n.isPinned ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800' : 'bg-stone-50 dark:bg-stone-800 border-stone-100 dark:border-stone-700'}`} onClick={() => markAsRead(n.id)}>
                                         <div className="flex items-center justify-between mb-2">
                                             <div className="flex items-center gap-2">{n.isPinned && <div className="text-[10px] font-black text-rose-500 flex items-center gap-1"><Icon name="pin" size={14}/> <span>중요 공지</span></div>}{isUnread && <div className="w-2 h-2 bg-rose-500 rounded-full"/>}</div>
                                             {canEdit(app) && (
@@ -1351,13 +1305,10 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                 return null;
             };
 
-            // 파트너스 게시판 위젯 전용 상태
             const [wBoardForm, setWBoardForm] = useState({ title: '', content: '', photo: '' });
             const [wBoardEditId, setWBoardEditId] = useState(null);
-            const [wBoardOpenId, setWBoardOpenId] = useState(null); // 열린 위젯 appId
+            const [wBoardOpenId, setWBoardOpenId] = useState(null); 
             const [wBoardSelectedPost, setWBoardSelectedPost] = useState(null);
-
-            const canManageWidgetBoard = useMemo(() => isAdminAuth || (appUser && appUser.jobTitle === '영업관리자'), [isAdminAuth, appUser]);
 
             const handleSaveWidgetPost = async (appId_) => {
                 if (!wBoardForm.title || !wBoardForm.content) return showToast('제목과 내용을 입력해주세요.', true);
@@ -1393,7 +1344,6 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                                 {isAdminAuth && <button onClick={() => handleDeleteDynamicApp(app.id)} className="text-stone-400 hover:text-rose-500"><Icon name="trash" size={14}/></button>}
                             </div>
                         </div>
-                        {/* 작성/수정 폼 */}
                         {wBoardOpenId === app.id && canWrite(app) && (
                             <div className="bg-stone-50 dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 space-y-3 fade-in">
                                 <input className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-400" placeholder="제목" value={wBoardForm.title} onChange={e => setWBoardForm({...wBoardForm, title: e.target.value})}/>
@@ -1409,7 +1359,6 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                                 </div>
                             </div>
                         )}
-                        {/* 게시글 목록 - 최대 높이 제한으로 무한 길어짐 방지 */}
                         <div className="space-y-2 max-h-[400px] overflow-y-auto scrollbar-hide pr-1">
                             {posts.length === 0 && <p className="text-center py-8 text-stone-300 font-bold text-[11px]">등록된 게시글이 없습니다.</p>}
                             {posts.map(post => (
@@ -1444,7 +1393,8 @@ const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists
                     </div>
                 );
             };
-if (loading) return <div className="h-screen w-full flex items-center justify-center bg-[#EBE9E4] dark:bg-stone-950"><div className="text-center animate-pulse"><div className="w-16 h-16 bg-teal-600 rounded-[2rem] mx-auto mb-6 flex items-center justify-center text-white shadow-2xl"><Icon name="shield" size={32}/></div><p className="text-stone-400 font-black uppercase tracking-[0.3em] text-[11px]">로딩 중...</p></div></div>;
+
+            if (loading) return <div className="h-screen w-full flex items-center justify-center bg-[#EBE9E4] dark:bg-stone-950"><div className="text-center animate-pulse"><div className="w-16 h-16 bg-teal-600 rounded-[2rem] mx-auto mb-6 flex items-center justify-center text-white shadow-2xl"><Icon name="shield" size={32}/></div><p className="text-stone-400 font-black uppercase tracking-[0.3em] text-[11px]">로딩 중...</p></div></div>;
             
             return (
                 <div className="flex flex-col h-screen min-h-screen bg-[#EBE9E4] dark:bg-stone-950 text-stone-700 dark:text-stone-300 fade-in">
@@ -1497,9 +1447,16 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
 
                             {/* SHARED VIEW (협력사 파트너스 뷰) */}
                             {view === 'shared' && (
-                                <div className="space-y-5 max-w-2xl mx-auto pb-10 mt-2">
+                                <div className="space-y-5 max-w-2xl mx-auto pb-10 mt-2 fade-in">
                                     <div className="flex justify-between items-center mb-4 px-2">
-                                        <h2 className="text-xl font-black flex items-center gap-2 text-stone-800 dark:text-stone-200"><Icon name="shield" className="text-teal-600" size={24}/> 파트너스 채널</h2>
+                                        <div className="flex items-center gap-2">
+                                            <h2 className="text-xl font-black flex items-center gap-2 text-stone-800 dark:text-stone-200">
+                                                <Icon name="shield" className="text-teal-600" size={24}/> 파트너스 채널
+                                            </h2>
+                                            <button onClick={() => handleNavClick('daily')} className="bg-stone-800 dark:bg-stone-700 text-white px-2 py-1 rounded-lg text-[10px] font-black shadow flex items-center gap-1 btn-press ml-1 transition-transform">
+                                                <Icon name="calendar" size={12}/> 직영채널 이동
+                                            </button>
+                                        </div>
                                         <div className="flex gap-2">
                                             <button onClick={() => setIsDarkMode(!isDarkMode)} className="bg-white dark:bg-stone-800 p-2.5 rounded-full shadow-md text-stone-400 hover:text-amber-500 btn-press transition-colors">
                                                 {isDarkMode ? <Icon name="sun" size={16}/> : <Icon name="moon" size={16}/>}
@@ -1508,7 +1465,6 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                         </div>
                                     </div>
                                     
-                                    {/* 위젯 렌더링 - sortOrder < 100 이면 퀵메뉴 위에 표시 */}
                                     {(dynamicApps || []).filter(a => !a.parentId && a.actionType?.startsWith('widget_') && (a.sortOrder||99) < 100).sort((a,b)=>(a.sortOrder||99)-(b.sortOrder||99)).map(app => app.actionType === 'widget_board' ? renderWidgetBoard(app) : renderWidget(app))}
 
                                     <div className="bg-white dark:bg-stone-900 rounded-[2rem] p-5 sm:p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 mt-4">
@@ -1522,10 +1478,10 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                     <div className={`w-14 h-14 sm:w-16 sm:h-16 ${app.bg} ${app.color} rounded-[1.2rem] shadow-sm flex items-center justify-center transition-all group-hover:shadow-md relative`}>
                                                         <Icon name={app.icon} size={26} className="transition-colors"/>
                                                         {app.isFolder && <div className="absolute top-0 right-0 w-3.5 h-3.5 bg-white border border-stone-200 rounded-full flex items-center justify-center"><div className="w-1.5 h-1.5 bg-stone-300 rounded-full"/></div>}
-                                                        {(app.actionType === 'widget_notices' || app.actionType === 'notice') && (() => {
+                                                        {(app.actionType === 'widget_notices' || app.actionType === 'notice' || app.actionType === 'admin_board') && (() => {
                                                             const unread = app.actionType === 'widget_notices'
                                                                 ? (notices || []).filter(n => !readNoticeIds.includes(n.id)).length
-                                                                : (dynamicPosts || []).filter(p => p.appId === app.id && p.type === 'admin_board').length;
+                                                                : (dynamicPosts || []).filter(p => p.appId === app.id && p.type === 'admin_board' && !readNoticeIds.includes(p.id)).length;
                                                             return unread > 0 ? <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-black rounded-full min-w-[17px] h-[17px] flex items-center justify-center px-1 shadow">{unread > 9 ? '9+' : unread}</span> : null;
                                                         })()}
                                                     </div>
@@ -1535,7 +1491,6 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                         </div>
                                     </div>
 
-                                    {/* 위젯 렌더링 - sortOrder >= 100 이면 퀵메뉴 아래 표시 */}
                                     {(dynamicApps || []).filter(a => !a.parentId && a.actionType?.startsWith('widget_') && (a.sortOrder||99) >= 100).sort((a,b)=>(a.sortOrder||99)-(b.sortOrder||99)).map(app => app.actionType === 'widget_board' ? renderWidgetBoard(app) : renderWidget(app))}
                                 </div>
                             )}
@@ -1547,39 +1502,26 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                     <div className="bg-white dark:bg-stone-900 p-3 rounded-2xl border border-stone-200 dark:border-stone-800 flex items-center justify-between shadow-sm max-w-4xl mx-auto relative">
                                         <button onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() - 1); setCurrentDate(d); }} className="p-2 bg-stone-50 dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-all btn-press"><Icon name="chevronLeft" size={20}/></button>
                                         <div className="text-center leading-tight flex flex-col justify-center items-center">
-    {/* 요일 표시 부분 */}
-    <p className={`text-[10px] tracking-widest font-black mb-1 ${
-        isRedDay(currentDate.getFullYear(), currentDate.getMonth() + 1, currentDate.getDate()) 
-        ? 'text-rose-500' // 빨간날이면 로즈색
-        : 'text-teal-600'  // 평일이면 테일색
-    }`}>
-        {currentDate.toLocaleDateString('ko-KR', { weekday: 'long' })}
-    </p>
-    
-    <div className="flex items-center justify-center gap-2">
-        {/* 날짜 숫자 부분 (예: 2026-03-02) */}
-        <p className={`text-xl font-black ${
-            isRedDay(currentDate.getFullYear(), currentDate.getMonth() + 1, currentDate.getDate()) 
-            ? 'text-rose-600' 
-            : 'text-stone-800 dark:text-stone-200'
-        }`}>
-            {todayStr}
-        </p>
-        
-        <button onClick={() => setCurrentDate(new Date())} className="p-1.5 bg-stone-50 dark:bg-stone-800 text-teal-600 border border-stone-200 dark:border-stone-700 rounded-lg btn-press">
-            <Icon name="calendarToday" size={16}/>
-        </button>
-    </div>
-</div>
+                                            <p className={`text-[10px] tracking-widest font-black mb-1 ${isRedDay(currentDate.getFullYear(), currentDate.getMonth() + 1, currentDate.getDate()) ? 'text-rose-500' : 'text-teal-600'}`}>
+                                                {currentDate.toLocaleDateString('ko-KR', { weekday: 'long' })}
+                                            </p>
+                                            <div className="flex items-center justify-center gap-2">
+                                                <p className={`text-xl font-black ${isRedDay(currentDate.getFullYear(), currentDate.getMonth() + 1, currentDate.getDate()) ? 'text-rose-600' : 'text-stone-800 dark:text-stone-200'}`}>
+                                                    {todayStr}
+                                                </p>
+                                                <button onClick={() => setCurrentDate(new Date())} className="p-1.5 bg-stone-50 dark:bg-stone-800 text-teal-600 border border-stone-200 dark:border-stone-700 rounded-lg btn-press">
+                                                    <Icon name="calendarToday" size={16}/>
+                                                </button>
+                                            </div>
+                                        </div>
                                         <button onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() + 1); setCurrentDate(d); }} className="p-2 bg-stone-50 dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-all btn-press"><Icon name="chevronRight" size={20}/></button>
                                     </div>
-                                    {/* 🔍 일간 검색창 */}
                                     <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 flex items-center gap-2 px-4 py-2.5 shadow-sm max-w-4xl mx-auto focus-within:border-teal-500 transition-colors">
                                         <Icon name="search" size={15} className="text-stone-400 shrink-0"/>
                                         <input type="text" placeholder="이름, 카테고리, 브랜드 검색..." value={dailySearch} onChange={e => setDailySearch(e.target.value)} className="w-full bg-transparent outline-none text-[12px] font-bold text-stone-700 dark:text-stone-300 placeholder-stone-400"/>
                                         {dailySearch && <button onClick={() => setDailySearch('')} className="text-stone-300 hover:text-stone-500 font-black text-[12px]">✕</button>}
                                     </div>
-                                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 pb-20">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-20">
                                         {(() => {
                                             const q = dailySearch.toLowerCase().trim();
                                             const filtered = sortedDailyGroups.map(([part, members]) => {
@@ -1589,7 +1531,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                             }).filter(Boolean);
                                             if (filtered.length === 0) return <div className="col-span-full py-12 text-center text-stone-400 font-bold text-sm bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 border-dashed">{q ? `"${q}" 검색 결과가 없습니다.` : '해당 날짜에 출근한 인원이 없습니다.'}</div>;
                                             return filtered.map(([part, members]) => (
-                                            <div key={part} className="space-y-2.5">
+                                            <div key={part} className="space-y-2.5 w-full">
                                                 <h3 className="text-[11px] font-black flex items-center gap-2 tracking-tighter ml-2 text-stone-700 dark:text-stone-300"><div className="w-1.5 h-3 bg-teal-500 rounded-full"/>{part}</h3>
                                                 <div className="space-y-2">
                                                     {members.map(m => {
@@ -1598,7 +1540,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                         return (
                                                             <div key={m.empId} className={`bg-white dark:bg-stone-900 p-4 rounded-[1.2rem] shadow-sm border ${canEdit ? 'border-teal-500/40 ring-2 ring-teal-500/10' : 'border-stone-100 dark:border-stone-800'}`}>
                                                                 <div className="flex items-center justify-between">
-                                                                    <div className="flex flex-col pl-1 py-0.5 min-w-0 flex-1 mr-2">
+                                                                    <div className="flex flex-col pl-1 py-0.5 min-w-0 flex-1 mr-2 overflow-hidden">
                                                                         <div className="flex items-center gap-1.5 mb-0.5">
                                                                             <span className="text-[14px] font-black text-stone-800 dark:text-stone-200 truncate">{m.name}</span>
                                                                             <span className="text-[9px] text-stone-400 font-bold shrink-0">({u?.position})</span>
@@ -1620,10 +1562,9 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                                         )}
                                                                     </div>
                                                                     <div className="flex items-center gap-1.5 shrink-0">
-                                                                        {/* 개인 내선번호 전화 아이콘 */}
                                                                         {(() => { const extNum = u?.extNumber || (extensions||[]).find(e => e?.user?.includes(m.name))?.number; return extNum ? <button onClick={e => { e.stopPropagation(); callExtension(extNum, m.name, e); }} className="text-white bg-teal-500 hover:bg-teal-600 p-1.5 rounded-full btn-press shadow-sm" title={`내선 ${extNum}`}><Icon name="phoneCall" size={13}/></button> : null; })()}
                                                                         {canEdit ? (
-                                                                            <select className="text-[11px] font-black bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-2 py-1.5 outline-none focus:border-teal-500 cursor-pointer shadow-sm" value={m.status} onChange={(e) => handleUpdateDuty(m.empId, todayStr, e.target.value, isAdminAuth)}>
+                                                                            <select className="text-[11px] font-black bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-2 py-1.5 outline-none focus:border-teal-500 cursor-pointer shadow-sm max-w-[80px] sm:max-w-none text-center" value={m.status} onChange={(e) => handleUpdateDuty(m.empId, todayStr, e.target.value, isAdminAuth)}>
                                                                                 <option value="" disabled className="bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300">-</option>
                                                                                 {SCHED_STATUS_OPTIONS.map(opt => <option key={opt} value={opt} className="bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300">{opt}</option>)}
                                                                             </select>
@@ -1656,28 +1597,25 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                     </div>
                                     <div ref={tableScrollRef} tabIndex="0" className="overflow-x-auto overflow-y-auto max-h-[70vh] md:max-h-[78vh] scrollbar-hide bg-white dark:bg-stone-900 rounded-b-[2.5rem] focus:outline-none">
                                         <table className="text-[11px] border-separate border-spacing-0" style={{minWidth: 'max-content'}}>
-                                            {/* ⑥ 날짜 계산 중복 제거: thead/tbody에서 각각 계산하던 것을 한 번만 계산 */}
                                             {(() => { const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate(); return (<>
                                             <thead>
                                                 <tr className="bg-stone-100 dark:bg-stone-800 sticky top-0 z-40 font-black text-stone-600 dark:text-stone-300">
                                                     {monthlyFilters.part && <th className="p-2 text-left border-b border-stone-200 dark:border-stone-700" style={{width:'90px',minWidth:'90px',maxWidth:'90px'}}>파트</th>}{monthlyFilters.cat && <th className="p-2 text-left border-b border-stone-200 dark:border-stone-700" style={{width:'90px',minWidth:'90px',maxWidth:'90px'}}>카테고리</th>}{monthlyFilters.id && <th className="p-2 text-left border-b border-stone-200 dark:border-stone-700" style={{width:'72px',minWidth:'72px',maxWidth:'72px'}}>사번</th>}
                                                     <th className="p-2 text-left sticky left-0 bg-stone-100 dark:bg-stone-800 z-50 border-b border-stone-200 dark:border-stone-700 shadow-[2px_0_5px_rgba(0,0,0,0.03)]" style={{width:'110px',minWidth:'110px',maxWidth:'110px'}}>성명</th>
                                                   {[...Array(daysInMonth)].map((_, i) => {
-    const dayNum = i + 1;
-    const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
-    const dayOfWeekStr = ['일', '월', '화', '수', '목', '금', '토'][dateObj.getDay()];
-    const isRed = isRedDay(currentDate.getFullYear(), currentDate.getMonth() + 1, dayNum);
-    return (
-        <th key={i} className={`p-1.5 border-l border-stone-200 dark:border-stone-700 text-center border-b border-stone-200 dark:border-stone-700 ${
-            isRed ? 'text-rose-500 bg-rose-50/20' : 'text-stone-600 dark:text-stone-300'
-        }`} style={{width:'42px', minWidth:'42px', maxWidth:'42px'}}>
-            <div className="text-[11px] leading-tight flex flex-col items-center">
-                <span>{dayNum}</span>
-                <span className="text-[9px] opacity-70">{dayOfWeekStr}</span>
-            </div>
-        </th>
-    );
-})}
+                                                        const dayNum = i + 1;
+                                                        const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
+                                                        const dayOfWeekStr = ['일', '월', '화', '수', '목', '금', '토'][dateObj.getDay()];
+                                                        const isRed = isRedDay(currentDate.getFullYear(), currentDate.getMonth() + 1, dayNum);
+                                                        return (
+                                                            <th key={i} className={`p-1.5 border-l border-stone-200 dark:border-stone-700 text-center border-b border-stone-200 dark:border-stone-700 ${isRed ? 'text-rose-500 bg-rose-50/20' : 'text-stone-600 dark:text-stone-300'}`} style={{width:'42px', minWidth:'42px', maxWidth:'42px'}}>
+                                                                <div className="text-[11px] leading-tight flex flex-col items-center">
+                                                                    <span>{dayNum}</span>
+                                                                    <span className="text-[9px] opacity-70">{dayOfWeekStr}</span>
+                                                                </div>
+                                                            </th>
+                                                        );
+                                                    })}
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1701,11 +1639,7 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                                             onClick={(e) => {
                                                                                 if (!s) return;
                                                                                 const rect = e.currentTarget.getBoundingClientRect();
-                                                                                setExpandedCell(prev =>
-                                                                                    prev?.empId === u.empId && prev?.date === dStr
-                                                                                        ? null
-                                                                                        : { empId: u.empId, date: dStr, status: s.status, rect }
-                                                                                );
+                                                                                setExpandedCell(prev => prev?.empId === u.empId && prev?.date === dStr ? null : { empId: u.empId, date: dStr, status: s.status, rect } );
                                                                             }}
                                                                         >
                                                                             <span className="truncate px-0.5 w-full text-center leading-tight">{s?.status || '-'}</span>
@@ -1760,17 +1694,17 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                     <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl flex items-center gap-2 px-4 py-3 shadow-sm focus-within:border-teal-500 mt-2"><Icon name="search" size={16} className="text-stone-400 shrink-0" /><input type="text" placeholder="번호, 층, 사용자 검색..." value={extSearch} onChange={(e) => setExtSearch(e.target.value)} className="w-full bg-transparent outline-none text-[13px] font-bold text-stone-700 dark:text-stone-300 placeholder-stone-400" /></div>
                                     <div className="bg-rose-50 dark:bg-rose-900/20 p-4 rounded-2xl border border-rose-200 dark:border-rose-800 shadow-sm flex justify-between items-center cursor-pointer btn-press hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors" onClick={(e) => callExtension('6112', '면세보안 (안전실)', e)}><div className="flex flex-col ml-3"><span className="text-[14px] font-black text-rose-700 dark:text-rose-400">면세보안 (안전실)</span><span className="text-[10px] font-bold text-rose-500 mt-0.5">긴급 연락처 고정</span></div><button className="text-[14px] font-black text-white bg-rose-500 px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2"><Icon name="phoneCall" size={16}/> 6112</button></div>
                                     <h4 className="text-[11px] font-black text-stone-400 tracking-widest mb-3 pt-2">전체 연락처</h4>
-                                    <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         {filteredExtensions.map(ext => (
                                             <div key={ext.id} className="bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-100 dark:border-stone-800 shadow-sm flex justify-between items-center cursor-pointer hover:border-teal-200 transition-colors" onClick={(e) => callExtension(ext?.number, ext?.user, e)}>
-                                                <div className="flex items-center gap-3 min-w-0">
-                                                    <button onClick={(e) => { e.stopPropagation(); toggleFavExt(ext.id); }} className={`${favoriteExts.includes(ext.id) ? 'text-amber-400' : 'text-stone-300'} hover:scale-110 transition-all`}><Icon name={favoriteExts.includes(ext.id) ? 'starFilled' : 'star'} size={20}/></button>
-                                                    <div className="flex flex-col min-w-0">
-                                                        <span className="text-[14px] font-black text-stone-700 dark:text-stone-300 truncate max-w-[120px]">{ext?.user}</span>
-                                                        <span className="text-[11px] font-bold text-stone-400 mt-0.5 truncate max-w-[120px]">{ext?.floor}</span>
+                                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                    <button onClick={(e) => { e.stopPropagation(); toggleFavExt(ext.id); }} className={`${favoriteExts.includes(ext.id) ? 'text-amber-400' : 'text-stone-300'} hover:scale-110 transition-all shrink-0`}><Icon name={favoriteExts.includes(ext.id) ? 'starFilled' : 'star'} size={20}/></button>
+                                                    <div className="flex flex-col min-w-0 pr-2">
+                                                        <span className="text-[14px] font-black text-stone-700 dark:text-stone-300 truncate">{ext?.user}</span>
+                                                        <span className="text-[11px] font-bold text-stone-400 mt-0.5 truncate">{ext?.floor}</span>
                                                     </div>
                                                 </div>
-                                                <button className="text-[13px] font-black text-stone-600 dark:text-stone-300 bg-stone-50 dark:bg-stone-800 px-4 py-2.5 rounded-xl btn-press border border-stone-200 dark:border-stone-700 flex items-center gap-2"><Icon name="phoneCall" size={14}/> {ext?.number}</button>
+                                                <button className="text-[13px] font-black text-stone-600 dark:text-stone-300 bg-stone-50 dark:bg-stone-800 px-4 py-2.5 rounded-xl btn-press border border-stone-200 dark:border-stone-700 flex items-center gap-2 shrink-0"><Icon name="phoneCall" size={14}/> {ext?.number}</button>
                                             </div>
                                         ))}
                                     </div>
@@ -1780,19 +1714,15 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                             {/* EVENT VIEW */}
                             {view === 'event' && (
                                 <div className="space-y-5 fade-in max-w-2xl mx-auto pb-20">
-
-                                    {/* 헤더 배너 */}
                                     <div className="bg-gradient-to-br from-amber-400 to-orange-500 p-6 rounded-[2.5rem] shadow-lg flex items-center justify-between text-white font-black">
                                         <div className="flex items-center gap-5"><Icon name="gift" size={44} className="opacity-90"/><div><h2 className="text-xl tracking-tighter">라이브 이벤트</h2><p className="text-xs font-bold text-amber-100 mt-0.5 tracking-widest">실시간 사내 복지 시스템</p></div></div>
                                         {isAdminAuth && <button onClick={() => setShowEventMgmt(v => !v)} className="bg-white/20 hover:bg-white/30 p-2.5 rounded-xl btn-press transition-colors"><Icon name="settings" size={18}/></button>}
                                     </div>
 
-                                    {/* 🛠 이벤트 기능 관리 패널 */}
                                     {showEventMgmt && isAdminAuth && (
                                         <div className="bg-white dark:bg-stone-900 p-6 rounded-[2.5rem] border border-amber-200 dark:border-stone-700 shadow-lg space-y-5 fade-in">
                                             <p className="text-[13px] font-black text-amber-600 flex items-center gap-2"><Icon name="settings" size={16}/> 이벤트 기능 관리</p>
 
-                                            {/* 추첨 시각 효과 */}
                                             <div className="space-y-2">
                                                 <p className="text-[11px] font-black text-stone-500">추첨 시각 효과</p>
                                                 <div className="flex gap-2">
@@ -1802,7 +1732,6 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                 </div>
                                             </div>
 
-                                            {/* 이벤트 타입 활성화 */}
                                             <div className="space-y-2">
                                                 <p className="text-[11px] font-black text-stone-500">이벤트 타입</p>
                                                 <div className="grid grid-cols-1 gap-2">
@@ -1818,7 +1747,6 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                 </div>
                                             </div>
 
-                                            {/* 추가 기능 */}
                                             <div className="space-y-2">
                                                 <p className="text-[11px] font-black text-stone-500">추가 기능</p>
                                                 {[{k:'enableWeighted',l:'⚖️ 미당첨 가중치 보정',d:'오래 못 뽑힌 사람 확률 보정'},{k:'enableHistory',l:'🏆 당첨 이력 기록',d:'직원별 누적 당첨 횟수 저장'}].map(({k,l,d}) => (
@@ -1829,7 +1757,6 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                 ))}
                                             </div>
 
-                                            {/* 점심 메뉴 관리 */}
                                             {eventSettings.enabledTypes.includes('lunch') && (
                                                 <div className="space-y-2">
                                                     <p className="text-[11px] font-black text-stone-500">점심 메뉴 목록</p>
@@ -1845,7 +1772,6 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                 </div>
                                             )}
 
-                                            {/* 당첨 이력 */}
                                             {eventSettings.enableHistory && winHistory.length > 0 && (
                                                 <div className="space-y-2">
                                                     <p className="text-[11px] font-black text-stone-500">당첨 이력</p>
@@ -1863,7 +1789,6 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                         </div>
                                     )}
 
-                                    {/* 🍱 점심 메뉴 뽑기 (이벤트 없을 때도 항상 표시) */}
                                     {eventSettings.enabledTypes.includes('lunch') && (
                                         <div className="bg-white dark:bg-stone-900 p-5 rounded-[2rem] border border-stone-200 dark:border-stone-800 shadow-sm space-y-3">
                                             <p className="text-[12px] font-black text-stone-600 dark:text-stone-300 flex items-center gap-2"><Icon name="coffee" size={16} className="text-amber-500"/> 오늘 점심 메뉴 뽑기</p>
@@ -1879,7 +1804,6 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                         </div>
                                     )}
 
-                                    {/* 최근 종료 이벤트 */}
                                     {currentEvent?.status === 'closed' && (
                                         <div className="bg-white dark:bg-stone-900 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-800 shadow-sm space-y-3">
                                             <div className="flex items-center justify-between"><h3 className="text-sm font-black text-stone-800 dark:text-stone-200 flex items-center gap-2"><Icon name="partyPopper" size={18} className="text-rose-500"/> 최근 종료된 이벤트</h3>{isAdminAuth && <button onClick={handleResetEvent} className="text-white bg-rose-500 p-2 rounded-lg btn-press"><Icon name="trash" size={16}/></button>}</div>
@@ -1889,7 +1813,6 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                         </div>
                                     )}
 
-                                    {/* 이벤트 생성 폼 */}
                                     {(!currentEvent || currentEvent?.status === 'closed') && isAdminAuth && (
                                         <div className="bg-white dark:bg-stone-900 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-800 shadow-sm space-y-5">
                                             <h3 className="text-base font-black text-stone-800 dark:text-stone-200 flex items-center gap-2"><Icon name="zap" size={18} className="text-amber-400"/> 이벤트 오픈</h3>
@@ -1911,7 +1834,6 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                         <div className="bg-white dark:bg-stone-900 p-12 rounded-[2.5rem] border border-stone-200 dark:border-stone-800 shadow-sm text-center"><Icon name="dices" size={48} className="mx-auto text-stone-300 mb-4"/><p className="text-stone-500 font-black">현재 진행 중인 이벤트가 없습니다.</p></div>
                                     )}
 
-                                    {/* 대기 중 이벤트 */}
                                     {currentEvent?.status === 'waiting' && (
                                         <div className="bg-white dark:bg-stone-900 p-7 rounded-[2.5rem] border-4 border-amber-200 shadow-lg text-center relative overflow-hidden">
                                             {currentEvent.type === 'fcfs' && <div className="absolute top-0 left-0 w-full h-1.5 bg-rose-500 animate-pulse"/>}
@@ -1949,7 +1871,6 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                         </div>
                                     )}
 
-                                    {/* 추첨 중 */}
                                     {currentEvent?.status === 'spinning' && (
                                         <div className="bg-stone-800 p-10 rounded-[3rem] shadow-2xl text-center space-y-6">
                                             <p className="text-amber-400 font-black tracking-widest animate-pulse">두구두구두구두구...</p>
@@ -1978,10 +1899,8 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                         </div>
                                     )}
 
-                                    {/* 결과 */}
                                     {currentEvent?.status === 'finished' && (
                                         <div className="bg-white dark:bg-stone-900 p-8 rounded-[3rem] border-4 border-rose-200 dark:border-stone-800 shadow-2xl text-center fade-in">
-                                            {/* 팀 배정 결과 */}
                                             {currentEvent.type === 'team' && currentEvent.teams ? (
                                                 <div className="space-y-4">
                                                     <p className="text-xs font-black text-teal-500 tracking-widest mb-4">👥 팀 배정 완료!</p>
@@ -2013,13 +1932,8 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                                 {isAdminAuth && <div className="flex gap-2"><button onClick={handleArchiveEvent} className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-4 rounded-2xl btn-press text-xs">종료 처리</button><button onClick={handleResetEvent} className="flex-1 bg-rose-50 dark:bg-rose-900/30 text-rose-500 font-black py-4 rounded-2xl btn-press text-xs border border-rose-200 dark:border-rose-800">완전 삭제</button></div>}
                                             </div>
                                         </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* ADMIN VIEW */}
-                            {/* ADMIN VIEW */}
-                            {view === 'admin' && (
+ {/* ADMIN VIEW */}
+ {view === 'admin' && (
                                 <div className="max-w-3xl mx-auto pb-20 fade-in">
                                     {!isAdminAuth && !isHealthOnlyAdmin && !appUser ? (
                                         <div className="bg-white dark:bg-stone-900 p-10 rounded-[3rem] shadow-2xl border border-stone-200 dark:border-stone-800 text-center mt-10 max-w-sm mx-auto">
@@ -2788,12 +2702,15 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
                                 ) : (
                                     <div className="space-y-3">
                                         {(dynamicPosts || []).filter(p => p.appId === openedAdminBoard.id).length === 0 && (<div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700"><p className="text-[11px] font-bold text-stone-400">등록된 게시글이 없습니다.</p></div>)}
-                                        {(dynamicPosts || []).filter(p => p.appId === openedAdminBoard.id).map(post => (
-                                            <div key={post.id} className="flex items-center justify-between bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm group hover:border-indigo-200 transition-colors">
+                                        {(dynamicPosts || []).filter(p => p.appId === openedAdminBoard.id).map(post => {
+                                            const isUnread = !readNoticeIds.includes(post.id);
+                                            return (
+                                            <div key={post.id} className="flex items-center justify-between bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm group hover:border-indigo-200 transition-colors relative" onClick={() => { if(isUnread) { const next = [...readNoticeIds, post.id]; setReadNoticeIds(next); localStorage.setItem('hmood_read_notices', JSON.stringify(next)); } }}>
+                                                {isUnread && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full shadow-sm"></div>}
                                                 <button onClick={() => setSelectedAdminPost(post)} className="flex-1 text-left btn-press"><p className="text-[13px] font-black text-stone-800 dark:text-stone-200 truncate group-hover:text-indigo-600">{post.title}</p><p className="text-[10px] text-stone-400 font-bold mt-1">{post.author} · {formatLocalTime(post.createdAt)}</p></button>
-                                                {canDelete(openedAdminBoard) && (<button onClick={(e) => handleDeleteDynamicPost(e, post.id)} className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg ml-2 btn-press shadow-sm"><Icon name="trash" size={14}/></button>)}
+                                                {canDelete(openedAdminBoard) && (<button onClick={(e) => handleDeleteDynamicPost(e, post.id)} className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg ml-2 btn-press shadow-sm z-10"><Icon name="trash" size={14}/></button>)}
                                             </div>
-                                        ))}
+                                        )})}
                                     </div>
                                 )}
                             </div>
@@ -2871,4 +2788,4 @@ if (loading) return <div className="h-screen w-full flex items-center justify-ce
         const root = ReactDOM.createRoot(document.getElementById('root')); root.render(<App />);
     </script>
 </body>
-</html>
+</html>                                       
