@@ -704,54 +704,22 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                 });
             }, [sortedUsers, viewMode, appUser]);
             
-            const dailyGroups = useMemo(() => { 
-                const act = (schedules || []).filter(s => {
-                    if(s?.date !== todayStr) return false;
-                    const opt = (statusOptions || []).find(o => o.label === s.status);
-                    if (opt && opt.isWork !== undefined) return opt.isWork === true || opt.isWork === 'true';
-                    return !['휴무', '연차', '대체 휴무'].includes(s.status);
-                }); 
-                return act.reduce((acc, s) => { const p = s.part || '미지정'; if (!acc[p]) acc[p] = []; acc[p].push(s); return acc; }, {}); 
-            }, [schedules, todayStr, statusOptions]);
-
-            const dailyGroups = useMemo(() => { 
-                const act = (schedules || []).filter(s => {
-                    if(s?.date !== todayStr) return false;
-                    const opt = (statusOptions || []).find(o => o.label === s.status);
-                    if (opt && opt.isWork !== undefined) return opt.isWork === true || opt.isWork === 'true';
-                    return !['휴무', '연차', '대체 휴무'].includes(s.status);
-                }); 
-                return act.reduce((acc, s) => { 
-                    // 1. 최신 프로필(userMap)의 파트 정보를 우선 사용 (데이터 꼬임 방지)
-                    let p = userMap[s.empId]?.part || s.part || '';
-                    
-                    // 2. 엑셀 업로드 시 들어갈 수 있는 'undefined' 등의 텍스트 처리
-                    if (p === 'undefined' || p === 'null') p = '';
-                    p = p.trim();
-                    if (!p) p = '미지정'; // 소속이 없으면 무조건 '미지정'으로 통일
-
-                    if (!acc[p]) acc[p] = []; 
-                    acc[p].push(s); 
-                    return acc; 
-                }, {}); 
-            }, [schedules, todayStr, statusOptions, userMap]);
-
             const sortedDailyGroups = useMemo(() => {
                 return Object.entries(dailyGroups).sort(([pA], [pB]) => {
                     const isUnassignedA = (pA === '미지정');
                     const isUnassignedB = (pB === '미지정');
 
-                    // [핵심] '미지정' 그룹은 무조건 맨 아래로 내림
+                    // 1. '미지정' 그룹은 맨 아래로
                     if (isUnassignedA && !isUnassignedB) return 1;
                     if (!isUnassignedA && isUnassignedB) return -1;
 
-                    // 점장이 포함된 파트를 최상단으로 올림
+                    // 2. 점장이 포함된 파트를 최상단으로
                     const hasManagerA = dailyGroups[pA].some(m => userMap[m.empId]?.jobTitle === '점장');
                     const hasManagerB = dailyGroups[pB].some(m => userMap[m.empId]?.jobTitle === '점장');
                     if (hasManagerA && !hasManagerB) return -1; 
                     if (!hasManagerA && hasManagerB) return 1;
                     
-                    // 지정된 가중치(PART_W)에 따라 정렬
+                    // 3. 파트 지정된 가중치(PART_W)
                     const wA = PART_W[pA] || 99;
                     const wB = PART_W[pB] || 99;
                     if (wA !== wB) return wA - wB;
@@ -759,13 +727,26 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                     return pA.localeCompare(pB, 'ko');
                 }).map(([part, members]) => {
                     const sorted = [...members].sort((a, b) => {
-                        const uA = userMap[a.empId]; const uB = userMap[b.empId];
-                        if (uA?.jobTitle === '점장' && uB?.jobTitle !== '점장') return -1;
-                        if (uA?.jobTitle !== '점장' && uB?.jobTitle === '점장') return 1;
-                        if (uA?.jobTitle === '파트장' && uB?.jobTitle !== '파트장') return -1;
-                        if (uA?.jobTitle !== '파트장' && uB?.jobTitle === '파트장') return 1;
-                        const cA = uA?.category || ''; const cB = uB?.category || '';
+                        const uA = userMap[a.empId] || {}; 
+                        const uB = userMap[b.empId] || {};
+                        
+                        // 1순위: 직책 (점장, 파트장 우선)
+                        if (uA.jobTitle === '점장' && uB.jobTitle !== '점장') return -1;
+                        if (uA.jobTitle !== '점장' && uB.jobTitle === '점장') return 1;
+                        if (uA.jobTitle === '파트장' && uB.jobTitle !== '파트장') return -1;
+                        if (uA.jobTitle !== '파트장' && uB.jobTitle === '파트장') return 1;
+                        
+                        // 2순위: 직급 (부장 -> 차장 -> 과장 -> 대리 -> 주임 -> 사원)
+                        const rankA = RANK_W[uA.position] || 99;
+                        const rankB = RANK_W[uB.position] || 99;
+                        if (rankA !== rankB) return rankA - rankB;
+
+                        // 3순위: 카테고리 (가나다순 - 기존 코드 복구)
+                        const cA = uA.category || ''; 
+                        const cB = uB.category || '';
                         if (cA !== cB) return cA.localeCompare(cB, 'ko');
+
+                        // 4순위: 이름 (가나다순)
                         return (a.name || '').localeCompare(b.name || '', 'ko');
                     });
                     return [part, sorted];
