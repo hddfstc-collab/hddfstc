@@ -692,14 +692,38 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                     if (viewMode.startsWith('PART_')) return u.part === viewMode.replace('PART_', '');
                     return true;
                 }).sort((a, b) => {
-                    const wA = PART_W[a.part||''] || 99; const wB = PART_W[b.part||''] || 99;
-                    if (wA !== wB) return wA - wB;
+                    // 1. [절대 원칙] 점장은 파트에 상관없이 무조건 최상단
                     if (a.jobTitle === '점장' && b.jobTitle !== '점장') return -1;
                     if (a.jobTitle !== '점장' && b.jobTitle === '점장') return 1;
+
+                    // 2. [추가된 절대 원칙] 소속이 없는 경우(미지정, 빈칸 등) 무조건 맨 아래로!
+                    const partA = a.part?.trim() || '미지정';
+                    const partB = b.part?.trim() || '미지정';
+                    const isUnassignedA = (partA === '미지정' || partA === 'undefined' || partA === 'null');
+                    const isUnassignedB = (partB === '미지정' || partB === 'undefined' || partB === 'null');
+                    if (isUnassignedA && !isUnassignedB) return 1;
+                    if (!isUnassignedA && isUnassignedB) return -1;
+
+                    // 3. 파트 가중치 정렬
+                    const wA = PART_W[partA] || 99; 
+                    const wB = PART_W[partB] || 99;
+                    if (wA !== wB) return wA - wB;
+
+                    // 4. 파트장
                     if (a.jobTitle === '파트장' && b.jobTitle !== '파트장') return -1;
                     if (a.jobTitle !== '파트장' && b.jobTitle === '파트장') return 1;
-                    const cA = a.category || ''; const cB = b.category || '';
+
+                    // 5. 직급
+                    const rA = RANK_W[a.position] || 99; 
+                    const rB = RANK_W[b.position] || 99;
+                    if (rA !== rB) return rA - rB;
+
+                    // 6. 카테고리
+                    const cA = a.category || ''; 
+                    const cB = b.category || '';
                     if (cA !== cB) return cA.localeCompare(cB, 'ko');
+
+                    // 7. 이름
                     return (a.name||'').localeCompare(b.name||'', 'ko');
                 });
             }, [sortedUsers, viewMode, appUser]);
@@ -1281,12 +1305,25 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                 if (app.actionType === 'widget_managers') {
                     return (
                         <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in">
-                            <div className="flex items-center justify-between"><h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}><Icon name={app.icon} size={16}/> {app.name}</h3>
-                            {isAdminAuth && <div className="flex gap-2"><button onClick={() => handleEditDynamicApp(app)} className="text-stone-400 hover:text-teal-500"><Icon name="edit" size={14}/></button><button onClick={() => handleDeleteDynamicApp(app.id)} className="text-stone-400 hover:text-rose-500"><Icon name="trash" size={14}/></button></div>}</div>
+                            <div className="flex items-center justify-between">
+                                <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}><Icon name={app.icon} size={16}/> {app.name}</h3>
+                                {isAdminAuth && <div className="flex gap-2"><button onClick={() => handleEditDynamicApp(app)} className="text-stone-400 hover:text-teal-500"><Icon name="edit" size={14}/></button><button onClick={() => handleDeleteDynamicApp(app.id)} className="text-stone-400 hover:text-rose-500"><Icon name="trash" size={14}/></button></div>}
+                            </div>
                             {activeManagers.length === 0 ? <p className="text-center py-6 text-stone-300 font-bold text-[11px]">오늘 출근한 영업관리자가 없습니다.</p> : (
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                    {activeManagers.map(m => { const ext = (extensions || []).find(e => e?.user?.includes(m.name)); return (
-                                        <div key={m.empId} className="bg-stone-50 dark:bg-stone-800 rounded-2xl p-4 border border-stone-100 dark:border-stone-700 flex flex-col gap-2 shadow-sm"><div className="flex justify-between items-center w-full"><div className="flex flex-col"><p className="text-[15px] font-black text-stone-800 dark:text-stone-200">{m.name}</p><p className="text-[10px] text-stone-500 font-bold">{m.user?.position} · {m.user?.jobTitle}</p></div>{ext && <button onClick={(e) => callExtension(ext.number, m.name, e)} className="text-white bg-teal-500 p-2.5 rounded-full btn-press shadow-md"><Icon name="phoneCall" size={14} /></button>}</div><div className="mt-1"><span className={`px-3 py-1 rounded-lg text-[9px] font-black shadow-sm ${STATUS_THEME[m.status] || 'bg-stone-200 text-stone-500'}`}>{m.status}</span></div></div>
+                                    {activeManagers.map(m => { 
+                                        const ext = (extensions || []).find(e => e?.user?.includes(m.name)); 
+                                        return (
+                                        <div key={m.empId} className="bg-stone-50 dark:bg-stone-800 rounded-2xl p-4 border border-stone-100 dark:border-stone-700 flex flex-col gap-2 shadow-sm">
+                                            <div className="flex flex-col">
+                                                <p className="text-[15px] font-black text-stone-800 dark:text-stone-200">{m.name}</p>
+                                                <p className="text-[10px] text-stone-500 font-bold">{m.user?.position} · {m.user?.jobTitle}</p>
+                                            </div>
+                                            <div className="flex justify-between items-center mt-1">
+                                                <span className={`px-3 py-1.5 rounded-lg text-[9px] font-black shadow-sm ${STATUS_THEME[m.status] || 'bg-stone-200 text-stone-500'}`}>{m.status}</span>
+                                                {ext && <button onClick={(e) => callExtension(ext.number, m.name, e)} className="text-white bg-teal-500 p-2 rounded-full btn-press shadow-md"><Icon name="phoneCall" size={13} /></button>}
+                                            </div>
+                                        </div>
                                     );})}
                                 </div>
                             )}
