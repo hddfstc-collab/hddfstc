@@ -2337,7 +2337,15 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
     <option value="link">🔗 외부 링크</option>
 </select>
                                                             </div>
-
+{/* 외부 링크 선택 시 URL 입력 칸 등장 */}
+{appManagerForm.actionType === 'link' && appManagerForm.isFolder === 'false' && (
+                                                                <input 
+                                                                    className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 fade-in" 
+                                                                    placeholder="연결할 외부 링크 URL (예: https://...)" 
+                                                                    value={appManagerForm.url || ''} 
+                                                                    onChange={e => setAppManagerForm({...appManagerForm, url: e.target.value})} 
+                                                                />
+                                                            )}
                                                             <div className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 space-y-3">
                                                                 <div className="flex items-center justify-between cursor-pointer btn-press" onClick={() => setShowPerms(!showPerms)}>
                                                                     <p className="text-[11px] font-black text-stone-600 dark:text-stone-300">권한 설정 (작성/수정/삭제 통합)</p>
