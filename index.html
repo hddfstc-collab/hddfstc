@@ -451,51 +451,42 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             };
 
             const hasPermission = useCallback((permRaw, appItem) => {
-                if (!permRaw) return false;
+                // [수정 1] 관리자는 무조건 모든 앱에서 권한 허용
                 if (isAdminAuth) return true;
+                if (!permRaw) return false;
+
+                // [수정 2] 로그아웃 상태(비로그인)일 경우 폼/예약형이 아니면 무조건 읽기 전용 차단
+                if (!appUser) {
+                    if (appItem && (appItem.actionType === 'form' || appItem.actionType === 'reservation')) {
+                        if (permRaw === 'all' || (Array.isArray(permRaw) && permRaw.includes('all'))) return true;
+                    }
+                    return false;
+                }
+
+                const checkPerm = (p) => {
+                    if (p === 'all') return true;
+                    if (p === 'admin_only') return isAdminAuth;
+                    if (p === 'manager') return appUser.jobTitle === '영업관리자';
+                    if (p.startsWith('PART_')) return appUser.part === p.replace('PART_', '');
+                    if (p.startsWith('USER_')) return appUser.empId === p.replace('USER_', '');
+                    if (p.startsWith('JOB_')) return appUser.jobTitle === p.replace('JOB_', '');
+                    if (p.startsWith('CAT_')) return (appUser.category || '') === p.replace('CAT_', '');
+                    return false;
+                };
 
                 if (Array.isArray(permRaw)) {
-                    if (permRaw.includes('admin')) return isAdminAuth;
-                    if (!appUser) return false;
-                    if (permRaw.includes('all')) return true;
-                    if (permRaw.includes('member')) return true;
-                    if (permRaw.includes('manager') && appUser.jobTitle === '영업관리자') return true;
-                    if (permRaw.some(x => typeof x === 'string' && x.startsWith('PART_') && appUser.part === x.replace('PART_', ''))) return true;
-                    if (permRaw.some(x => typeof x === 'string' && x.startsWith('USER_') && appUser.empId === x.replace('USER_', ''))) return true;
-                    if (permRaw.some(x => typeof x === 'string' && x.startsWith('JOB_') && appUser.jobTitle === x.replace('JOB_', ''))) return true;
-                    if (permRaw.some(x => typeof x === 'string' && x.startsWith('CAT_') && (appUser.category || '') === x.replace('CAT_', ''))) return true;
-                    return false;
+                    return permRaw.some(checkPerm);
                 }
-
-                const p = String(permRaw).trim();
-                if (!p) return false;
-                if (p === 'all') return true;
-                if (!appUser) return false;
-                if (p === 'member') return true;
-                if (p === 'manager') return appUser.jobTitle === '영업관리자';
-                if (p.startsWith('PART_')) return appUser.part === p.replace('PART_', '');
-                if (p.startsWith('USER_')) return appUser.empId === p.replace('USER_', '');
-                if (p.startsWith('JOB_')) return appUser.jobTitle === p.replace('JOB_', '');
-                if (p.startsWith('CAT_')) return (appUser.category || '') === p.replace('CAT_', '');
-                return false;
+                return checkPerm(String(permRaw).trim());
             }, [appUser, isAdminAuth]);
 
-            const canViewPosts = useCallback((appItem) => {
-                if (!appItem) return false;
-                if (isAdminAuth) return true;
-                if (!appUser) return false;
-                return hasPermission(appItem.writePermission, appItem) || appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장';
-            }, [appUser, isAdminAuth, hasPermission]);
-
             const canWrite = useCallback((appItem) => {
+                if (isAdminAuth) return true; // 관리자는 항상 작성 가능
                 if (!appItem) return false;
                 const p = appItem.writePermission;
-                if (!p) {
-                    if ((appItem.actionType === 'widget_notices' || appItem.actionType === 'widget_board') && appUser && appUser.jobTitle === '영업관리자') return true;
-                    return false;
-                }
+                if (!p || p.length === 0) return false;
                 return hasPermission(p, appItem);
-            }, [appUser, hasPermission]);
+            }, [isAdminAuth, hasPermission]);
 
             const canEdit = canWrite;
             const canDelete = canWrite;
@@ -902,25 +893,26 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                 setShowPerms(false);
             };
 
-            const toggleUserPerm = (empId) => {
-                let current = Array.isArray(appManagerForm.writePermission) ? appManagerForm.writePermission : [];
-                if (current.includes('all')) current = []; 
-                const userKey = `USER_${empId}`;
-                if (current.includes(userKey)) {
-                    setAppManagerForm({...appManagerForm, writePermission: current.filter(k => k !== userKey)});
-                } else {
-                    setAppManagerForm({...appManagerForm, writePermission: [...current, userKey]});
-                }
-            };
+            // [수정 3] 파트, 개인 등 다중 선택을 처리하는 새로운 권한 토글 함수
+            const togglePerm = (permKey, forceState) => {
+                let current = Array.isArray(appManagerForm.writePermission) ? [...appManagerForm.writePermission] : [];
+                
+                // 모두 허용이나 관리자 전용을 누르면 다른 세부 권한을 지움
+                if (current.includes('all') && permKey !== 'all') current = current.filter(k => k !== 'all');
+                if (current.includes('admin_only') && permKey !== 'admin_only') current = current.filter(k => k !== 'admin_only');
 
-            const handlePermChange = (type) => {
-                if (type === 'all') setAppManagerForm({...appManagerForm, writePermission: 'all'});
-                else if (type === 'manager') setAppManagerForm({...appManagerForm, writePermission: ['manager']});
-                else if (type === 'custom') {
-                    const current = Array.isArray(appManagerForm.writePermission) ? appManagerForm.writePermission : [];
-                    const isManager = current.includes('manager') && current.length === 1;
-                    setAppManagerForm({...appManagerForm, writePermission: isManager ? [] : current.filter(x => x !== 'all')}); 
+                if (forceState !== undefined) {
+                    if (forceState && !current.includes(permKey)) current.push(permKey);
+                    else if (!forceState) current = current.filter(k => k !== permKey);
+                } else {
+                    if (current.includes(permKey)) current = current.filter(k => k !== permKey);
+                    else current.push(permKey);
                 }
+
+                if (permKey === 'all' && forceState) current = ['all'];
+                if (permKey === 'admin_only' && forceState) current = ['admin_only'];
+
+                setAppManagerForm({...appManagerForm, writePermission: current});
             };
 
             const handleUpdateResApp = async (targetAppId) => {
@@ -2353,6 +2345,7 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                                                                     onChange={e => setAppManagerForm({...appManagerForm, url: e.target.value})} 
                                                                 />
                                                             )}
+                                                            {/* 권한 설정 (아코디언 형태) */}
                                                             <div className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 space-y-3">
                                                                 <div className="flex items-center justify-between cursor-pointer btn-press" onClick={() => setShowPerms(!showPerms)}>
                                                                     <p className="text-[11px] font-black text-stone-600 dark:text-stone-300">권한 설정 (작성/수정/삭제 통합)</p>
@@ -2361,26 +2354,41 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                                                                 
                                                                 {showPerms && (
                                                                     <div className="space-y-4 pt-3 border-t border-stone-100 dark:border-stone-700 fade-in">
-                                                                        <div className="flex flex-wrap gap-2">
-                                                                            <button onClick={() => handlePermChange('all')} className={`px-3 py-2 rounded-xl text-[10px] font-black transition-colors ${appManagerForm.writePermission === 'all' ? 'bg-teal-500 text-white shadow-sm' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'}`}>모두 허용 (all)</button>
-                                                                            <button onClick={() => handlePermChange('manager')} className={`px-3 py-2 rounded-xl text-[10px] font-black transition-colors ${(Array.isArray(appManagerForm.writePermission) && appManagerForm.writePermission.includes('manager') && appManagerForm.writePermission.length === 1) ? 'bg-teal-500 text-white shadow-sm' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'}`}>영업관리자 전용</button>
-                                                                            <button onClick={() => handlePermChange('custom')} className={`px-3 py-2 rounded-xl text-[10px] font-black transition-colors ${(Array.isArray(appManagerForm.writePermission) && (!appManagerForm.writePermission.includes('manager') || appManagerForm.writePermission.length > 1)) ? 'bg-teal-500 text-white shadow-sm' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'}`}>특정 구성원 지정</button>
+                                                                        <div className="flex items-center gap-4 bg-stone-50 dark:bg-stone-800 p-3 rounded-xl border border-stone-100 dark:border-stone-700">
+                                                                            <label className="flex items-center gap-2 text-[11px] font-black text-stone-600 dark:text-stone-300 cursor-pointer">
+                                                                                <input type="checkbox" checked={Array.isArray(appManagerForm.writePermission) && appManagerForm.writePermission.includes('all')} onChange={(e) => togglePerm('all', e.target.checked)} className="w-4 h-4 text-teal-600 rounded cursor-pointer focus:ring-teal-500" />
+                                                                                모두 허용 (옵션)
+                                                                            </label>
+                                                                            <label className="flex items-center gap-2 text-[11px] font-black text-stone-600 dark:text-stone-300 cursor-pointer">
+                                                                                <input type="checkbox" checked={Array.isArray(appManagerForm.writePermission) && appManagerForm.writePermission.includes('admin_only')} onChange={(e) => togglePerm('admin_only', e.target.checked)} className="w-4 h-4 text-teal-600 rounded cursor-pointer focus:ring-teal-500" />
+                                                                                관리자 전용 (Only)
+                                                                            </label>
                                                                         </div>
 
-                                                                        {Array.isArray(appManagerForm.writePermission) && (!appManagerForm.writePermission.includes('manager') || appManagerForm.writePermission.length > 1) && (
-                                                                            <div className="p-3 bg-stone-50 dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 space-y-3 max-h-48 overflow-y-auto scrollbar-hide">
-                                                                                <p className="text-[10px] font-black text-teal-600">이름을 클릭하여 다중 선택 (작성/수정/삭제 권한 일괄 부여)</p>
-                                                                                <div className="flex flex-wrap gap-1.5">
-                                                                                    {sortedUsers.map(u => {
-                                                                                        const isSelected = appManagerForm.writePermission.includes(`USER_${u.empId}`);
-                                                                                        return (
-                                                                                            <button key={u.empId} onClick={() => toggleUserPerm(u.empId)} className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${isSelected ? 'bg-teal-50 text-teal-600 border-teal-200 dark:bg-teal-900/30 dark:border-teal-800' : 'bg-white dark:bg-stone-900 text-stone-500 border-stone-200 dark:border-stone-700'} btn-press`}>
-                                                                                                {u.name} ({u.jobTitle !== '일반' ? u.jobTitle : u.position})
+                                                                        {(!Array.isArray(appManagerForm.writePermission) || (!appManagerForm.writePermission.includes('all') && !appManagerForm.writePermission.includes('admin_only'))) && (
+                                                                            <>
+                                                                                <div className="space-y-2">
+                                                                                    <p className="text-[10px] font-black text-teal-600">🏢 파트 단위 다중 선택</p>
+                                                                                    <div className="flex flex-wrap gap-1.5">
+                                                                                        {uniqueParts.filter(p => p !== '미지정').map(p => (
+                                                                                            <button key={p} onClick={() => togglePerm(`PART_${p}`)} className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${Array.isArray(appManagerForm.writePermission) && appManagerForm.writePermission.includes(`PART_${p}`) ? 'bg-teal-50 text-teal-600 border-teal-200 dark:bg-teal-900/30 dark:border-teal-800' : 'bg-white dark:bg-stone-900 text-stone-500 border-stone-200 dark:border-stone-700'} btn-press`}>
+                                                                                                {p}
                                                                                             </button>
-                                                                                        );
-                                                                                    })}
+                                                                                        ))}
+                                                                                    </div>
                                                                                 </div>
-                                                                            </div>
+                                                                                
+                                                                                <div className="space-y-2 pt-3 border-t border-stone-100 dark:border-stone-700">
+                                                                                    <p className="text-[10px] font-black text-teal-600">👤 개인 단위 다중 선택</p>
+                                                                                    <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto scrollbar-hide pr-1">
+                                                                                        {sortedUsers.map(u => (
+                                                                                            <button key={u.empId} onClick={() => togglePerm(`USER_${u.empId}`)} className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${Array.isArray(appManagerForm.writePermission) && appManagerForm.writePermission.includes(`USER_${u.empId}`) ? 'bg-teal-50 text-teal-600 border-teal-200 dark:bg-teal-900/30 dark:border-teal-800' : 'bg-white dark:bg-stone-900 text-stone-500 border-stone-200 dark:border-stone-700'} btn-press flex items-center gap-1`}>
+                                                                                                {u.name} <span className="opacity-50 text-[9px]">({u.jobTitle !== '일반' ? u.jobTitle : u.position})</span>
+                                                                                            </button>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </>
                                                                         )}
                                                                     </div>
                                                                 )}
