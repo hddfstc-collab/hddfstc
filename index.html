@@ -2670,14 +2670,42 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                                         <button onClick={async () => {
                                             const targetEmpId = profileForm.targetEmpId || appUser.empId;
                                             const originalUser = users.find(u => u.empId === targetEmpId);
-                                            const updatedUser = { ...originalUser, name: profileForm.name, part: profileForm.part, category: profileForm.category, brands: profileForm.brands || '', extNumber: profileForm.extNumber || '', position: profileForm.position || originalUser.position, jobTitle: profileForm.jobTitle || originalUser.jobTitle };
+                                            const newExtNum = (profileForm.extNumber || '').trim();
+                                            const updatedUser = { ...originalUser, name: profileForm.name, part: profileForm.part, category: profileForm.category, brands: profileForm.brands || '', extNumber: newExtNum, position: profileForm.position || originalUser.position, jobTitle: profileForm.jobTitle || originalUser.jobTitle };
+                                            
+                                            // 1. 유저 정보 업데이트
                                             setUsers((users || []).map(u => u.empId === targetEmpId ? updatedUser : u));
                                             saveToIDB('users', updatedUser);
                                             setSchedules((schedules || []).map(s => s.empId === targetEmpId ? { ...s, name: profileForm.name, part: profileForm.part } : s));
                                             if (appUser && appUser.empId === targetEmpId) setAppUser(updatedUser);
                                             if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/users`).doc(targetEmpId).set(updatedUser, { merge: true });
+
+                                            // 2. 내선번호 앱 목록 자동 연동 로직
+                                            const existingExt = extensions.find(e => e.id === `ext_${targetEmpId}` || e.user === profileForm.name);
+                                            
+                                            if (newExtNum) {
+                                                if (existingExt) {
+                                                    // 기존에 내선번호 목록이 있으면 업데이트
+                                                    const updatedExt = { ...existingExt, number: newExtNum, floor: profileForm.part || existingExt.floor, user: profileForm.name };
+                                                    setExtensions(prev => prev.map(e => e.id === existingExt.id ? updatedExt : e));
+                                                    saveToIDB('extensions', updatedExt);
+                                                    if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/extensions`).doc(existingExt.id).set(updatedExt, { merge: true });
+                                                } else {
+                                                    // 없으면 내선번호 앱에 새로 추가
+                                                    const newExt = { id: `ext_${targetEmpId}`, number: newExtNum, floor: profileForm.part || '', user: profileForm.name, createdAt: new Date().toISOString() };
+                                                    setExtensions(prev => [...(prev || []), newExt]);
+                                                    saveToIDB('extensions', newExt);
+                                                    if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/extensions`).doc(newExt.id).set(newExt);
+                                                }
+                                            } else if (existingExt && existingExt.id === `ext_${targetEmpId}`) {
+                                                // 내선번호를 지웠을 경우 연동된 내선번호 데이터도 삭제
+                                                setExtensions(prev => prev.filter(e => e.id !== existingExt.id));
+                                                deleteFromIDB('extensions', existingExt.id);
+                                                if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/extensions`).doc(existingExt.id).delete();
+                                            }
+
                                             setShowProfileEdit(false);
-                                            showToast('정보가 저장되었습니다.');
+                                            showToast('개인 정보 및 내선번호가 연동되었습니다.');
                                         }} className="w-full bg-teal-600 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[13px] mt-1">정보 업데이트</button>
                                     </div>
                                 )}
