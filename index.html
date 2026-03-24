@@ -294,6 +294,7 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const [blacklists, setBlacklists] = useState([]); 
             
             const [eventForm, setEventForm] = useState({ title: '', prize: '', target: 'daily', type: 'random', winnerCount: 1, quizQuestion: '', quizAnswer: '', teamCount: 2 });
+            const [quizAnswer, setQuizAnswer] = useState(''); // ✨ 이 줄을 추가해 주세요!
             const [spinDisplay, setSpinDisplay] = useState('');
             const [wheelRotation, setWheelRotation] = useState(0);
             const [eventSettings, setEventSettings] = useState(DEFAULT_EVENT_SETTINGS);
