@@ -1087,10 +1087,51 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
 
             const handleMemberSubmit = async () => {
                 if (!memberForm.empId || !memberForm.name) return showToast('사번과 이름을 입력해주세요.', true);
-                const rawPw = memberForm.password || memberForm.empId;
-                const pwHash = await hashPassword(rawPw);
-                const newMember = { ...memberForm, id: memberForm.empId, password: pwHash, birthday: '1990-01-01' };
-                try { setUsers(prev => { const idx = prev.findIndex(u => u.empId === newMember.empId); if(idx >= 0) { const c=[...prev]; c[idx]=newMember; return c; } return [...prev, newMember]; }); saveToIDB('users', newMember); setMemberForm({ empId: '', name: '', part: '', position: '사원', jobTitle: '일반', category: '', brands: '', password: '' }); if(db && fbUser) await db.collection(`artifacts/${appId}/public/data/users`).doc(newMember.empId).set(newMember, { merge: true }); showToast('저장되었습니다.'); } catch(e) { showToast('저장 실패', true); }
+                
+                // 1. 기존에 등록된 유저인지 먼저 확인합니다.
+                const existingUser = users.find(u => u.empId === memberForm.empId);
+                let finalPasswordHash = '';
+
+                // 2. 비밀번호 유지/초기화/변경 로직
+                if (memberForm.password) {
+                    // 관리자가 새로운 비밀번호를 직접 입력한 경우 (변경)
+                    finalPasswordHash = await hashPassword(memberForm.password);
+                } else if (existingUser && existingUser.password) {
+                    // 수정 모드인데 비밀번호 칸을 비워둔 경우 (기존 비밀번호 안전하게 유지!)
+                    finalPasswordHash = existingUser.password;
+                } else {
+                    // 신규 생성인데 비밀번호 칸을 비워둔 경우 (사번으로 자동 초기화)
+                    finalPasswordHash = await hashPassword(memberForm.empId);
+                }
+
+                // 3. 기존 데이터가 있다면 덮어쓰지 않고 유지(생일 등)하면서 폼 데이터만 쏙 업데이트합니다.
+                const newMember = { 
+                    ...existingUser, 
+                    ...memberForm, 
+                    id: memberForm.empId, 
+                    password: finalPasswordHash, 
+                    birthday: existingUser?.birthday || '1990-01-01' 
+                };
+                
+                try { 
+                    setUsers(prev => { 
+                        const idx = prev.findIndex(u => u.empId === newMember.empId); 
+                        if(idx >= 0) { 
+                            const c=[...prev]; 
+                            c[idx]=newMember; 
+                            return c; 
+                        } 
+                        return [...prev, newMember]; 
+                    }); 
+                    saveToIDB('users', newMember); 
+                    setMemberForm({ empId: '', name: '', part: '', position: '사원', jobTitle: '일반', category: '', brands: '', password: '' }); 
+                    
+                    if(db && fbUser) await db.collection(`artifacts/${appId}/public/data/users`).doc(newMember.empId).set(newMember, { merge: true }); 
+                    
+                    showToast('성공적으로 저장되었습니다.'); 
+                } catch(e) { 
+                    showToast('저장 실패', true); 
+                }
             };
 
             const handleClearAllPosts = () => { setConfirmDialog({ isOpen: true, message: '모든 게시글 데이터를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.', onConfirm: async () => { setConfirmDialog({isOpen: false}); setDynamicPosts([]); try { window.localDB.transaction('dynamicPosts', 'readwrite').objectStore('dynamicPosts').clear(); } catch(e){} try { if (db && fbUser) { const snap = await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).get(); const batch = db.batch(); snap.docs.forEach(d => batch.delete(d.ref)); await batch.commit(); } } catch(e){} showToast('초기화 완료'); }, onCancel: () => setConfirmDialog({isOpen: false}) }); };
@@ -1512,18 +1553,65 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                     <main className={`flex-1 overflow-y-auto scrollbar-hide relative z-0 pb-24 ${view === 'monthly' ? 'p-2 md:p-3' : 'p-4'}`}>
                         <div className={`mx-auto ${view === 'login' ? 'max-w-md' : view === 'monthly' ? 'max-w-full' : 'max-w-5xl'}`}>
                             
-                            {/* LOGIN VIEW */}
-                            {view === 'login' && (
+                           {/* LOGIN VIEW */}
+                           {view === 'login' && (
                                 <div className="bg-white dark:bg-stone-900 p-8 sm:p-12 rounded-[3.5rem] sm:rounded-[4rem] shadow-2xl border border-stone-200 dark:border-stone-800 mt-4 sm:mt-10 max-w-md mx-auto fade-in">
-                                    <div className="text-center mb-8 leading-none"><div className="bg-teal-600 w-20 h-20 sm:w-24 sm:h-24 rounded-[2.5rem] sm:rounded-[3rem] mx-auto mb-6 flex items-center justify-center text-white shadow-xl"><Icon name="user" size={40}/></div><h2 className="text-2xl sm:text-3xl font-black tracking-tighter text-stone-800 dark:text-stone-200">H무디 로그인</h2></div>
-                                    <div className="bg-teal-50 dark:bg-teal-900/30 border border-teal-100 dark:border-teal-800 p-4 rounded-2xl mb-6 text-center"><p className="text-[11px] font-bold text-teal-700 dark:text-teal-400 leading-relaxed">사원번호를 입력하여 로그인하세요.<br/>초기 비밀번호는 <b>사번과 동일</b>합니다.<br/>로그인 후 우측 상단 '내 정보'에서 비밀번호를 변경해 주세요.<br/><span className="text-[9px] text-teal-500">(변경하지 않아도 시스템 사용은 가능합니다.)</span></p></div>
+                                    <div className="text-center mb-8 leading-none">
+                                        <div className="bg-teal-600 w-20 h-20 sm:w-24 sm:h-24 rounded-[2.5rem] sm:rounded-[3rem] mx-auto mb-6 flex items-center justify-center text-white shadow-xl"><Icon name="user" size={40}/></div>
+                                        <h2 className="text-2xl sm:text-3xl font-black tracking-tighter text-stone-800 dark:text-stone-200">H무디 로그인</h2>
+                                    </div>
+                                    <div className="bg-teal-50 dark:bg-teal-900/30 border border-teal-100 dark:border-teal-800 p-4 rounded-2xl mb-6 text-center">
+                                        <p className="text-[11px] font-bold text-teal-700 dark:text-teal-400 leading-relaxed">사원번호를 입력하여 로그인하세요.<br/>초기 비밀번호는 <b>사번과 동일</b>합니다.<br/>로그인 후 우측 상단 '내 정보'에서 비밀번호를 변경해 주세요.<br/><span className="text-[9px] text-teal-500">(변경하지 않아도 시스템 사용은 가능합니다.)</span></p>
+                                    </div>
+                                    
                                     <form className="space-y-5 sm:space-y-6" onSubmit={handleLogin}>
-                                        <div className="space-y-2 text-left"><label className="text-[11px] font-black text-stone-400 ml-4">사원번호</label><input type="text" className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-[2rem] px-6 py-4 sm:px-7 sm:py-5 font-bold text-[13px] shadow-inner outline-none focus:border-teal-500 transition-colors" placeholder="사번 입력" value={loginForm.id || ''} onChange={e => setLoginForm({...loginForm, id: e.target.value})} required/></div>
-                                        <div className="space-y-2 text-left"><label className="text-[11px] font-black text-stone-400 ml-4">비밀번호</label><input type="password" className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-[2rem] px-6 py-4 sm:px-7 sm:py-5 font-bold text-[13px] shadow-inner outline-none focus:border-teal-500 transition-colors" placeholder="비밀번호" value={loginForm.pw || ''} onChange={e => setLoginForm({...loginForm, pw: e.target.value})} required/></div>
-                                        <div className="flex items-center justify-between px-4 pt-2"><label className="flex items-center gap-2 cursor-pointer group"><input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="w-4 h-4 text-teal-600 bg-stone-100 border-stone-300 rounded focus:ring-teal-500" /><span className="text-[11px] font-bold text-stone-500 group-hover:text-stone-700 transition-colors">사원번호 기억하기</span></label></div>
+                                        <div className="space-y-2 text-left">
+                                            <label className="text-[11px] font-black text-stone-400 ml-4">사원번호</label>
+                                            <input type="text" className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-[2rem] px-6 py-4 sm:px-7 sm:py-5 font-bold text-[13px] shadow-inner outline-none focus:border-teal-500 transition-colors" placeholder="사번 입력" value={loginForm.id || ''} onChange={e => setLoginForm({...loginForm, id: e.target.value})} required/>
+                                        </div>
+                                        <div className="space-y-2 text-left">
+                                            <label className="text-[11px] font-black text-stone-400 ml-4">비밀번호</label>
+                                            <input type="password" className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-[2rem] px-6 py-4 sm:px-7 sm:py-5 font-bold text-[13px] shadow-inner outline-none focus:border-teal-500 transition-colors" placeholder="비밀번호" value={loginForm.pw || ''} onChange={e => setLoginForm({...loginForm, pw: e.target.value})} required/>
+                                        </div>
+                                        <div className="flex items-center justify-between px-4 pt-2">
+                                            <label className="flex items-center gap-2 cursor-pointer group">
+                                                <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="w-4 h-4 text-teal-600 bg-stone-100 border-stone-300 rounded focus:ring-teal-500" />
+                                                <span className="text-[11px] font-bold text-stone-500 group-hover:text-stone-700 transition-colors">사원번호 기억하기</span>
+                                            </label>
+                                        </div>
                                         <button className="w-full bg-stone-800 hover:bg-stone-900 text-white font-black py-4 sm:py-5 rounded-[2rem] shadow-xl mt-6 btn-press text-[14px] tracking-widest transition-colors">접속하기</button>
                                     </form>
-                                    <div className="text-center mt-6"><button type="button" onClick={() => setView('shared')} className="text-[12px] text-stone-400 hover:text-teal-500 font-bold underline underline-offset-2 flex items-center justify-center gap-1.5 mx-auto btn-press"><Icon name="externalLink" size={14}/> 파트너스 채널로 이동</button></div>
+                                    
+                                    <div className="text-center mt-6">
+                                        <button type="button" onClick={() => setView('shared')} className="text-[12px] text-stone-400 hover:text-teal-500 font-bold underline underline-offset-2 flex items-center justify-center gap-1.5 mx-auto btn-press"><Icon name="externalLink" size={14}/> 파트너스 채널로 이동</button>
+                                    </div>
+
+                                    {/* 👇 여기에 시스템 관리자 전용 로그인 버튼이 추가되었습니다! 👇 */}
+                                    <div className="mt-6 text-center border-t border-stone-100 dark:border-stone-800 pt-5 fade-in">
+                                        <button 
+                                            type="button"
+                                            onClick={async () => {
+                                                const pin = prompt('관리자 마스터 PIN을 입력하세요.');
+                                                if (!pin) return;
+                                                
+                                                const savedHash = localStorage.getItem('hmood_master_pin_hash');
+                                                const inputHash = typeof hashPassword === 'function' ? await hashPassword(pin) : pin; 
+                                                
+                                                if ((!savedHash && pin === '6011') || savedHash === inputHash) {
+                                                    setIsAdminAuth(true);
+                                                    setAppUser({ empId: 'admin_master', name: '시스템 관리자', jobTitle: '최고 관리자', part: '시스템관리', position: '마스터' });
+                                                    if (typeof showToast === 'function') showToast('최고 관리자 모드로 접속했습니다.');
+                                                } else {
+                                                    if (typeof showToast === 'function') showToast('PIN 번호가 일치하지 않습니다.', true);
+                                                    else alert('PIN 번호가 일치하지 않습니다.');
+                                                }
+                                            }} 
+                                            className="text-[11px] font-black text-stone-400 hover:text-teal-600 transition-colors btn-press flex items-center justify-center gap-1.5 mx-auto"
+                                        >
+                                            <Icon name="shield" size={13}/> 시스템 관리자 전용 로그인
+                                        </button>
+                                    </div>
+                                    {/* 👆 추가 끝 👆 */}
                                 </div>
                             )}
 
