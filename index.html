@@ -1679,6 +1679,7 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                             )}
 
                             {/* SHARED VIEW (협력사 파트너스 뷰) */}
+                            {/* SHARED VIEW (협력사 파트너스 뷰) */}
                             {view === 'shared' && (
                                 <div className="space-y-5 max-w-2xl mx-auto pb-10 mt-2 fade-in">
                                     <div className="flex justify-between items-center mb-4 px-2">
@@ -1699,8 +1700,10 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                                         </div>
                                     </div>
                                     
+                                    {/* 위젯 영역 */}
                                     {(dynamicApps || []).filter(a => !a.parentId && a.actionType?.startsWith('widget_') && (a.sortOrder||99) < 100).sort((a,b)=>(a.sortOrder||99)-(b.sortOrder||99)).map(app => app.actionType === 'widget_board' ? renderWidgetBoard(app) : renderWidget(app))}
 
+                                    {/* 채널 퀵 메뉴 영역 */}
                                     <div className="bg-white dark:bg-stone-900 rounded-[2rem] p-5 sm:p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 mt-4">
                                         <h3 className="text-xs font-black flex items-center gap-2 text-stone-700 dark:text-stone-300 mb-4">채널 퀵 메뉴</h3>
                                         <div className="grid grid-cols-4 sm:grid-cols-5 gap-3 sm:gap-4 w-full">
@@ -1709,27 +1712,28 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                                                 .sort((a,b) => (a.sortOrder||99) - (b.sortOrder||99))
                                                 .map((app) => (
                                                     <button key={app.id} className="flex flex-col items-center gap-2 group w-full btn-press" onClick={() => handleAppClick(app)}>
-                                                    <div className={`w-14 h-14 sm:w-16 sm:h-16 ${app.bg} ${app.color} rounded-[1.2rem] shadow-sm flex items-center justify-center transition-all group-hover:shadow-md relative`}>
-                                                        <Icon name={app.icon} size={26} className="transition-colors"/>
-                                                        {app.isFolder && <div className="absolute top-0 right-0 w-3.5 h-3.5 bg-white border border-stone-200 rounded-full flex items-center justify-center"><div className="w-1.5 h-1.5 bg-stone-300 rounded-full"/></div>}
-                                                        
-                                                        {/* 1. 기존 로직: 공지사항/관리자 게시판의 안 읽은 '숫자' 배지 */}
-                                                        {(app.actionType === 'widget_notices' || app.actionType === 'notice' || app.actionType === 'admin_board') && (() => {
-                                                            const unread = app.actionType === 'widget_notices'
-                                                                ? (notices || []).filter(n => !readNoticeIds.includes(n.id)).length
-                                                                : (dynamicPosts || []).filter(p => p.appId === app.id && p.type === 'admin_board' && !readNoticeIds.includes(p.id)).length;
-                                                            return unread > 0 ? <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-black rounded-full min-w-[17px] h-[17px] flex items-center justify-center px-1 shadow z-10">{unread > 9 ? '9+' : unread}</span> : null;
-                                                        })()}
+                                                        <div className={`w-14 h-14 sm:w-16 sm:h-16 ${app.bg} ${app.color} rounded-[1.2rem] shadow-sm flex items-center justify-center transition-all group-hover:shadow-md relative`}>
+                                                            <Icon name={app.icon} size={26} className="transition-colors"/>
+                                                            
+                                                            {/* 폴더 아이콘 표시 */}
+                                                            {app.isFolder && <div className="absolute top-0 right-0 w-3.5 h-3.5 bg-white border border-stone-200 rounded-full flex items-center justify-center"><div className="w-1.5 h-1.5 bg-stone-300 rounded-full"/></div>}
+                                                            
+                                                            {/* 1. 안 읽은 '숫자' 배지 (공지사항/관리자게시판 용) */}
+                                                            {(app.actionType === 'widget_notices' || app.actionType === 'notice' || app.actionType === 'admin_board') && (() => {
+                                                                const unread = app.actionType === 'widget_notices'
+                                                                    ? (notices || []).filter(n => !readNoticeIds.includes(n.id)).length
+                                                                    : (dynamicPosts || []).filter(p => p.appId === app.id && p.type === 'admin_board' && !readNoticeIds.includes(p.id)).length;
+                                                                return unread > 0 ? <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-black rounded-full min-w-[17px] h-[17px] flex items-center justify-center px-1 shadow z-10">{unread > 9 ? '9+' : unread}</span> : null;
+                                                            })()}
 
-                                                        {/* 👇 2. 추가된 로직: 숫자 배지가 없는 일반 앱일 때, 72시간 내 새 글이 있으면 깜빡이는 'N' 배지 👇 */}
-                                                        {app.actionType !== 'widget_notices' && app.actionType !== 'notice' && app.actionType !== 'admin_board' && checkNewBadge(app.id) && (
-                                                            <span className="absolute -top-1 -right-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-rose-500 text-[9px] sm:text-[10px] font-black text-white shadow-md ring-2 ring-white dark:ring-stone-900 z-10 animate-pulse">N</span>
-                                                        )}
-                                                    </div>
-                                                    <span className="text-[10px] sm:text-[11px] font-black text-stone-600 tracking-tighter whitespace-nowrap overflow-hidden text-ellipsis w-full text-center">{app.name}</span>
-                                                </button>
-                                                </button>
-                                            ))}
+                                                            {/* 2. 추가된 로직: 숫자 배지가 없는 일반 앱일 때, 깜빡이는 빨간 'N' 배지 */}
+                                                            {app.actionType !== 'widget_notices' && app.actionType !== 'notice' && app.actionType !== 'admin_board' && checkNewBadge(app.id) && (
+                                                                <span className="absolute -top-1 -right-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-rose-500 text-[9px] sm:text-[10px] font-black text-white shadow-md ring-2 ring-white dark:ring-stone-900 z-10 animate-pulse">N</span>
+                                                            )}
+                                                        </div>
+                                                        <span className="text-[10px] sm:text-[11px] font-black text-stone-600 tracking-tighter whitespace-nowrap overflow-hidden text-ellipsis w-full text-center">{app.name}</span>
+                                                    </button>
+                                                ))}
                                         </div>
                                     </div>
 
