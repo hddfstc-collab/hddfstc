@@ -544,14 +544,6 @@ const handleNoticeImages = async (e) => {
             const showToast = (m, isError = false) => { setToast(m); setToastError(isError); setTimeout(() => { setToast(''); setToastError(false); }, 3000); };
             const showConfirm = (options) => { setConfirmDialog({ ...options, isOpen: true }); };
 
-            const markAsRead = (id) => {
-                if (!readNoticeIds.includes(id)) {
-                    const next = [...readNoticeIds, id];
-                    setReadNoticeIds(next);
-                    localStorage.setItem('hmood_read_notices', JSON.stringify(next));
-                }
-            };
-
             const hasPermission = useCallback((permRaw, appItem) => {
                 // [수정 1] 관리자는 무조건 모든 앱에서 권한 허용
                 if (isAdminAuth) return true;
@@ -599,7 +591,7 @@ const handleNoticeImages = async (e) => {
                 return '권한이 없습니다.';
             }, [appUser]);
             // [N 배지 판독기] 72시간 이내의 안 읽은 새 글이 있을 때만 정확히 N 표시
-const checkNewBadge = useCallback((targetAppId) => {
+            const checkNewBadge = useCallback((targetAppId) => {
     // 1. 게시글 데이터가 아예 없으면 작동 안 함
     if (!dynamicPosts || dynamicPosts.length === 0) return false;
     
