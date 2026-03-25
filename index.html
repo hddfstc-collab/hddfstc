@@ -373,7 +373,48 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const [adminExtSearch, setAdminExtSearch] = useState('');
             const [expandedProfiles, setExpandedProfiles] = useState({});
             
-            const [noticeForm, setNoticeForm] = useState({ content: '', photos: [], isPinned: false }); 
+            const [noticeForm, setNoticeForm] = useState({ content: '', photos: [], isPinned: false });
+            // [공지사항용] 사진 여러 장을 처리하는 함수
+            // [25개 게시판 공용] 사진 다중 업로드 처리 함수
+const handleImageUpload = async (e, setForm) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    try {
+        // 모든 사진을 리사이징 (기존 resizeImage 함수 활용)
+        const resizedImages = await Promise.all(
+            files.map(async (file) => await resizeImage(file))
+        );
+
+        // 선택한 게시판의 바구니(setForm)에 사진 추가
+        setForm(prev => ({
+            ...prev,
+            photos: [...(prev.photos || []), ...resizedImages]
+        }));
+    } catch (error) {
+        console.error("이미지 처리 중 오류:", error);
+        alert("이미지 처리 중 문제가 발생했습니다.");
+    }
+
+    e.target.value = ''; // 같은 파일 재선택 가능하게 초기화
+};
+const handleNoticeImages = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    // 선택한 모든 사진을 리사이징
+    const resizedImages = await Promise.all(
+        files.map(async (file) => await resizeImage(file))
+    );
+
+    // 기존에 올린 사진이 있다면 그 뒤에 새 사진들을 합칩니다.
+    setNoticeForm(prev => ({
+        ...prev,
+        photos: [...(prev.photos || []), ...resizedImages]
+    }));
+
+    e.target.value = ''; // 같은 파일을 다시 선택할 수 있도록 초기화
+}; 
             const [editingNoticeId, setEditingNoticeId] = useState(null);
             const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
             
@@ -422,10 +463,22 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
             const [expandedNoticeId, setExpandedNoticeId] = useState(null); // 공지사항 확장용 상태 추가
             const [dailySearch, setDailySearch] = useState(''); 
             
+            // [N 배지 관리] 브라우저 저장소에서 '읽은 글 목록'을 불러옵니다.
             const [readNoticeIds, setReadNoticeIds] = useState(() => {
-                try { return JSON.parse(localStorage.getItem('hmood_read_notices') || '[]'); } catch(e) { return []; }
+                try { 
+                    return JSON.parse(localStorage.getItem('hmood_read_notices') || '[]'); 
+                } catch(e) { 
+                    return []; 
+                }
             });
-
+// ⭐ 여기에 이 코드를 넣으세요! (클릭 시 실행될 실제 동작)
+            const markAsRead = (id) => {
+                if (!readNoticeIds.includes(id)) {
+                    const newReadIds = [...readNoticeIds, id];
+                    setReadNoticeIds(newReadIds);
+                    localStorage.setItem('hmood_read_notices', JSON.stringify(newReadIds));
+                }
+            };
             const [statusOptions, setStatusOptions] = useState([]);
             const [statusForm, setStatusForm] = useState({ label: '', bg: 'bg-stone-700 dark:bg-stone-600', text: 'text-white', isWork: 'true' });
             const [editingStatusId, setEditingStatusId] = useState(null);
@@ -545,20 +598,31 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                 if (!appUser) return '로그인이 필요합니다.';
                 return '권한이 없습니다.';
             }, [appUser]);
-// 🎯 바로 여기! canDelete 밑에 빈 공간을 만들고 새 글 판독기를 넣어주세요! 🎯
-            const checkNewBadge = useCallback((appId) => {
-                if (!dynamicPosts || dynamicPosts.length === 0) return false;
-                const appPosts = dynamicPosts.filter(p => p.appId === appId);
-                if (appPosts.length === 0) return false;
-                
-                const latestPost = appPosts.reduce((latest, post) => {
-                    return new Date(latest.createdAt) > new Date(post.createdAt) ? latest : post;
-                });
+            // [N 배지 판독기] 72시간 이내의 안 읽은 새 글이 있을 때만 정확히 N 표시
+const checkNewBadge = useCallback((targetAppId) => {
+    // 1. 게시글 데이터가 아예 없으면 작동 안 함
+    if (!dynamicPosts || dynamicPosts.length === 0) return false;
+    
+    // 2. 현재 확인하려는 게시판(targetAppId)의 글들만 쏙 뽑아냅니다.
+    const appPosts = dynamicPosts.filter(p => p.appId === targetAppId);
+    if (appPosts.length === 0) return false;
 
-                const diffTime = Math.abs(new Date() - new Date(latestPost.createdAt));
-                const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
-                return diffHours <= 72; 
-            }, [dynamicPosts]);
+    // 3. 조건 검사: "3일 이내에 쓴 글" 중에서 "내가 아직 안 클릭한 글"이 있는지 확인
+    const hasUnreadNewPost = appPosts.some(post => {
+        const postDate = new Date(post.createdAt);
+        if (isNaN(postDate.getTime())) return false; // 날짜 형식이 이상하면 패스
+
+        const diffTime = new Date() - postDate;
+        const diffHours = diffTime / (1000 * 60 * 60);
+
+        const isNew = diffHours <= 72; // ✅ 72시간(3일) 이내인가?
+        const isUnread = !(readNoticeIds || []).includes(post.id); // ✅ 내 '읽음 목록'에 없는가?
+
+        return isNew && isUnread; // 둘 다 맞아야 '참(True)' -> N 배지 띄움!
+    });
+
+    return hasUnreadNewPost;
+}, [dynamicPosts, readNoticeIds]); // 👈 글 목록이나 내 읽음 기록이 바뀔 때마다 즉시 계산!
             useEffect(() => {
                 if (firebaseConfig && !firebase.apps.length) firebase.initializeApp(firebaseConfig);
                 if (firebase.apps.length > 0) {
@@ -621,18 +685,37 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                 }
             };
 
+            // 1. [로컬 캐시 초기화] 앱 켜자마자 IndexedDB에서 데이터 로드
             useEffect(() => {
                 const initLocalDB = async () => {
                     try {
                         const idb = await new Promise((resolve) => {
                             const req = indexedDB.open('HmoodERP_DB_V80', 1); 
-                            req.onupgradeneeded = (e) => { const dbInstance = e.target.result; ['users', 'schedules', 'notices', 'extensions', 'dynamicApps', 'dynamicPosts', 'events', 'statusOptions', 'blacklists', 'evtSettings', 'winHistory'].forEach(store => { if (!dbInstance.objectStoreNames.contains(store)) dbInstance.createObjectStore(store, { keyPath: 'id' }); }); };
-                            req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null);
+                            req.onupgradeneeded = (e) => { 
+                                const dbInstance = e.target.result; 
+                                ['users', 'schedules', 'notices', 'extensions', 'dynamicApps', 'dynamicPosts', 'events', 'statusOptions', 'blacklists', 'evtSettings', 'winHistory'].forEach(store => { 
+                                    if (!dbInstance.objectStoreNames.contains(store)) dbInstance.createObjectStore(store, { keyPath: 'id' }); 
+                                }); 
+                            };
+                            req.onsuccess = () => resolve(req.result); 
+                            req.onerror = () => resolve(null);
                         });
+
                         if (idb) {
                             window.localDB = idb;
-                            const loadStore = (store) => new Promise(res => { try { const req = idb.transaction(store, 'readonly').objectStore(store).getAll(); req.onsuccess = () => res(req.result); req.onerror = () => res([]); } catch(e) { res([]); } });
-                            const [lUsers, lScheds, lNotices, lExts, lApps, lPosts, lEvents, lStatusOpts, lBlacks, lEvtSet, lWinHist] = await Promise.all([loadStore('users'), loadStore('schedules'), loadStore('notices'), loadStore('extensions'), loadStore('dynamicApps'), loadStore('dynamicPosts'), loadStore('events'), loadStore('statusOptions'), loadStore('blacklists'), loadStore('evtSettings'), loadStore('winHistory')]);
+                            const loadStore = (store) => new Promise(res => { 
+                                try { 
+                                    const req = idb.transaction(store, 'readonly').objectStore(store).getAll(); 
+                                    req.onsuccess = () => res(req.result); 
+                                    req.onerror = () => res([]); 
+                                } catch(e) { res([]); } 
+                            });
+
+                            const [lUsers, lScheds, lNotices, lExts, lApps, lPosts, lEvents, lStatusOpts, lBlacks, lEvtSet, lWinHist] = await Promise.all([
+                                loadStore('users'), loadStore('schedules'), loadStore('notices'), loadStore('extensions'), 
+                                loadStore('dynamicApps'), loadStore('dynamicPosts'), loadStore('events'), loadStore('statusOptions'), 
+                                loadStore('blacklists'), loadStore('evtSettings'), loadStore('winHistory')
+                            ]);
                             
                             if (lUsers.length > 0) setUsers(lUsers); else { saveToIDB('users', defaultUsers); setUsers(defaultUsers); }
                             if (lScheds.length > 0) setSchedules(lScheds); else { saveToIDB('schedules', defaultSchedules); setSchedules(defaultSchedules); }
@@ -649,7 +732,8 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                             
                             if (lPosts.length > 0) setDynamicPosts(lPosts.sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||'')));
                             if (lEvents.length > 0) setCurrentEvent(lEvents.find(e => e.id === 'current' || e.status === 'closed') || null);
-                            if (lStatusOpts && lStatusOpts.length > 0) setStatusOptions(lStatusOpts.sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||''))); else { setStatusOptions(defaultStatusOptions); defaultStatusOptions.forEach(o => saveToIDB('statusOptions', o)); }
+                            if (lStatusOpts && lStatusOpts.length > 0) setStatusOptions(lStatusOpts.sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||''))); 
+                            else { setStatusOptions(defaultStatusOptions); defaultStatusOptions.forEach(o => saveToIDB('statusOptions', o)); }
                             if (lEvtSet.length > 0) setEventSettings(lEvtSet[0]); else { saveToIDB('evtSettings', DEFAULT_EVENT_SETTINGS); }
                             if (lWinHist.length > 0) setWinHistory(lWinHist);
                         }
@@ -662,42 +746,56 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                 initLocalDB();
             }, []);
 
+            // 2. [실시간 동기화] 로그인 여부와 상관없이 모든 사용자에게 실시간 데이터 전송
             useEffect(() => {
-                if (!db || !fbUser || !isAuthReady) return;
+                // 수정: fbUser, isAuthReady 조건을 제거하여 비로그인(파트너)도 실시간 감시 가능하게 변경
+                if (!db || !appId) return;
+
                 const unsubApps = db.collection(`artifacts/${appId}/public/data/dynamic_apps`).onSnapshot((snapshot) => {
-                        const newApps = snapshot.docs.map(d => d.data());
-                        if(newApps.length > 0) { setDynamicApps(newApps); newApps.forEach(a => saveToIDB('dynamicApps', a)); }
-                    });
+                    const newApps = snapshot.docs.map(d => d.data());
+                    if(newApps.length > 0) { setDynamicApps(newApps); newApps.forEach(a => saveToIDB('dynamicApps', a)); }
+                });
+
                 const unsubEvent = db.collection(`artifacts/${appId}/public/data/events`).onSnapshot((snapshot) => {
-                        const activeOrClosed = snapshot.docs.map(d => d.data()).find(e => e.id === 'current' || e.status === 'closed');
-                        if (activeOrClosed) { setCurrentEvent(activeOrClosed); saveToIDB('events', activeOrClosed); } else { setCurrentEvent(null); deleteFromIDB('events', 'current'); }
-                    });
+                    const activeOrClosed = snapshot.docs.map(d => d.data()).find(e => e.id === 'current' || e.status === 'closed');
+                    if (activeOrClosed) { setCurrentEvent(activeOrClosed); saveToIDB('events', activeOrClosed); } 
+                    else { setCurrentEvent(null); deleteFromIDB('events', 'current'); }
+                });
+
                 const unsubNotices = db.collection(`artifacts/${appId}/public/data/notices`).onSnapshot((snapshot) => {
-                        const newNotices = snapshot.docs.map(d => d.data()).sort((a,b) => { if (a.isPinned && !b.isPinned) return -1; if (!a.isPinned && b.isPinned) return 1; return (b.createdAt||'').localeCompare(a.createdAt||''); });
-                        if(newNotices.length > 0) { setNotices(newNotices); newNotices.forEach(n => saveToIDB('notices', n)); }
+                    const newNotices = snapshot.docs.map(d => d.data()).sort((a,b) => { 
+                        if (a.isPinned && !b.isPinned) return -1; 
+                        if (!a.isPinned && b.isPinned) return 1; 
+                        return (b.createdAt||'').localeCompare(a.createdAt||''); 
                     });
+                    if(newNotices.length > 0) { setNotices(newNotices); newNotices.forEach(n => saveToIDB('notices', n)); }
+                });
+
                 const unsubPosts = db.collection(`artifacts/${appId}/public/data/dynamic_posts`).onSnapshot((snapshot) => {
-                        const newPosts = snapshot.docs.map(d => d.data()).sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||''));
-                        setDynamicPosts(newPosts); newPosts.forEach(p => saveToIDB('dynamicPosts', p));
-                    });
+                    const newPosts = snapshot.docs.map(d => d.data()).sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||''));
+                    setDynamicPosts(newPosts); 
+                    newPosts.forEach(p => saveToIDB('dynamicPosts', p));
+                });
+
                 const unsubStatusOpts = db.collection(`artifacts/${appId}/public/data/status_options`).onSnapshot((snapshot) => {
-                        const newOpts = snapshot.docs.map(d => d.data());
-                        if(newOpts.length > 0) {
-                            setStatusOptions(prev => {
-                                const merged = [...prev];
-                                newOpts.forEach(o => {
-                                    const idx = merged.findIndex(x => x.id === o.id);
-                                    if (idx >= 0) merged[idx] = o; else merged.push(o);
-                                });
-                                return merged.sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||''));
+                    const newOpts = snapshot.docs.map(d => d.data());
+                    if(newOpts.length > 0) {
+                        setStatusOptions(prev => {
+                            const merged = [...prev];
+                            newOpts.forEach(o => {
+                                const idx = merged.findIndex(x => x.id === o.id);
+                                if (idx >= 0) merged[idx] = o; else merged.push(o);
                             });
-                            newOpts.forEach(o => saveToIDB('statusOptions', o));
-                        }
-                    });
+                            return merged.sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||''));
+                        });
+                        newOpts.forEach(o => saveToIDB('statusOptions', o));
+                    }
+                });
+
                 const unsubBlacklists = db.collection(`artifacts/${appId}/public/data/blacklists`).onSnapshot((snapshot) => {
-                        const newBls = snapshot.docs.map(d => d.data());
-                        setBlacklists(newBls); newBls.forEach(b => saveToIDB('blacklists', b));
-                    });
+                    const newBls = snapshot.docs.map(d => d.data());
+                    setBlacklists(newBls); newBls.forEach(b => saveToIDB('blacklists', b));
+                });
 
                 const unsubUsers = db.collection(`artifacts/${appId}/public/data/users`).onSnapshot((snapshot) => {
                     const newUsers = snapshot.docs.map(d => d.data());
@@ -714,8 +812,12 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                     if(newExts.length > 0) { setExtensions(newExts); newExts.forEach(e => saveToIDB('extensions', e)); }
                 });
 
-                return () => { unsubApps(); unsubEvent(); unsubNotices(); unsubPosts(); unsubStatusOpts(); unsubBlacklists(); unsubUsers(); unsubSchedules(); unsubExtensions(); };
-            }, [db, fbUser, isAuthReady]);
+                return () => { 
+                    unsubApps(); unsubEvent(); unsubNotices(); unsubPosts(); 
+                    unsubStatusOpts(); unsubBlacklists(); unsubUsers(); 
+                    unsubSchedules(); unsubExtensions(); 
+                };
+            }, [db, appId]); // 의존성에서 fbUser를 제거하여 로그인 여부와 무관하게 작동하도록 함
             
             const sortedUsers = useMemo(() => {
                 return [...(users || [])].filter(Boolean).sort((a, b) => {
@@ -1535,7 +1637,61 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                                 <textarea className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-400 h-24 resize-none" placeholder="내용" value={wBoardForm.content} onChange={e => setWBoardForm({...wBoardForm, content: e.target.value})}/>
                                 <label className="flex items-center gap-2 cursor-pointer bg-white dark:bg-stone-900 border border-dashed border-stone-300 dark:border-stone-600 rounded-xl px-4 py-2.5 btn-press hover:bg-stone-50 transition-colors">
                                     <Icon name="camera" size={14} className="text-stone-400"/><span className="text-[11px] font-bold text-stone-400">{wBoardForm.photo ? '사진 변경' : '사진 첨부 (선택)'}</span>
-                                    <input type="file" accept="image/*" className="hidden" onChange={async e => { if(e.target.files[0]) { const b64 = await resizeImage(e.target.files[0]); setWBoardForm(prev => ({...prev, photo: b64})); e.target.value=''; }}}/>
+                                    {/* 1. 사진 선택 버튼 (여러 장 선택 가능하도록 multiple 추가) */}
+<input 
+    type="file" 
+    accept="image/*" 
+    multiple 
+    className="hidden" 
+    id="wboard-photo-upload"
+    onChange={async e => { 
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+            // 모든 사진을 리사이징하여 배열로 만듭니다.
+            const resizedArray = await Promise.all(
+                files.map(async (file) => await resizeImage(file))
+            );
+            // 핵심: 기존 사진(prev.photos)에 새 사진들(resizedArray)을 합칩니다.
+            setWBoardForm(prev => ({
+                ...prev, 
+                photos: [...(prev.photos || []), ...resizedArray]
+            }));
+            e.target.value = ''; // 같은 사진 재선택 가능하게 초기화
+        }
+    }}
+/>
+
+{/* 2. 사진 미리보기 및 삭제 레이아웃 (Input 바로 아래 혹은 적절한 위치에 배치) */}
+<div className="flex gap-2 overflow-x-auto py-2 scrollbar-hide">
+    {/* 사진이 있을 때만 리스트를 보여줍니다. */}
+    {(setWBoardForm.photos || []).map((img, index) => (
+        <div key={index} className="relative flex-shrink-0 group">
+            <img 
+                src={img} 
+                className="w-20 h-20 object-cover rounded-xl border border-stone-200 shadow-sm" 
+            />
+            {/* 개별 사진 삭제 버튼 */}
+            <button 
+                type="button"
+                className="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full w-5 h-5 text-[10px] flex items-center justify-center shadow-lg hover:bg-rose-600 transition-colors"
+                onClick={() => {
+                    const filtered = setWBoardForm.photos.filter((_, i) => i !== index);
+                    setWBoardForm(prev => ({ ...prev, photos: filtered }));
+                }}
+            >
+                ✕
+            </button>
+        </div>
+    ))}
+    
+    {/* 사진 추가 버튼 (선택 사항: 이미지가 하나도 없을 때나 더 추가하고 싶을 때) */}
+    <label 
+        htmlFor="wboard-photo-upload" 
+        className="w-20 h-20 flex-shrink-0 border-2 border-dashed border-stone-200 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-stone-50 transition-colors"
+    >
+        <span className="text-stone-400 text-xs font-bold">+ 추가</span>
+    </label>
+</div>
                                 </label>
                                 {wBoardForm.photo && <div className="relative w-16 h-16"><img src={wBoardForm.photo} className="w-full h-full object-cover rounded-xl border"/><button onClick={() => setWBoardForm(p=>({...p,photo:''}))} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">×</button></div>}
                                 <div className="flex gap-2">
