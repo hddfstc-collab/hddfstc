@@ -1600,6 +1600,7 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                                                 if ((!savedHash && pin === '6011') || savedHash === inputHash) {
                                                     setIsAdminAuth(true);
                                                     setAppUser({ empId: 'admin_master', name: '시스템 관리자', jobTitle: '최고 관리자', part: '시스템관리', position: '마스터' });
+                                                    setView('daily');
                                                     if (typeof showToast === 'function') showToast('최고 관리자 모드로 접속했습니다.');
                                                 } else {
                                                     if (typeof showToast === 'function') showToast('PIN 번호가 일치하지 않습니다.', true);
