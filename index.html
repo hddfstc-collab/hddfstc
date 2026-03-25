@@ -146,7 +146,56 @@ const appId = firebaseConfig.appId;
 const PART_W = { '영업1파트': 1, '영업2파트': 2, '고객관리파트': 3, '무역센터':4 };
 const RANK_W = { '부장': 1, '차장': 2, '과장': 3, '대리': 4, '주임': 5, '사원': 6 };
 
-        const resizeImage = (file, maxWidth = 800) => { return new Promise((resolve) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = (e) => { const img = new Image(); img.src = e.target.result; img.onload = () => { const canvas = document.createElement('canvas'); const scale = img.width > maxWidth ? maxWidth / img.width : 1; canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale); const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); resolve(canvas.toDataURL('image/jpeg', 0.7)); }; }; }); };
+        // [스마트 최적화] 용량을 스스로 계산하여 한계치를 넘으면 화질/해상도를 알아서 낮추는 함수
+        const resizeImage = (file, maxBytes = 300000) => { 
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            let MAX_WIDTH_OR_HEIGHT = 1920; 
+                            let width = img.width; let height = img.height;
+
+                            const calculateSize = (w, h) => {
+                                if (w > h && w > MAX_WIDTH_OR_HEIGHT) { h *= MAX_WIDTH_OR_HEIGHT / w; w = MAX_WIDTH_OR_HEIGHT; }
+                                else if (h > MAX_WIDTH_OR_HEIGHT) { w *= MAX_WIDTH_OR_HEIGHT / h; h = MAX_WIDTH_OR_HEIGHT; }
+                                return { w, h };
+                            };
+
+                            let { w, h } = calculateSize(width, height);
+                            let quality = 0.85; 
+
+                            const compress = () => {
+                                canvas.width = w; canvas.height = h;
+                                const ctx = canvas.getContext('2d');
+                                ctx.imageSmoothingQuality = 'high';
+                                ctx.drawImage(img, 0, 0, w, h);
+                                
+                                const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                                
+                                if (dataUrl.length > maxBytes) {
+                                    if (quality > 0.4) {
+                                        quality -= 0.1; 
+                                        compress();
+                                    } else {
+                                        MAX_WIDTH_OR_HEIGHT *= 0.8; 
+                                        let newSize = calculateSize(img.width, img.height);
+                                        w = newSize.w; h = newSize.h;
+                                        quality = 0.7; 
+                                        compress();
+                                    }
+                                } else {
+                                    resolve(dataUrl); 
+                                }
+                            };
+                            compress();
+                        };
+                        img.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+            };
         
        const isRedDay = (y, m, d) => {
     const sY = String(y);
@@ -496,7 +545,20 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                 if (!appUser) return '로그인이 필요합니다.';
                 return '권한이 없습니다.';
             }, [appUser]);
+// 🎯 바로 여기! canDelete 밑에 빈 공간을 만들고 새 글 판독기를 넣어주세요! 🎯
+            const checkNewBadge = useCallback((appId) => {
+                if (!dynamicPosts || dynamicPosts.length === 0) return false;
+                const appPosts = dynamicPosts.filter(p => p.appId === appId);
+                if (appPosts.length === 0) return false;
+                
+                const latestPost = appPosts.reduce((latest, post) => {
+                    return new Date(latest.createdAt) > new Date(post.createdAt) ? latest : post;
+                });
 
+                const diffTime = Math.abs(new Date() - new Date(latestPost.createdAt));
+                const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
+                return diffHours <= 72; 
+            }, [dynamicPosts]);
             useEffect(() => {
                 if (firebaseConfig && !firebase.apps.length) firebase.initializeApp(firebaseConfig);
                 if (firebase.apps.length > 0) {
@@ -1646,18 +1708,26 @@ const saveToIDB = (storeName, data) => { if (!window.localDB) return; try { cons
                                                 .filter(a => !a.parentId && (!a.actionType || !a.actionType.startsWith('widget_')))
                                                 .sort((a,b) => (a.sortOrder||99) - (b.sortOrder||99))
                                                 .map((app) => (
-                                        <button key={app.id} className="flex flex-col items-center gap-2 group w-full btn-press" onClick={() => handleAppClick(app)}>
+                                                    <button key={app.id} className="flex flex-col items-center gap-2 group w-full btn-press" onClick={() => handleAppClick(app)}>
                                                     <div className={`w-14 h-14 sm:w-16 sm:h-16 ${app.bg} ${app.color} rounded-[1.2rem] shadow-sm flex items-center justify-center transition-all group-hover:shadow-md relative`}>
                                                         <Icon name={app.icon} size={26} className="transition-colors"/>
                                                         {app.isFolder && <div className="absolute top-0 right-0 w-3.5 h-3.5 bg-white border border-stone-200 rounded-full flex items-center justify-center"><div className="w-1.5 h-1.5 bg-stone-300 rounded-full"/></div>}
+                                                        
+                                                        {/* 1. 기존 로직: 공지사항/관리자 게시판의 안 읽은 '숫자' 배지 */}
                                                         {(app.actionType === 'widget_notices' || app.actionType === 'notice' || app.actionType === 'admin_board') && (() => {
                                                             const unread = app.actionType === 'widget_notices'
                                                                 ? (notices || []).filter(n => !readNoticeIds.includes(n.id)).length
                                                                 : (dynamicPosts || []).filter(p => p.appId === app.id && p.type === 'admin_board' && !readNoticeIds.includes(p.id)).length;
-                                                            return unread > 0 ? <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-black rounded-full min-w-[17px] h-[17px] flex items-center justify-center px-1 shadow">{unread > 9 ? '9+' : unread}</span> : null;
+                                                            return unread > 0 ? <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-black rounded-full min-w-[17px] h-[17px] flex items-center justify-center px-1 shadow z-10">{unread > 9 ? '9+' : unread}</span> : null;
                                                         })()}
+
+                                                        {/* 👇 2. 추가된 로직: 숫자 배지가 없는 일반 앱일 때, 72시간 내 새 글이 있으면 깜빡이는 'N' 배지 👇 */}
+                                                        {app.actionType !== 'widget_notices' && app.actionType !== 'notice' && app.actionType !== 'admin_board' && checkNewBadge(app.id) && (
+                                                            <span className="absolute -top-1 -right-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-rose-500 text-[9px] sm:text-[10px] font-black text-white shadow-md ring-2 ring-white dark:ring-stone-900 z-10 animate-pulse">N</span>
+                                                        )}
                                                     </div>
                                                     <span className="text-[10px] sm:text-[11px] font-black text-stone-600 tracking-tighter whitespace-nowrap overflow-hidden text-ellipsis w-full text-center">{app.name}</span>
+                                                </button>
                                                 </button>
                                             ))}
                                         </div>
