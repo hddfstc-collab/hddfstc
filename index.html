@@ -674,7 +674,13 @@
 
             const canEdit = canWrite;
             const canDelete = canWrite;
-
+            // [수정 추가] canViewPosts: 데이터 열람 권한 판별
+            const canViewPosts = useCallback((app) => {
+                if (isAdminAuth) return true;
+                if (!appUser) return false;
+                if (['영업관리자', '파트장', '점장'].includes(appUser.jobTitle)) return true;
+                return canWrite(app);
+            }, [isAdminAuth, appUser, canWrite]);
             const writeBlockedMsg = useCallback((appItem) => {
                 if (!appItem) return '권한이 없습니다.';
                 if (!appUser) return '로그인이 필요합니다.';
@@ -1092,9 +1098,21 @@
                 if (app.isFolder) { setOpenedFolder(app); return; }
                 const type = app.actionType;
                 if (type === 'popup_ext' || type === 'link_ext' || app.name.includes('내선')) { setShowExtModal(true); return; }
-                if (type === 'form' || type === 'custom_form') { setOpenedSubmitForm(app); return; }
-                if (type === 'board' || type === 'custom_board') { setBoardSearch(''); setOpenedDynamicApp(app); return; }
-                if (type === 'notice' || type === 'admin_board') { setOpenedAdminBoard(app); setSelectedAdminPost(null); return; }
+                if (type === 'form' || type === 'custom_form') {
+                    setOpenedSubmitForm(app);
+                    (dynamicPosts||[]).filter(p=>p.appId===app.id).forEach(p=>markAsRead(p.id)); // [수정]
+                    return;
+                }
+                if (type === 'board' || type === 'custom_board') {
+                    setBoardSearch(''); setOpenedDynamicApp(app);
+                    (dynamicPosts||[]).filter(p=>p.appId===app.id).forEach(p=>markAsRead(p.id)); // [수정]
+                    return;
+                }
+                if (type === 'notice' || type === 'admin_board') {
+                    setOpenedAdminBoard(app); setSelectedAdminPost(null);
+                    (dynamicPosts||[]).filter(p=>p.appId===app.id).forEach(p=>markAsRead(p.id)); // [수정]
+                    return;
+                }
                 if (type === 'guide' || type === 'simple_guide' || type === 'link_manual') { setOpenedGuide(app); return; }
                 if (type === 'reservation') { setOpenedReservationApp(app); setResSelectedDate(todayStr); return; }
                 if (type === 'link' || type === 'external_url') { if (app.url && app.url.trim() !== '') window.open(app.url, '_blank', 'noopener,noreferrer'); else showToast('링크가 없습니다.', true); return; }
@@ -1217,16 +1235,45 @@
             const handleGenericPostSubmit = async () => {
                 const author = appUser ? appUser.name : submitFormState.authorName;
                 if (!author || !submitFormState.content) return showToast('작성자와 내용을 모두 입력해주세요.', true);
-                const newPost = { id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5), appId: openedDynamicApp?.id || openedSubmitForm?.id, content: submitFormState.content, photo: submitFormState.photo, author: author, createdAt: new Date().toISOString() };
-                try { setDynamicPosts([newPost, ...(dynamicPosts || [])]); saveToIDB('dynamicPosts', newPost); setSubmitFormState({ content: '', photo: '', authorName: '' }); if (openedSubmitForm) setOpenedSubmitForm(null); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newPost.id).set(newPost); showToast('등록되었습니다.'); } catch (e) { showToast('등록 실패', true); }
+                const newPost = {
+                    id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5),
+                    appId: openedDynamicApp?.id || openedSubmitForm?.id,
+                    content: submitFormState.content,
+                    photos: submitFormState.photos || [], // [수정] photo → photos
+                    author,
+                    createdAt: new Date().toISOString()
+                };
+                try {
+                    setDynamicPosts([newPost, ...(dynamicPosts || [])]);
+                    saveToIDB('dynamicPosts', newPost);
+                    setSubmitFormState({ content: '', photos: [], authorName: '' }); // [수정]
+                    if (openedSubmitForm) setOpenedSubmitForm(null);
+                    if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newPost.id).set(newPost);
+                    showToast('등록되었습니다.');
+                } catch(e) { showToast('등록 실패', true); }
             };
 
             const handleAdminBoardPost = async (targetAppId) => {
                 if (!adminBoardForm.title || !adminBoardForm.content) return showToast('제목과 내용을 입력해주세요.', true);
                 const useAppId = targetAppId || openedAdminBoard?.id;
                 if (!useAppId) return showToast('앱을 선택해주세요.', true);
-                const newPost = { id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5), appId: useAppId, title: adminBoardForm.title, content: adminBoardForm.content, photo: adminBoardForm.photo, author: appUser?.name || '관리자', createdAt: new Date().toISOString(), type: 'admin_board' };
-                try { setDynamicPosts([newPost, ...(dynamicPosts || [])]); saveToIDB('dynamicPosts', newPost); setAdminBoardForm({ title: '', content: '', photo: '' }); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newPost.id).set(newPost); showToast('게시글이 등록되었습니다.'); } catch (e) { showToast('게시글 등록 실패', true); }
+                const newPost = {
+                    id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5),
+                    appId: useAppId,
+                    title: adminBoardForm.title,
+                    content: adminBoardForm.content,
+                    photos: adminBoardForm.photos || [], // [수정] photo → photos
+                    author: appUser?.name || '관리자',
+                    createdAt: new Date().toISOString(),
+                    type: 'admin_board'
+                };
+                try {
+                    setDynamicPosts([newPost, ...(dynamicPosts || [])]);
+                    saveToIDB('dynamicPosts', newPost);
+                    setAdminBoardForm({ title: '', content: '', photos: [] }); // [수정]
+                    if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newPost.id).set(newPost);
+                    showToast('게시글이 등록되었습니다.');
+                } catch(e) { showToast('게시글 등록 실패', true); }
             };
 
             const handleAddStatusOption = async () => {
@@ -1587,12 +1634,24 @@
                 }
             }, [view]);
 
-            const handlePhotoSingle = async (e, setter) => { if (e.target.files[0]) { const base64Img = await resizeImage(e.target.files[0]); setter(prev => ({ ...prev, photo: base64Img })); } };
+            const handlePhotoSingle = async (e, setter) => {
+                const files = Array.from(e.target.files || []);
+                if (!files.length) return;
+                const resized = await Promise.all(files.map(f => resizeImage(f)));
+                setter(prev => {
+                    const existing = prev.photos || [];
+                    return { ...prev, photos: [...existing, ...resized].slice(0, 3) };
+                });
+                e.target.value = '';
+            };
             const handleNoticePhotoSingle = async (e) => {
-                const file = e.target.files && e.target.files[0];
-                if (!file) return;
-                const base64Img = await resizeImage(file);
-                setNoticeForm(prev => ({ ...prev, photos: [base64Img] }));
+                const files = Array.from(e.target.files || []);
+                if (!files.length) return;
+                const resized = await Promise.all(files.map(f => resizeImage(f)));
+                setNoticeForm(prev => {
+                    const existing = prev.photos || [];
+                    return { ...prev, photos: [...existing, ...resized].slice(0, 3) };
+                });
                 e.target.value = '';
             };
 
@@ -1691,11 +1750,22 @@
             const handleSaveWidgetPost = async (appId_) => {
                 if (!wBoardForm.title || !wBoardForm.content) return showToast('제목과 내용을 입력해주세요.', true);
                 const id = wBoardEditId || Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5);
-                const post = { id, appId: appId_, title: wBoardForm.title, content: wBoardForm.content, photo: wBoardForm.photo || '', author: appUser?.name || '관리자', authorId: appUser?.empId || '', createdAt: wBoardEditId ? (dynamicPosts.find(p => p.id === wBoardEditId)?.createdAt || new Date().toISOString()) : new Date().toISOString(), isEdited: !!wBoardEditId, updatedAt: wBoardEditId ? new Date().toISOString() : null };
-                setDynamicPosts(prev => wBoardEditId ? prev.map(p => p.id === id ? post : p) : [post, ...prev]);
+                const post = {
+                    id, appId: appId_,
+                    title: wBoardForm.title,
+                    content: wBoardForm.content,
+                    photos: wBoardForm.photos || [], // [수정] photo → photos
+                    author: appUser?.name || '관리자',
+                    authorId: appUser?.empId || '',
+                    createdAt: wBoardEditId ? (dynamicPosts.find(p=>p.id===wBoardEditId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+                    isEdited: !!wBoardEditId,
+                    updatedAt: wBoardEditId ? new Date().toISOString() : null
+                };
+                setDynamicPosts(prev => wBoardEditId ? prev.map(p => p.id===id ? post : p) : [post, ...prev]);
                 saveToIDB('dynamicPosts', post);
                 if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(id).set(post, { merge: true });
-                setWBoardForm({ title: '', content: '', photo: '' }); setWBoardEditId(null);
+                setWBoardForm({ title: '', content: '', photos: [] }); // [수정]
+                setWBoardEditId(null);
                 showToast(wBoardEditId ? '수정되었습니다.' : '등록되었습니다.');
             };
 
