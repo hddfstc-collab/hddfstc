@@ -517,7 +517,7 @@
             }, [sortedUsers, viewMode, appUser]);
 
             const dailyGroups = useMemo(() => {
-                const act = (schedules || []).filter(s => s.date === todayStr && WORK_SHIFT_KEYS.includes(s.status));연차');
+                const act = (schedules || []).filter(s => s.date === todayStr && WORK_SHIFT_KEYS.includes(s.status));
                 return act.reduce((acc, s) => { const p = s.part || '미지정'; if (!acc[p]) acc[p] = []; acc[p].push(s); return acc; }, {});
             }, [schedules, todayStr]);
             
