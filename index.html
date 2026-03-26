@@ -102,9 +102,14 @@
             </svg>
         );
 
-        const getFirebaseConfig = () => { try { return typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null; } catch (e) { return null; } };
-        const firebaseConfig = getFirebaseConfig();
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'h-moo-d-html-final-perfect';
+        const firebaseConfig = {
+            apiKey: "AIzaSyCDW2TzDtMDfAVmSRHM7a-IZDhsBlkRMEQ",
+            authDomain: "ware-house-b36d7.firebaseapp.com",
+            projectId: "ware-house-b36d7",
+            storageBucket: "ware-house-b36d7.firebasestorage.app",
+            messagingSenderId: "549765421476",
+            appId: "1:549765421476:web:ef48192ccce302b1c38931"
+        };
 
         // 기본 근무조 설정 — 관리자가 커스텀 가능, IDB에 저장
         const DEFAULT_SHIFTS = [
