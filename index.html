@@ -3676,30 +3676,156 @@
                     )}
 
                     {openedDynamicApp && (
-                        <ModalWrapper title={openedDynamicApp.name} icon={openedDynamicApp.icon} color={openedDynamicApp.color} onClose={() => setOpenedDynamicApp(null)}>
-                            <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-2xl flex items-center gap-2 px-4 py-3 shadow-sm mb-4"><Icon name="search" size={16} className="text-stone-400 shrink-0" /><input type="text" placeholder="게시글 검색..." value={boardSearch} onChange={(e) => setBoardSearch(e.target.value)} className="w-full bg-transparent outline-none text-[13px] font-bold text-stone-700 dark:text-stone-300 placeholder-stone-400" /></div>
+                        <ModalWrapper
+                            title={openedDynamicApp.name}
+                            icon={openedDynamicApp.icon}
+                            color={openedDynamicApp.color}
+                            onClose={() => setOpenedDynamicApp(null)}
+                        >
+                            {/* ✅ 상단 액션 영역 */}
+                            <div className="flex items-center justify-between gap-2 mb-3">
+                                <div className="flex-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-2xl flex items-center gap-2 px-4 py-3 shadow-sm">
+                                    <Icon name="search" size={16} className="text-stone-400 shrink-0" />
+                                    <input
+                                        type="text"
+                                        placeholder="게시글 검색..."
+                                        value={boardSearch}
+                                        onChange={(e) => setBoardSearch(e.target.value)}
+                                        className="w-full bg-transparent outline-none text-[13px] font-bold text-stone-700 dark:text-stone-300 placeholder-stone-400"
+                                    />
+                                </div>
+
+                                {/* ✅ 엑셀 다운로드 버튼 (관리자 + 제출형) */}
+                                {isAdminAuth && openedDynamicApp.actionType === 'form' && (
+                                    <button
+                                        onClick={() =>
+                                            downloadPostsExcel(
+                                                openedDynamicApp.id,
+                                                openedDynamicApp.name
+                                            )
+                                        }
+                                        className="shrink-0 bg-teal-50 text-teal-600 font-black text-[11px] px-3 py-2 rounded-xl hover:bg-teal-100 btn-press"
+                                    >
+                                        엑셀 다운로드
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* ✅ 게시글 리스트 */}
                             <div className="overflow-y-auto scrollbar-hide flex-1 space-y-4 pb-2 pr-1">
                                 {(() => {
-                                    const filtered = (dynamicPosts || []).filter(p => p.appId === openedDynamicApp.id && (p.content.includes(boardSearch) || p.author.includes(boardSearch)));
-                                    if (filtered.length === 0) return <div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700"><p className="text-[11px] font-bold text-stone-400">게시글이 없습니다.</p></div>;
-                                    return filtered.map(post => (
-                                        <div key={post.id} className="bg-white dark:bg-stone-800 p-5 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm space-y-3">
-                                            <p className="text-[12px] font-bold text-stone-800 dark:text-stone-200 whitespace-pre-wrap">{post.content}</p>{post.photos && <img src={post.photos} className="w-full h-auto rounded-xl object-cover cursor-pointer border border-stone-100 dark:border-stone-700" onClick={() => setExpandedImage(post.photos)} />}
-                                            <div className="flex justify-between items-center text-[9px] text-stone-400 font-black mt-2 pt-2 border-t border-stone-50 dark:border-stone-700"><span>{post.author}</span><div className="flex items-center gap-2"><span>{formatLocalTime(post.createdAt)}</span>{canDelete(openedDynamicApp) && (<button onClick={(e) => handleDeleteDynamicPost(e, post.id)} className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg ml-2 btn-press shadow-sm"><Icon name="trash" size={14} /></button>)}</div></div>
+                                    const filtered = (dynamicPosts || []).filter(
+                                        (p) =>
+                                            p.appId === openedDynamicApp.id &&
+                                            (p.content.includes(boardSearch) ||
+                                                p.author.includes(boardSearch))
+                                    );
+
+                                    if (filtered.length === 0)
+                                        return (
+                                            <div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700">
+                                                <p className="text-[11px] font-bold text-stone-400">
+                                                    게시글이 없습니다.
+                                                </p>
+                                            </div>
+                                        );
+
+                                    return filtered.map((post) => (
+                                        <div
+                                            key={post.id}
+                                            className="bg-white dark:bg-stone-800 p-5 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm space-y-3"
+                                        >
+                                            <p className="text-[12px] font-bold text-stone-800 dark:text-stone-200 whitespace-pre-wrap">
+                                                {post.content}
+                                            </p>
+
+                                            {post.photos && (
+                                                <img
+                                                    src={post.photos}
+                                                    className="w-full h-auto rounded-xl object-cover cursor-pointer border border-stone-100 dark:border-stone-700"
+                                                    onClick={() => setExpandedImage(post.photos)}
+                                                />
+                                            )}
+
+                                            <div className="flex justify-between items-center text-[9px] text-stone-400 font-black mt-2 pt-2 border-t border-stone-50 dark:border-stone-700">
+                                                <span>{post.author}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span>{formatLocalTime(post.createdAt)}</span>
+                                                    {canDelete(openedDynamicApp) && (
+                                                        <button
+                                                            onClick={(e) =>
+                                                                handleDeleteDynamicPost(e, post.id)
+                                                            }
+                                                            className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg ml-2 btn-press shadow-sm"
+                                                        >
+                                                            <Icon name="trash" size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
                                     ));
                                 })()}
                             </div>
+
+                            {/* ✅ 하단 작성 영역 */}
                             {canWrite(openedDynamicApp) ? (
                                 <div className="shrink-0 pt-4 border-t border-stone-200 dark:border-stone-700 mt-2 space-y-3">
-                                    {!appUser && <input className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-stone-400" placeholder="작성자 성명 (필수)" value={submitFormState.authorName || ''} onChange={e => setSubmitFormState({ ...submitFormState, authorName: e.target.value })} />}
-                                    <textarea className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-20 resize-none focus:border-indigo-300" placeholder="자유롭게 글을 남겨주세요." value={submitFormState.content} onChange={e => setSubmitFormState({ ...submitFormState, content: e.target.value })}></textarea>
+                                    {!appUser && (
+                                        <input
+                                            className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-stone-400"
+                                            placeholder="작성자 성명 (필수)"
+                                            value={submitFormState.authorName || ''}
+                                            onChange={(e) =>
+                                                setSubmitFormState({
+                                                    ...submitFormState,
+                                                    authorName: e.target.value,
+                                                })
+                                            }
+                                        />
+                                    )}
+
+                                    <textarea
+                                        className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-20 resize-none focus:border-indigo-300"
+                                        placeholder="자유롭게 글을 남겨주세요."
+                                        value={submitFormState.content}
+                                        onChange={(e) =>
+                                            setSubmitFormState({
+                                                ...submitFormState,
+                                                content: e.target.value,
+                                            })
+                                        }
+                                    />
+
                                     <div className="flex gap-2">
-                                        <label className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer btn-press text-[11px]"><Icon name="camera" size={14} /> {submitFormState.photo ? '사진 변경' : '사진 첨부'}<input type="file" className="hidden" accept="image/*" onChange={(e) => handlePhotoSingle(e, setSubmitFormState)} /></label>
-                                        <button onClick={handleGenericPostSubmit} className="flex-1 bg-stone-800 text-white font-black py-3 rounded-xl shadow-md btn-press text-[11px]">게시글 등록</button>
+                                        <label className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer btn-press text-[11px]">
+                                            <Icon name="camera" size={14} />{' '}
+                                            {submitFormState.photo ? '사진 변경' : '사진 첨부'}
+                                            <input
+                                                type="file"
+                                                className="hidden"
+                                                accept="image/*"
+                                                onChange={(e) =>
+                                                    handlePhotoSingle(e, setSubmitFormState)
+                                                }
+                                            />
+                                        </label>
+
+                                        <button
+                                            onClick={handleGenericPostSubmit}
+                                            className="flex-1 bg-stone-800 text-white font-black py-3 rounded-xl shadow-md btn-press text-[11px]"
+                                        >
+                                            게시글 등록
+                                        </button>
                                     </div>
                                 </div>
-                            ) : (<div className="shrink-0 pt-4 border-t border-stone-200 dark:border-stone-700 mt-2 text-center"><p className="text-[11px] font-bold text-stone-400 bg-stone-50 dark:bg-stone-800 py-3 rounded-xl border border-stone-100 dark:border-stone-700">{writeBlockedMsg(openedDynamicApp)}</p></div>)}
+                            ) : (
+                                <div className="shrink-0 pt-4 border-t border-stone-200 dark:border-stone-700 mt-2 text-center">
+                                    <p className="text-[11px] font-bold text-stone-400 bg-stone-50 dark:bg-stone-800 py-3 rounded-xl border border-stone-100 dark:border-stone-700">
+                                        {writeBlockedMsg(openedDynamicApp)}
+                                    </p>
+                                </div>
+                            )}
                         </ModalWrapper>
                     )}
 
