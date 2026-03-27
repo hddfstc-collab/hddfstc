@@ -3530,7 +3530,42 @@
                             </div>
                         </ModalWrapper>
                     )}
+                    {cancelGuestInfo && (
+                        <ModalWrapper
+                            title="예약 취소 확인"
+                            icon="alertCircle"
+                            onClose={() => setCancelGuestInfo(null)}
+                        >
+                            <div className="space-y-4">
+                                <p className="text-center text-[12px] font-black text-stone-700 dark:text-stone-200">
+                                    본인 예약을 취소하시겠습니까?
+                                </p>
 
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setCancelGuestInfo(null)}
+                                        className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-3 rounded-xl btn-press"
+                                    >
+                                        닫기
+                                    </button>
+
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            cancelGuestInfo.posts.forEach(p => {
+                                                handleReservationCancel(p.id);
+                                            });
+                                            setCancelGuestInfo(null);
+                                        }}
+                                        className="flex-1 bg-rose-600 text-white font-black py-3 rounded-xl btn-press"
+                                    >
+                                        예약 취소 확정
+                                    </button>
+                                </div>
+                            </div>
+                        </ModalWrapper>
+                    )}
                     {showProfileEdit && (
                         <ModalWrapper title="내 정보" icon="user" color="text-teal-500" onClose={() => { setShowProfileEdit(false); setProfileTab('pw'); }}>
                             <div className="space-y-4">
