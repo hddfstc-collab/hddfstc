@@ -676,18 +676,22 @@
             const showConfirm = (options) => { setConfirmDialog({ ...options, isOpen: true }); };
 
             const hasPermission = useCallback((permRaw, appItem) => {
-                // [수정 1] 관리자는 무조건 모든 앱에서 권한 허용
+                // 관리자는 항상 허용
                 if (isAdminAuth) return true;
                 if (!permRaw) return false;
 
-                // [수정 2] 로그아웃 상태(비로그인)일 경우 폼/예약형이 아니면 무조건 읽기 전용 차단
+                // 비로그인 사용자
                 if (!appUser) {
+                    // 폼 / 예약형 앱만 접근 허용
                     if (appItem && (appItem.actionType === 'form' || appItem.actionType === 'reservation')) {
-                        if (permRaw === 'all' || (Array.isArray(permRaw) && permRaw.includes('all'))) return true;
+                        if (permRaw === 'all' || (Array.isArray(permRaw) && permRaw.includes('all'))) {
+                            return true;
+                        }
                     }
                     return false;
                 }
 
+                // 로그인 사용자 권한 체크
                 const checkPerm = (p) => {
                     if (p === 'all') return true;
                     if (p === 'admin_only') return isAdminAuth;
@@ -699,11 +703,10 @@
                     return false;
                 };
 
-                if (Array.isArray(permRaw)) {
-                    return permRaw.some(checkPerm);
-                }
-                return checkPerm(String(permRaw).trim());
-            }, [appUser, isAdminAuth]);
+                return Array.isArray(permRaw)
+                    ? permRaw.some(checkPerm)
+                    : checkPerm(String(permRaw).trim());
+            }, [isAdminAuth, appUser]);
 
             const canWrite = useCallback((appItem) => {
                 if (isAdminAuth) return true; // 관리자는 항상 작성 가능
@@ -722,6 +725,27 @@
                 if (['영업관리자', '파트장', '점장'].includes(appUser.jobTitle)) return true;
                 return canWrite(app);
             }, [isAdminAuth, appUser, canWrite]);
+            const canCancelReservation = useCallback((post, guestInput) => {
+                // 1. 관리자
+                if (isAdminAuth) return true;
+
+                // 2. 로그인 사용자 본인 예약
+                if (appUser && post.authorId === appUser.empId) return true;
+
+                // 3. ✅ 비회원 본인 예약
+                if (
+                    !appUser &&
+                    post.type === 'reservation' &&
+                    guestInput &&
+                    post.author === `${guestInput.brand} ${guestInput.name}` &&
+                    post.ext === guestInput.ext
+                ) {
+                    return true;
+                }
+
+                return false;
+            }, [isAdminAuth, appUser]);
+            ``
             const writeBlockedMsg = useCallback((appItem) => {
                 if (!appItem) return '권한이 없습니다.';
                 if (!appUser) return '로그인이 필요합니다.';
@@ -2058,7 +2082,7 @@
                                             }}
                                             className="text-stone-400 hover:text-teal-500 transition-colors flex items-center gap-1"
                                         >
-                                            <Icon name="userSettings" size={12} />
+                                            <Icon name="user" size={12} />
                                             <span className="text-[10px] font-bold">내 정보</span>
                                         </button>
                                         <button
