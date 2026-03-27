@@ -519,8 +519,7 @@
             const [appManagerForm, setAppManagerForm] = useState({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 1, sortOrder: 99 });
             const [editingAppId, setEditingAppId] = useState(null);
             const [showPerms, setShowPerms] = useState(false); // 권한 설정 모달 토글
-            const [submitFormState, setSubmitFormState] = useState({ content: '', photo: '', authorName: '' });
-
+            const [submitFormState, setSubmitFormState] = useState({content: '', photos: [], authorName: ''});
             const [openedFolder, setOpenedFolder] = useState(null);
             const [openedDynamicApp, setOpenedDynamicApp] = useState(null);
             const [boardSearch, setBoardSearch] = useState('');
@@ -530,8 +529,10 @@
             const [guideEditForm, setGuideEditForm] = useState({ content: '', image: '' }); // ✨ 안내형 데이터
             const [openedAdminBoard, setOpenedAdminBoard] = useState(null);
             const [selectedAdminPost, setSelectedAdminPost] = useState(null);
-            const [adminBoardForm, setAdminBoardForm] = useState({ title: '', content: '', photo: '' });
-
+            // 배열확인: adminBoardForm의 photos가 배열인지 확인
+            const [adminBoardForm, setAdminBoardForm] = useState({ title: '', content: '', photos: Array.isArray([]) ? [] : [] });
+            // 또는, 확인용 로그 추가 (개발 중 배포 전 용도)
+            // useEffect(() => { console.log(Array.isArray(adminBoardForm.photos)); }, [adminBoardForm]);
             const [openedReservationApp, setOpenedReservationApp] = useState(null);
             const [resSelectedDate, setResSelectedDate] = useState(todayStr);
             const [resForm, setResForm] = useState({ operatorId: '', slots: '', max: 1, lDays: 0, lHours: 0 });
@@ -562,13 +563,16 @@
                 }
             });
             // ⭐ 여기에 이 코드를 넣으세요! (클릭 시 실행될 실제 동작)
-            const markAsRead = (id) => {
-                if (!readNoticeIds.includes(id)) {
-                    const newReadIds = [...readNoticeIds, id];
-                    setReadNoticeIds(newReadIds);
-                    localStorage.setItem('hmood_read_notices', JSON.stringify(newReadIds));
-                }
-            };
+            const markAsRead = useCallback((id) => {
+                setReadNoticeIds(prev => {
+                    if (prev.includes(id)) return prev;
+                    const next = [...prev, id];
+                    try {
+                        localStorage.setItem('hmood_read_notices', JSON.stringify(next));
+                    } catch (e) { }
+                    return next;
+                });
+            }, []);
             const [statusOptions, setStatusOptions] = useState([]);
             const [statusForm, setStatusForm] = useState({ label: '', bg: 'bg-stone-700 dark:bg-stone-600', text: 'text-white', isWork: 'true' });
             const [editingStatusId, setEditingStatusId] = useState(null);
@@ -1100,17 +1104,17 @@
                 if (type === 'popup_ext' || type === 'link_ext' || app.name.includes('내선')) { setShowExtModal(true); return; }
                 if (type === 'form' || type === 'custom_form') {
                     setOpenedSubmitForm(app);
-                    (dynamicPosts||[]).filter(p=>p.appId===app.id).forEach(p=>markAsRead(p.id)); // [수정]
+                    (dynamicPosts || []).filter(p => p.appId === app.id).forEach(p => markAsRead(p.id)); // [수정]
                     return;
                 }
                 if (type === 'board' || type === 'custom_board') {
                     setBoardSearch(''); setOpenedDynamicApp(app);
-                    (dynamicPosts||[]).filter(p=>p.appId===app.id).forEach(p=>markAsRead(p.id)); // [수정]
+                    (dynamicPosts || []).filter(p => p.appId === app.id).forEach(p => markAsRead(p.id)); // [수정]
                     return;
                 }
                 if (type === 'notice' || type === 'admin_board') {
                     setOpenedAdminBoard(app); setSelectedAdminPost(null);
-                    (dynamicPosts||[]).filter(p=>p.appId===app.id).forEach(p=>markAsRead(p.id)); // [수정]
+                    (dynamicPosts || []).filter(p => p.appId === app.id).forEach(p => markAsRead(p.id)); // [수정]
                     return;
                 }
                 if (type === 'guide' || type === 'simple_guide' || type === 'link_manual') { setOpenedGuide(app); return; }
@@ -1250,7 +1254,7 @@
                     if (openedSubmitForm) setOpenedSubmitForm(null);
                     if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newPost.id).set(newPost);
                     showToast('등록되었습니다.');
-                } catch(e) { showToast('등록 실패', true); }
+                } catch (e) { showToast('등록 실패', true); }
             };
 
             const handleAdminBoardPost = async (targetAppId) => {
@@ -1273,7 +1277,7 @@
                     setAdminBoardForm({ title: '', content: '', photos: [] }); // [수정]
                     if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newPost.id).set(newPost);
                     showToast('게시글이 등록되었습니다.');
-                } catch(e) { showToast('게시글 등록 실패', true); }
+                } catch (e) { showToast('게시글 등록 실패', true); }
             };
 
             const handleAddStatusOption = async () => {
@@ -1742,7 +1746,13 @@
                 return null;
             };
 
-            const [wBoardForm, setWBoardForm] = useState({ title: '', content: '', photo: '' });
+            
+const [wBoardForm, setWBoardForm] = useState({
+  title: '',
+  content: '',
+  photos: []
+});
+
             const [wBoardEditId, setWBoardEditId] = useState(null);
             const [wBoardOpenId, setWBoardOpenId] = useState(null);
             const [wBoardSelectedPost, setWBoardSelectedPost] = useState(null);
@@ -1757,11 +1767,11 @@
                     photos: wBoardForm.photos || [], // [수정] photo → photos
                     author: appUser?.name || '관리자',
                     authorId: appUser?.empId || '',
-                    createdAt: wBoardEditId ? (dynamicPosts.find(p=>p.id===wBoardEditId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+                    createdAt: wBoardEditId ? (dynamicPosts.find(p => p.id === wBoardEditId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
                     isEdited: !!wBoardEditId,
                     updatedAt: wBoardEditId ? new Date().toISOString() : null
                 };
-                setDynamicPosts(prev => wBoardEditId ? prev.map(p => p.id===id ? post : p) : [post, ...prev]);
+                setDynamicPosts(prev => wBoardEditId ? prev.map(p => p.id === id ? post : p) : [post, ...prev]);
                 saveToIDB('dynamicPosts', post);
                 if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(id).set(post, { merge: true });
                 setWBoardForm({ title: '', content: '', photos: [] }); // [수정]
@@ -1789,7 +1799,7 @@
                         <div className="flex items-center justify-between">
                             <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}><Icon name={app.icon} size={16} /> {app.name}</h3>
                             <div className="flex gap-2">
-                                {canWrite(app) && <button onClick={() => { setWBoardForm({ title: '', content: '', photo: '' }); setWBoardEditId(null); setWBoardOpenId(wBoardOpenId === app.id ? null : app.id); }} className="text-[10px] font-black text-teal-600 bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 px-3 py-1.5 rounded-lg btn-press transition-colors">{wBoardOpenId === app.id ? '닫기' : '글쓰기'}</button>}
+                                {canWrite(app) && <button onClick={() => { setWBoardForm({ title: '', content: '', photos: [] }); setWBoardEditId(null); setWBoardOpenId(wBoardOpenId === app.id ? null : app.id); }} className="text-[10px] font-black text-teal-600 bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 px-3 py-1.5 rounded-lg btn-press transition-colors">{wBoardOpenId === app.id ? '닫기' : '글쓰기'}</button>}
                                 {isAdminAuth && <button onClick={() => handleEditDynamicApp(app)} className="text-stone-400 hover:text-teal-500"><Icon name="edit" size={14} /></button>}
                                 {isAdminAuth && <button onClick={() => handleDeleteDynamicApp(app.id)} className="text-stone-400 hover:text-rose-500"><Icon name="trash" size={14} /></button>}
                             </div>
@@ -1827,7 +1837,7 @@
                                     {/* 2. 사진 미리보기 및 삭제 레이아웃 (Input 바로 아래 혹은 적절한 위치에 배치) */}
                                     <div className="flex gap-2 overflow-x-auto py-2 scrollbar-hide">
                                         {/* 사진이 있을 때만 리스트를 보여줍니다. */}
-                                        {(setWBoardForm.photos || []).map((img, index) => (
+                                        {(wBoardForm.photos || []).map((img, index) => (
                                             <div key={index} className="relative flex-shrink-0 group">
                                                 <img
                                                     src={img}
@@ -1838,7 +1848,7 @@
                                                     type="button"
                                                     className="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full w-5 h-5 text-[10px] flex items-center justify-center shadow-lg hover:bg-rose-600 transition-colors"
                                                     onClick={() => {
-                                                        const filtered = setWBoardForm.photos.filter((_, i) => i !== index);
+                                                        const filtered = wBoardForm.photos.filter((_, i) => i !== index);
                                                         setWBoardForm(prev => ({ ...prev, photos: filtered }));
                                                     }}
                                                 >
@@ -1856,9 +1866,9 @@
                                         </label>
                                     </div>
                                 </label>
-                                {wBoardForm.photo && <div className="relative w-16 h-16"><img src={wBoardForm.photo} className="w-full h-full object-cover rounded-xl border" /><button onClick={() => setWBoardForm(p => ({ ...p, photo: '' }))} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">×</button></div>}
+                                {wBoardForm.photo && <div className="relative w-16 h-16"><img src={wBoardForm.photo} className="w-full h-full object-cover rounded-xl border" /><button onClick={() => setWBoardForm(p => ({ ...p, photos: [] }))} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">×</button></div>}
                                 <div className="flex gap-2">
-                                    <button onClick={() => { setWBoardOpenId(null); setWBoardEditId(null); setWBoardForm({ title: '', content: '', photo: '' }); }} className="flex-1 bg-stone-200 dark:bg-stone-700 text-stone-500 font-black py-2.5 rounded-xl btn-press text-xs">취소</button>
+                                    <button onClick={() => { setWBoardOpenId(null); setWBoardEditId(null); setWBoardForm({ title: '', content: '', photos: [] }); }} className="flex-1 bg-stone-200 dark:bg-stone-700 text-stone-500 font-black py-2.5 rounded-xl btn-press text-xs">취소</button>
                                     <button onClick={() => handleSaveWidgetPost(app.id)} className="flex-1 bg-teal-600 text-white font-black py-2.5 rounded-xl btn-press text-xs">{wBoardEditId ? '수정 완료' : '등록'}</button>
                                 </div>
                             </div>
@@ -1872,13 +1882,13 @@
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-1.5">
                                                     <p className="text-[12px] font-black text-stone-800 dark:text-stone-200 truncate">{post.title}</p>
-                                                    {post.photo && <Icon name="imageIcon" size={12} className="text-stone-400 shrink-0" />}
+                                                    {post.photos && <Icon name="imageIcon" size={12} className="text-stone-400 shrink-0" />}
                                                 </div>
                                                 <p className="text-[10px] text-stone-400 font-bold mt-0.5 line-clamp-1">{post.content}</p>
                                             </div>
                                             {canEdit(app) && (
                                                 <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-                                                    <button onClick={() => { setWBoardForm({ title: post.title, content: post.content, photo: post.photo || '' }); setWBoardEditId(post.id); setWBoardOpenId(app.id); }} className="text-stone-400 hover:text-teal-500 p-1"><Icon name="edit" size={13} /></button>
+                                                    <button onClick={() => { setWBoardForm({ title: post.title, content: post.content, photos: post.photos [] '' }); setWBoardEditId(post.id); setWBoardOpenId(app.id); }} className="text-stone-400 hover:text-teal-500 p-1"><Icon name="edit" size={13} /></button>
                                                     {canDelete(app) && <button onClick={() => handleDeleteWidgetPost(post.id)} className="text-stone-400 hover:text-rose-500 p-1"><Icon name="trash" size={13} /></button>}
                                                 </div>
                                             )}
@@ -1887,7 +1897,7 @@
                                     </button>
                                     {wBoardSelectedPost?.id === post.id && (
                                         <div className="px-4 pb-4 pt-2 border-t border-stone-200 dark:border-stone-700 space-y-3 fade-in">
-                                            {post.photo && <img src={post.photo} className="w-full rounded-xl object-cover cursor-pointer max-h-48" onClick={() => setExpandedImage(post.photo)} />}
+                                            {post.photos && <img src={post.photos} className="w-full rounded-xl object-cover cursor-pointer max-h-48" onClick={() => setExpandedImage(post.photos)} />}
                                             <p className="text-[13px] font-bold text-stone-700 dark:text-stone-300 whitespace-pre-wrap leading-relaxed">{post.content}</p>
                                         </div>
                                     )}
@@ -1922,11 +1932,44 @@
                                     <div className="flex items-center gap-1.5 bg-white dark:bg-stone-800 px-3 py-1.5 rounded-full border border-stone-200 dark:border-stone-700 shadow-sm">
                                         <button onClick={(e) => { e.stopPropagation(); setProfileForm({ name: appUser.name, part: appUser.part, category: appUser.category, brands: appUser.brands || '', extNumber: appUser.extNumber || '', position: appUser.position, jobTitle: appUser.jobTitle || '일반', password: '', targetEmpId: appUser.empId }); setProfileTab('pw'); setShowProfileEdit(true); }} className="flex items-center gap-1 text-[10px] font-black text-stone-600 dark:text-stone-300 hover:text-teal-600 transition-colors btn-press"><span className="underline decoration-stone-300 dark:decoration-stone-600 underline-offset-2">{appUser.name}</span>님</button>
                                         <div className="w-px h-3 bg-stone-200 dark:bg-stone-700 mx-0.5"></div>
-                                        <button onClick={() => { setAppUser(null); localStorage.removeItem('hmood_session'); setView('login'); setCurrentDate(new Date()); }} className="text-stone-400 hover:text-rose-500 transition-colors flex items-center gap-1"><Icon name="logout" size={12} /></button>
+                                        <button
+                                            onClick={() => {
+                                                setShowProfileEdit(true);
+                                                setProfileForm({
+                                                    name: appUser.name,
+                                                    part: appUser.part,
+                                                    category: appUser.category,
+                                                    brands: appUser.brands || '',
+                                                    extNumber: appUser.extNumber || '',
+                                                    position: appUser.position,
+                                                    jobTitle: appUser.jobTitle || '일반',
+                                                    password: '',
+                                                    targetEmpId: appUser.empId
+                                                });
+                                                setProfileTab('main');
+                                            }}
+                                            className="text-stone-400 hover:text-teal-500 transition-colors flex items-center gap-1"
+                                        >
+                                            <Icon name="userSettings" size={12} />
+                                            <span className="text-[10px] font-bold">내 정보</span>
+                                        </button>
+<button
+  onClick={() => {
+    setAppUser(null);
+    setIsAdminAuth(false);
+    setIsHealthOnlyAdmin(false);
+    localStorage.removeItem('hmood_session');
+    setView('login');
+    setCurrentDate(new Date());
+  }}
+  className="text-stone-400 hover:text-rose-500 transition-colors flex items-center gap-1"
+>
+  <Icon name="logout" size={12} />
+</button>
+
+
                                     </div>
-                                ) : (
-                                    <button onClick={() => setView('login')} className="bg-stone-800 text-white text-[10px] px-3 py-2 rounded-full font-black active:scale-95 transition-transform shadow-md">직원 로그인</button>
-                                )}
+                                ) : null}
                             </div>
                         </header>
                     )}
@@ -2808,33 +2851,7 @@
 
                                             {currentAdminTab === 'apps' && (
                                                 <div className="space-y-6 fade-in">
-                                                    {/* 1. 공지사항 관리 섹션 */}
-                                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-5 rounded-[2rem] border border-rose-100 dark:border-rose-900 space-y-4">
-                                                        <p className="text-[12px] font-black text-rose-600 tracking-widest flex items-center gap-2"><Icon name="bellRing" size={16} /> 공지사항 관리</p>
-                                                        <textarea className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold h-24 shadow-inner outline-none focus:border-rose-400 resize-none" placeholder="공지 내용 입력" value={noticeForm.content} onChange={e => setNoticeForm({ ...noticeForm, content: e.target.value })}></textarea>
-                                                        <div className="flex items-center justify-between gap-3">
-                                                            <label className="flex items-center gap-2 cursor-pointer bg-white dark:bg-stone-800 border border-stone-200/70 dark:border-stone-700 rounded-xl px-4 py-2 btn-press text-[11px] font-black text-rose-500 hover:bg-white/70 transition-colors">
-                                                                <Icon name="camera" size={14} className="text-stone-500" />
-                                                                {noticeForm.photos && noticeForm.photos.length > 0 ? '사진 변경' : '사진 첨부 (선택)'}
-                                                                <input type="file" accept="image/*" className="hidden" onChange={handleNoticePhotoSingle} />
-                                                            </label>
-                                                            {noticeForm.photos && noticeForm.photos.length > 0 && (
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-[11px] font-bold text-stone-400 flex items-center gap-1"><Icon name="imageIcon" size={14} /> {noticeForm.photos.length}</span>
-                                                                    <button onClick={() => setNoticeForm(prev => ({ ...prev, photos: [] }))} className="text-rose-500 hover:text-rose-700 font-black text-[13px] btn-press w-7 h-7 flex items-center justify-center rounded-full bg-rose-50 dark:bg-rose-900/20">×</button>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex items-center justify-between">
-                                                            <label className="flex items-center gap-2 text-xs font-black cursor-pointer text-rose-500"><input type="checkbox" checked={noticeForm.isPinned} onChange={e => setNoticeForm({ ...noticeForm, isPinned: e.target.checked })} className="w-4 h-4" /> 상단 고정</label>
-                                                            <div className="flex gap-2">
-                                                                {editingNoticeId && <button onClick={() => { setEditingNoticeId(null); setNoticeForm({ content: '', photos: [], isPinned: false }); }} className="bg-stone-200 dark:bg-stone-700 text-stone-600 font-black px-4 py-2 rounded-xl btn-press text-xs">취소</button>}
-                                                                <button onClick={handleNoticeSubmit} className="bg-rose-600 text-white font-black px-4 py-2 rounded-xl btn-press text-xs">{editingNoticeId ? '수정 완료' : '등록'}</button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* 2. 앱 및 폴더 관리 섹션 (사라졌던 아이콘 선택 코드) */}
+                                                     {/* 2. 앱 및 폴더 관리 섹션 (사라졌던 아이콘 선택 코드) */}
                                                     <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-5">
                                                         <p className="text-[12px] font-black text-teal-600 tracking-widest flex items-center gap-2"><Icon name="layout" size={18} /> 앱/폴더 생성 및 수정</p>
                                                         <div className="grid grid-cols-1 gap-4">
@@ -3347,7 +3364,7 @@
                                     if (filtered.length === 0) return <div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700"><p className="text-[11px] font-bold text-stone-400">게시글이 없습니다.</p></div>;
                                     return filtered.map(post => (
                                         <div key={post.id} className="bg-white dark:bg-stone-800 p-5 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm space-y-3">
-                                            <p className="text-[12px] font-bold text-stone-800 dark:text-stone-200 whitespace-pre-wrap">{post.content}</p>{post.photo && <img src={post.photo} className="w-full h-auto rounded-xl object-cover cursor-pointer border border-stone-100 dark:border-stone-700" onClick={() => setExpandedImage(post.photo)} />}
+                                            <p className="text-[12px] font-bold text-stone-800 dark:text-stone-200 whitespace-pre-wrap">{post.content}</p>{post.photos && <img src={post.photos} className="w-full h-auto rounded-xl object-cover cursor-pointer border border-stone-100 dark:border-stone-700" onClick={() => setExpandedImage(post.photos)} />}
                                             <div className="flex justify-between items-center text-[9px] text-stone-400 font-black mt-2 pt-2 border-t border-stone-50 dark:border-stone-700"><span>{post.author}</span><div className="flex items-center gap-2"><span>{formatLocalTime(post.createdAt)}</span>{canDelete(openedDynamicApp) && (<button onClick={(e) => handleDeleteDynamicPost(e, post.id)} className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg ml-2 btn-press shadow-sm"><Icon name="trash" size={14} /></button>)}</div></div>
                                         </div>
                                     ));
@@ -3395,16 +3412,16 @@
                                         <textarea className="w-full bg-stone-50 dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-24 resize-none" placeholder="내용" value={adminBoardForm.content} onChange={e => setAdminBoardForm({ ...adminBoardForm, content: e.target.value })} />
                                         <label className="flex items-center gap-2 cursor-pointer bg-stone-50 dark:bg-stone-900 border border-dashed border-stone-300 dark:border-stone-600 rounded-xl px-4 py-2.5 btn-press hover:bg-stone-100 transition-colors">
                                             <Icon name="camera" size={14} className="text-stone-400" /><span className="text-[11px] font-bold text-stone-400">{adminBoardForm.photo ? '사진 변경' : '사진 첨부 (선택)'}</span>
-                                            <input type="file" accept="image/*" className="hidden" onChange={async e => { if (e.target.files[0]) { const b64 = await resizeImage(e.target.files[0]); setAdminBoardForm(prev => ({ ...prev, photo: b64 })); e.target.value = ''; } }} />
+                                            <input type="file" accept="image/*" className="hidden" onChange={async e => { if (e.target.files[0]) { const b64 = await resizeImage(e.target.files[0]); setAdminBoardForm(prev => ({ ...prev, photos: b64 })); e.target.value = []; } }} />
                                         </label>
-                                        {adminBoardForm.photo && <div className="relative w-16 h-16"><img src={adminBoardForm.photo} className="w-full h-full object-cover rounded-xl border" /><button onClick={() => setAdminBoardForm(p => ({ ...p, photo: '' }))} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">×</button></div>}
+                                        {adminBoardForm.photo && <div className="relative w-16 h-16"><img src={adminBoardForm.photo} className="w-full h-full object-cover rounded-xl border" /><button onClick={() => setAdminBoardForm(p => ({ ...p, photos: [] }))} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">×</button></div>}
                                         <div className="flex gap-2"><button onClick={handleAdminBoardPost} className="w-full bg-indigo-600 text-white font-black py-3 rounded-2xl shadow-md btn-press text-[11px]">게시글 등록</button></div>
                                     </div>
                                 )}
                                 {selectedAdminPost ? (
                                     <div className="bg-white dark:bg-stone-800 rounded-[2rem] border border-stone-200 dark:border-stone-700 p-6 shadow-sm space-y-4 fade-in">
                                         <h4 className="text-[16px] font-black text-stone-800 dark:text-stone-200">{selectedAdminPost.title}</h4><p className="text-[10px] text-stone-400 font-bold mt-1">{selectedAdminPost.author} · {formatLocalTime(selectedAdminPost.createdAt)}</p>
-                                        {selectedAdminPost.photo && <img src={selectedAdminPost.photo} className="w-full h-auto rounded-2xl object-cover cursor-pointer" onClick={() => setExpandedImage(selectedAdminPost.photo)} />}
+                                        {selectedAdminpost.photos && <img src={selectedAdminpost.photos} className="w-full h-auto rounded-2xl object-cover cursor-pointer" onClick={() => setExpandedImage(selectedAdminpost.photos)} />}
                                         <div className="border-t border-stone-100 dark:border-stone-700 pt-4"><p className="text-[13px] font-bold text-stone-700 dark:text-stone-300 whitespace-pre-wrap">{selectedAdminPost.content}</p></div>
                                         <button onClick={() => setSelectedAdminPost(null)} className="w-full bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300 font-black py-3 rounded-2xl btn-press text-[11px]">목록으로</button>
                                     </div>
