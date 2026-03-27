@@ -319,7 +319,6 @@
         const d0 = getMockDate(0); const d1 = getMockDate(1);
 
         const defaultDynamicApps = [
-            { id: 'app_5', name: '헬스키퍼', icon: 'heartPulse', color: 'text-pink-500', bg: 'bg-pink-50', isFolder: false, parentId: null, actionType: 'reservation', url: '', writePermission: 'all', resOperatorId: '1726480', resTimeSlots: '10:00, 11:00, 14:00, 15:00, 16:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 1, sortOrder: 99 },
             { id: 'app_12', name: '민원', icon: 'alertCircle', color: 'text-purple-500', bg: 'bg-purple-50', isFolder: false, parentId: null, actionType: 'link', url: 'https://joyful-cascaron-34e91f.netlify.app/', writePermission: 'all', sortOrder: 1 },
             { id: 'app_4', name: '소모품신청', icon: 'box', color: 'text-amber-500', bg: 'bg-amber-50', isFolder: false, parentId: null, actionType: 'link', url: 'https://spectacular-biscotti-d806ab.netlify.app/', writePermission: 'all', sortOrder: 2 },
             { id: 'app_2', name: '내선번호', icon: 'phoneForwarded', color: 'text-teal-500', bg: 'bg-teal-50', isFolder: false, parentId: null, actionType: 'popup_ext', url: '', writePermission: 'all', sortOrder: 3 },
@@ -401,16 +400,66 @@
         const deleteFromIDB = (storeName, id) => { if (!window.localDB) return; try { window.localDB.transaction(storeName, 'readwrite').objectStore(storeName).delete(id); } catch (e) { } };
 
         function App() {
+            // ==================================================
+            // ✅ 제출 데이터 엑셀 다운로드 (헬스키퍼 제외)
+            // ==================================================
+            const downloadPostsExcel = (appId, appName) => {
+                const rows = dynamicPosts
+                    .filter(p => p.appId === appId && p.type !== 'reservation')
+                    .map(p => ({
+                        작성자: p.author || '-',
+                        제목: p.title || '-',
+                        내용: p.content || '-',
+                        제출일시: formatLocalTime(p.createdAt),
+                    }));
+
+                if (!rows.length) {
+                    showToast('다운로드할 데이터가 없습니다.', true);
+                    return;
+                }
+
+                const ws = XLSX.utils.json_to_sheet(rows);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, appName.slice(0, 31));
+                XLSX.writeFile(wb, `${appName}_제출데이터.xlsx`);
+            };
+
+            // ==================================================
+            // ✅ 헬스키퍼 이용기록 엑셀 다운로드 (관리자)
+            // ==================================================
+            const downloadHealthExcel = () => {
+                const rows = dynamicPosts
+                    .filter(p => p.type === 'reservation')
+                    .map(p => ({
+                        예약날짜: p.resDate || '-',
+                        예약시간: p.resTime || '-',
+                        예약자: p.author || '-',
+                        내선번호: p.ext || '-',
+                        비고: p.content || '-',
+                        등록일시: formatLocalTime(p.createdAt),
+                    }));
+
+                if (!rows.length) {
+                    showToast('다운로드할 데이터가 없습니다.', true);
+                    return;
+                }
+
+                const ws = XLSX.utils.json_to_sheet(rows);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, '헬스키퍼이용기록');
+                XLSX.writeFile(wb, '헬스키퍼_이용기록.xlsx');
+            };
+            const [expandedDailyCards, setExpandedDailyCards] = useState({});
             const [db, setDb] = useState(null);
             const [fbUser, setFbUser] = useState(null);
             const [appUser, setAppUser] = useState(null);
             const [isAuthReady, setIsAuthReady] = useState(false);
+            const isLoggedIn = !!appUser;
             const [loading, setLoading] = useState(true);
             const [view, setView] = useState('daily');
             const [adminTab, setAdminTab] = useState('apps');
             const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('hmood_dark_mode') === 'true');
             const [isLargeTextMode, setIsLargeTextMode] = useState(() => localStorage.getItem('hmood_large_text') === 'true');
-
             const [users, setUsers] = useState([]);
             const [schedules, setSchedules] = useState([]);
             const [notices, setNotices] = useState([]);
@@ -419,7 +468,8 @@
             const [dynamicPosts, setDynamicPosts] = useState([]);
             const [currentEvent, setCurrentEvent] = useState(null);
             const [blacklists, setBlacklists] = useState([]);
-
+            const [cancelGuestInfo, setCancelGuestInfo] = useState(null);
+            const [cancelGuestName, setCancelGuestName] = useState('');
             const [eventForm, setEventForm] = useState({ title: '', prize: '', target: 'daily', type: 'random', winnerCount: 1, quizQuestion: '', quizAnswer: '', teamCount: 2 });
             const [quizAnswer, setQuizAnswer] = useState(''); // ✨ 이 줄을 추가해 주세요!
             const [spinDisplay, setSpinDisplay] = useState('');
@@ -507,7 +557,7 @@
             const [appManagerForm, setAppManagerForm] = useState({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 1, sortOrder: 99 });
             const [editingAppId, setEditingAppId] = useState(null);
             const [showPerms, setShowPerms] = useState(false); // 권한 설정 모달 토글
-            const [submitFormState, setSubmitFormState] = useState({content: '', photos: [], authorName: ''});
+            const [submitFormState, setSubmitFormState] = useState({ content: '', photos: [], authorName: '' });
             const [openedFolder, setOpenedFolder] = useState(null);
             const [openedDynamicApp, setOpenedDynamicApp] = useState(null);
             const [boardSearch, setBoardSearch] = useState('');
@@ -530,7 +580,6 @@
             const [isHealthOnlyAdmin, setIsHealthOnlyAdmin] = useState(false);
             const [resConfigMode, setResConfigMode] = useState(false);
             const tableScrollRef = useRef(null);
-
             const [adminSchedForm, setAdminSchedForm] = useState({ empId: '', date: todayStr, status: 'A' });
             const [showExtModal, setShowExtModal] = useState(false);
             const [showProfileEdit, setShowProfileEdit] = useState(false);
@@ -679,30 +728,33 @@
                 return '권한이 없습니다.';
             }, [appUser]);
             // [N 배지 판독기] 72시간 이내의 안 읽은 새 글이 있을 때만 정확히 N 표시
+
             const checkNewBadge = useCallback((targetAppId) => {
-                // 1. 게시글 데이터가 아예 없으면 작동 안 함
+                // ✅ [패치] 헬스키퍼(reservation)는 N 뱃지 대상 아님
+                const app = dynamicApps.find(a => a.id === targetAppId);
+                if (app?.actionType === 'reservation') return false;
+
                 if (!dynamicPosts || dynamicPosts.length === 0) return false;
 
-                // 2. 현재 확인하려는 게시판(targetAppId)의 글들만 쏙 뽑아냅니다.
                 const appPosts = dynamicPosts.filter(p => p.appId === targetAppId);
                 if (appPosts.length === 0) return false;
 
-                // 3. 조건 검사: "3일 이내에 쓴 글" 중에서 "내가 아직 안 클릭한 글"이 있는지 확인
                 const hasUnreadNewPost = appPosts.some(post => {
                     const postDate = new Date(post.createdAt);
-                    if (isNaN(postDate.getTime())) return false; // 날짜 형식이 이상하면 패스
+                    if (isNaN(postDate.getTime())) return false;
 
                     const diffTime = new Date() - postDate;
                     const diffHours = diffTime / (1000 * 60 * 60);
 
-                    const isNew = diffHours <= 72; // ✅ 72시간(3일) 이내인가?
-                    const isUnread = !(readNoticeIds || []).includes(post.id); // ✅ 내 '읽음 목록'에 없는가?
+                    const isNew = diffHours <= 72;
+                    const isUnread = !readNoticeIds.includes(post.id);
 
-                    return isNew && isUnread; // 둘 다 맞아야 '참(True)' -> N 배지 띄움!
+                    return isNew && isUnread;
                 });
 
                 return hasUnreadNewPost;
-            }, [dynamicPosts, readNoticeIds]); // 👈 글 목록이나 내 읽음 기록이 바뀔 때마다 즉시 계산!
+            }, [dynamicApps, dynamicPosts, readNoticeIds]);
+
             useEffect(() => {
                 if (firebaseConfig && !firebase.apps.length) firebase.initializeApp(firebaseConfig);
                 if (firebase.apps.length > 0) {
@@ -1650,24 +1702,92 @@
             const renderWidget = (app) => {
                 if (app.actionType === 'widget_managers') {
                     return (
-                        <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in">
+                        <div
+                            key={app.id}
+                            className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in"
+                        >
                             <div className="flex items-center justify-between">
-                                <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}><Icon name={app.icon} size={16} /> {app.name}</h3>
-                                {isAdminAuth && <div className="flex gap-2"><button onClick={() => handleEditDynamicApp(app)} className="text-stone-400 hover:text-teal-500"><Icon name="edit" size={14} /></button><button onClick={() => handleDeleteDynamicApp(app.id)} className="text-stone-400 hover:text-rose-500"><Icon name="trash" size={14} /></button></div>}
+                                <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}>
+                                    <Icon name={app.icon} size={16} /> {app.name}
+                                </h3>
+
+                                {isAdminAuth && (
+                                    <div className="flex gap-2">
+                                        {/* ✅ 엑셀 다운로드 버튼 추가 */}
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                
+                                            }}
+                                            className="text-teal-500 hover:text-teal-700"
+                                            title="엑셀 다운로드"
+                                        >
+                                            <Icon name="download" size={14} />
+                                        </button>
+
+                                        {/* 기존 편집 */}
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleEditDynamicApp(app);
+                                            }}
+                                            className="text-stone-400 hover:text-teal-500"
+                                        >
+                                            <Icon name="edit" size={14} />
+                                        </button>
+
+                                        {/* 기존 삭제 */}
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteDynamicApp(app.id);
+                                            }}
+                                            className="text-stone-400 hover:text-rose-500"
+                                        >
+                                            <Icon name="trash" size={14} />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                            {activeManagers.length === 0 ? <p className="text-center py-6 text-stone-300 font-bold text-[11px]">오늘 출근한 영업관리자가 없습니다.</p> : (
+
+                            {activeManagers.length === 0 ? (
+                                <p className="text-center py-6 text-stone-300 font-bold text-[11px]">
+                                    오늘 출근한 영업관리자가 없습니다.
+                                </p>
+                            ) : (
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                     {activeManagers.map(m => {
                                         const ext = (extensions || []).find(e => e?.user?.includes(m.name));
                                         return (
-                                            <div key={m.empId} className="bg-stone-50 dark:bg-stone-800 rounded-2xl p-4 border border-stone-100 dark:border-stone-700 flex flex-col gap-2 shadow-sm">
+                                            <div
+                                                key={m.empId}
+                                                className="bg-stone-50 dark:bg-stone-800 rounded-2xl p-4 border border-stone-100 dark:border-stone-700 flex flex-col gap-2 shadow-sm"
+                                            >
                                                 <div className="flex flex-col">
-                                                    <p className="text-[15px] font-black text-stone-800 dark:text-stone-200">{m.name}</p>
-                                                    <p className="text-[10px] text-stone-500 font-bold">{m.user?.position} · {m.user?.jobTitle}</p>
+                                                    <p className="text-[15px] font-black text-stone-800 dark:text-stone-200">
+                                                        {m.name}
+                                                    </p>
+                                                    <p className="text-[10px] text-stone-500 font-bold">
+                                                        {m.user?.position} · {m.user?.jobTitle}
+                                                    </p>
                                                 </div>
+
                                                 <div className="flex justify-between items-center mt-1">
-                                                    <span className={`px-3 py-1.5 rounded-lg text-[9px] font-black shadow-sm ${STATUS_THEME[m.status] || 'bg-stone-200 text-stone-500'}`}>{m.status}</span>
-                                                    {ext && <button onClick={(e) => callExtension(ext.number, m.name, e)} className="text-white bg-teal-500 p-2 rounded-full btn-press shadow-md"><Icon name="phoneCall" size={13} /></button>}
+                                                    <span
+                                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black shadow-sm ${STATUS_THEME[m.status] || 'bg-stone-200 text-stone-500'
+                                                            }`}
+                                                    >
+                                                        {m.status}
+                                                    </span>
+
+                                                    {ext && (
+                                                        <button
+                                                            onClick={(e) => callExtension(ext.number, m.name, e)}
+                                                            className="text-white bg-teal-500 p-2 rounded-full btn-press shadow-md"
+                                                        >
+                                                            <Icon name="phoneCall" size={13} />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
@@ -1734,12 +1854,12 @@
                 return null;
             };
 
-            
-const [wBoardForm, setWBoardForm] = useState({
-  title: '',
-  content: '',
-  photos: []
-});
+
+            const [wBoardForm, setWBoardForm] = useState({
+                title: '',
+                content: '',
+                photos: []
+            });
 
             const [wBoardEditId, setWBoardEditId] = useState(null);
             const [wBoardOpenId, setWBoardOpenId] = useState(null);
@@ -1941,19 +2061,19 @@ const [wBoardForm, setWBoardForm] = useState({
                                             <Icon name="userSettings" size={12} />
                                             <span className="text-[10px] font-bold">내 정보</span>
                                         </button>
-<button
-  onClick={() => {
-    setAppUser(null);
-    setIsAdminAuth(false);
-    setIsHealthOnlyAdmin(false);
-    localStorage.removeItem('hmood_session');
-    setView('login');
-    setCurrentDate(new Date());
-  }}
-  className="text-stone-400 hover:text-rose-500 transition-colors flex items-center gap-1"
->
-  <Icon name="logout" size={12} />
-</button>
+                                        <button
+                                            onClick={() => {
+                                                setAppUser(null);
+                                                setIsAdminAuth(false);
+                                                setIsHealthOnlyAdmin(false);
+                                                localStorage.removeItem('hmood_session');
+                                                setView('login');
+                                                setCurrentDate(new Date());
+                                            }}
+                                            className="text-stone-400 hover:text-rose-500 transition-colors flex items-center gap-1"
+                                        >
+                                            <Icon name="logout" size={12} />
+                                        </button>
 
 
                                     </div>
@@ -2134,6 +2254,7 @@ const [wBoardForm, setWBoardForm] = useState({
                                                         {members.map(m => {
                                                             const u = userMap[m.empId]; const canEdit = canEditProfile(m.empId);
                                                             const hasDetail = u?.category || u?.brands;
+                                                            
                                                             const extNum = u?.extNumber || (extensions || []).find(e => e?.user?.includes(m.name))?.number;
                                                             return (
                                                                 <div key={m.empId} className={`bg-white dark:bg-stone-900 p-2.5 sm:p-3 rounded-2xl shadow-sm border flex flex-col justify-between ${canEdit ? 'border-teal-500/40 ring-1 ring-teal-500/10' : 'border-stone-100 dark:border-stone-800'}`}>
@@ -2148,7 +2269,25 @@ const [wBoardForm, setWBoardForm] = useState({
                                                                     {hasDetail && (
                                                                         <div className="bg-stone-50 dark:bg-stone-800 p-1.5 rounded-lg border border-stone-100 dark:border-stone-700 mb-2">
                                                                             <p className="text-[10px] font-black text-stone-700 dark:text-stone-300 truncate">{u?.category || '-'}</p>
-                                                                            {u?.brands && <p className="text-[9px] font-black text-teal-700 dark:text-teal-400 truncate">{u?.brands}</p>}
+                                                                            {u?.brands && (
+                                                                                <p
+                                                                                    className={`text-[9px] font-black text-teal-700 cursor-pointer transition-all ${expandedDailyCards[m.empId]
+                                                                                        ? 'whitespace-pre-wrap break-all'
+                                                                                        : 'truncate'
+                                                                                        }`}
+                                                                                    title={expandedDailyCards[m.empId] ? '접기' : u.brands}
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        setExpandedDailyCards(prev => ({
+                                                                                            ...prev,
+                                                                                            [m.empId]: !prev[m.empId]
+                                                                                        }));
+                                                                                    }}
+                                                                                >
+                                                                                    {u.brands}
+                                                                                </p>
+                                                                            )}
+
                                                                         </div>
                                                                     )}
 
@@ -2656,25 +2795,6 @@ const [wBoardForm, setWBoardForm] = useState({
                                                     )}
                                                 </div>
                                             )}
-                                            {currentAdminTab === 'posts' && (
-                                                <div className="space-y-6 fade-in">
-                                                    <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-4">
-                                                        <p className="text-[12px] font-black text-indigo-600 tracking-widest flex items-center gap-2"><Icon name="clipboardList" size={18} /> 게시판/폼 데이터 조회</p>
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                            {(dynamicApps || []).filter(a => ['board', 'form', 'notice', 'reservation'].includes(a.actionType)).map(app => {
-                                                                const postsCount = (dynamicPosts || []).filter(p => p.appId === app.id).length;
-                                                                const canView = canViewPosts(app);
-                                                                return (
-                                                                    <div key={app.id} className={`bg-white dark:bg-stone-900 p-4 rounded-2xl border shadow-sm flex items-center justify-between transition-colors ${canView ? 'border-stone-200 dark:border-stone-700 cursor-pointer btn-press hover:border-indigo-300' : 'border-stone-100 dark:border-stone-800 opacity-50'}`} onClick={() => { if (!canView) return showToast('열람 권한이 없습니다.', true); if (app.actionType === 'notice') { setOpenedAdminBoard(app); setSelectedAdminPost(null); } else if (app.actionType === 'reservation') { setOpenedReservationApp(app); setResSelectedDate(todayStr); setResConfigMode(false); } else { setOpenedDynamicApp(app); } }}>
-                                                                        <div className="flex items-center gap-3"><div className={`w-9 h-9 ${app.bg} ${app.color} rounded-xl flex items-center justify-center`}><Icon name={app.icon} size={16} /></div><div className="flex flex-col"><span className="text-xs font-black text-stone-800 dark:text-stone-200">{app.name}</span><span className="text-[9px] font-bold text-stone-400">{canView ? `${postsCount}건` : '🔒 열람 제한'}</span></div></div>
-                                                                        {canView && <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 font-black text-[10px] px-2.5 py-1 rounded-full shrink-0">{postsCount}건</span>}
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
                                         </div>
                                     ) : (
                                         <div className="bg-white dark:bg-stone-900 p-6 md:p-10 rounded-[3.5rem] shadow-2xl border border-stone-200 dark:border-stone-800 space-y-6 fade-in">
@@ -2720,24 +2840,86 @@ const [wBoardForm, setWBoardForm] = useState({
                                                     </div>
 
                                                     <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-700">
-                                                        <h3 className="text-[13px] font-black text-stone-800 dark:text-stone-200 mb-4 flex items-center gap-2"><Icon name="calendar" size={18} className="text-pink-500" /> 전체 예약 내역 및 강제 취소</h3>
+
+                                                        {/* 제목 + 엑셀 버튼 */}
+                                                        <div className="flex items-center justify-between mb-4">
+                                                            <h3 className="text-[13px] font-black text-stone-800 dark:text-stone-200 flex items-center gap-2">
+                                                                <Icon name="calendar" size={18} className="text-pink-500" />
+                                                                전체 예약 내역 및 강제 취소
+                                                            </h3>
+
+                                                            {isAdminAuth && (
+                                                                <button
+                                                                    onClick={downloadHealthExcel}
+                                                                    className="flex items-center gap-1.5 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300 px-4 py-2 rounded-xl text-[11px] font-black border border-teal-200 dark:border-teal-700 hover:bg-teal-100 dark:hover:bg-teal-900/40 btn-press"
+                                                                >
+                                                                    <Icon name="download" size={14} />
+                                                                    이용기록 엑셀
+                                                                </button>
+                                                            )}
+                                                        </div>
+
+                                                        {/* 예약 리스트 */}
                                                         <div className="max-h-[500px] overflow-y-auto scrollbar-hide space-y-3 pr-1">
-                                                            {dynamicPosts.filter(p => p.type === 'reservation').length === 0 ? <p className="text-[11px] text-center text-stone-400 py-6">예약 내역이 없습니다.</p> :
-                                                                dynamicPosts.filter(p => p.type === 'reservation').map(res => (
-                                                                    <div key={res.id} className="bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm flex justify-between items-center group">
-                                                                        <div className="flex flex-col gap-1 w-full mr-2">
-                                                                            <span className={`${isLargeTextMode ? 'text-2xl mb-1' : 'text-[13px]'} font-black text-stone-800 dark:text-stone-200`}>
-                                                                                {res.author} <span className={`${isLargeTextMode ? 'text-base font-bold' : 'text-[10px] font-normal'} text-stone-400`}>({res.ext || '내선없음'})</span>
-                                                                            </span>
-                                                                            <span className={`${isLargeTextMode ? 'text-lg bg-pink-50 dark:bg-pink-900/30 p-2 rounded-xl mt-1 inline-block' : 'text-[10px]'} font-bold text-pink-600 w-fit`}>
-                                                                                {res.resDate} {res.resTime}
-                                                                            </span>
-                                                                            {res.content && <span className={`${isLargeTextMode ? 'text-sm mt-2 font-bold p-3 bg-stone-50 dark:bg-stone-800 rounded-xl' : 'text-[10px] line-clamp-1 mt-1'} text-stone-500`}>비고: {res.content}</span>}
+                                                            {dynamicPosts.filter(p => p.type === 'reservation').length === 0 ? (
+                                                                <p className="text-[11px] text-center text-stone-400 py-6">
+                                                                    예약 내역이 없습니다.
+                                                                </p>
+                                                            ) : (
+                                                                dynamicPosts
+                                                                    .filter(p => p.type === 'reservation')
+                                                                    .map(res => (
+                                                                        <div
+                                                                            key={res.id}
+                                                                            className="bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm flex justify-between items-center group"
+                                                                        >
+                                                                            <div className="flex flex-col gap-1 w-full mr-2">
+                                                                                <span
+                                                                                    className={`${isLargeTextMode ? 'text-2xl mb-1' : 'text-[13px]'
+                                                                                        } font-black text-stone-800 dark:text-stone-200`}
+                                                                                >
+                                                                                    {res.author}{' '}
+                                                                                    <span
+                                                                                        className={`${isLargeTextMode
+                                                                                                ? 'text-base font-bold'
+                                                                                                : 'text-[10px] font-normal'
+                                                                                            } text-stone-400`}
+                                                                                    >
+                                                                                        ({res.ext || '내선없음'})
+                                                                                    </span>
+                                                                                </span>
+
+                                                                                <span
+                                                                                    className={`${isLargeTextMode
+                                                                                            ? 'text-lg bg-pink-50 dark:bg-pink-900/30 p-2 rounded-xl mt-1 inline-block'
+                                                                                            : 'text-[10px]'
+                                                                                        } font-bold text-pink-600 w-fit`}
+                                                                                >
+                                                                                    {res.resDate} {res.resTime}
+                                                                                </span>
+
+                                                                                {res.content && (
+                                                                                    <span
+                                                                                        className={`${isLargeTextMode
+                                                                                                ? 'text-sm mt-2 font-bold p-3 bg-stone-50 dark:bg-stone-800 rounded-xl'
+                                                                                                : 'text-[10px] line-clamp-1 mt-1'
+                                                                                            } text-stone-500`}
+                                                                                    >
+                                                                                        비고: {res.content}
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+
+                                                                            <button
+                                                                                onClick={() => handleReservationCancel(res.id)}
+                                                                                className={`bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white ${isLargeTextMode ? 'p-4' : 'p-2.5'
+                                                                                    } rounded-xl transition-colors btn-press shrink-0`}
+                                                                            >
+                                                                                <Icon name="trash" size={isLargeTextMode ? 24 : 16} />
+                                                                            </button>
                                                                         </div>
-                                                                        <button onClick={() => handleReservationCancel(res.id)} className={`bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white ${isLargeTextMode ? 'p-4' : 'p-2.5'} rounded-xl transition-colors btn-press shrink-0`}><Icon name="trash" size={isLargeTextMode ? 24 : 16} /></button>
-                                                                    </div>
-                                                                ))
-                                                            }
+                                                                    ))
+                                                            )}
                                                         </div>
                                                     </div>
 
@@ -2839,7 +3021,7 @@ const [wBoardForm, setWBoardForm] = useState({
 
                                             {currentAdminTab === 'apps' && (
                                                 <div className="space-y-6 fade-in">
-                                                     {/* 2. 앱 및 폴더 관리 섹션 (사라졌던 아이콘 선택 코드) */}
+                                                    {/* 2. 앱 및 폴더 관리 섹션 (사라졌던 아이콘 선택 코드) */}
                                                     <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-5">
                                                         <p className="text-[12px] font-black text-teal-600 tracking-widest flex items-center gap-2"><Icon name="layout" size={18} /> 앱/폴더 생성 및 수정</p>
                                                         <div className="grid grid-cols-1 gap-4">
@@ -3077,7 +3259,7 @@ const [wBoardForm, setWBoardForm] = useState({
                                                     <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-4">
                                                         <p className="text-[12px] font-black text-indigo-600 tracking-widest flex items-center gap-2"><Icon name="clipboardList" size={18} /> 게시판/폼 데이터 조회</p>
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                            {(dynamicApps || []).filter(a => a.actionType === 'board' || a.actionType === 'form' || a.actionType === 'notice' || a.actionType === 'reservation').map(app => {
+                                                            {(dynamicApps || []).filter(a => a.actionType === 'board' || a.actionType === 'form' || a.actionType === 'notice' || ).map(app => {
                                                                 const postsCount = (dynamicPosts || []).filter(p => p.appId === app.id).length;
                                                                 const canView = canViewPosts(app);
                                                                 return (
@@ -3156,16 +3338,139 @@ const [wBoardForm, setWBoardForm] = useState({
                                         <div className="space-y-4"><div className="flex items-center justify-between text-[11px] font-bold text-stone-500 mb-2 px-2"><span>담당자: {operatorName} ({opSched})</span><span>타임당 인원: {maxPerSlot}명</span></div>
                                             <div className="grid grid-cols-2 gap-3">
                                                 {timeSlots.map(time => {
-                                                    const [hr, min] = time.split(':'); const slotTime = new Date(y, m - 1, d, hr, min); const isPast = slotTime.getTime() < now.getTime(); const isDeadlinePassed = slotTime.getTime() - leadTimeMs <= now.getTime(); const currentSlotRes = dayRes.filter(r => r.resTime === time); const isFull = currentSlotRes.length >= maxPerSlot; const myRes = currentSlotRes.find(r => r.authorId === appUser?.empId || (r.authorId.startsWith('guest_') && r.author === `${resInput.brand} ${resInput.name}`)); const isResAdmin = isAdminAuth || (appUser && appUser.empId === openedReservationApp.resOperatorId); const isDisabled = (!myRes && !isResAdmin) && (isPast || isDeadlinePassed || isFull);
+                                                    // ===== 슬롯 계산 =====
+                                                    const [hr, min] = time.split(':');
+                                                    const slotTime = new Date(y, m - 1, d, hr, min);
+                                                    const nowTs = now.getTime();
+                                                    const slotTs = slotTime.getTime();
+
+                                                    const isPast = slotTs < nowTs;
+                                                    const isDeadlinePassed = slotTs - leadTimeMs <= nowTs;
+
+                                                    const currentSlotRes = dayRes.filter(r => r.resTime === time);
+                                                    const isFull = currentSlotRes.length >= maxPerSlot;
+
+                                                    // 로그인 사용자 내 예약
+                                                    const myRes = currentSlotRes.find(r =>
+                                                        appUser ? r.authorId === appUser.empId : false
+                                                    );
+
+                                                    // 관리자 여부
+                                                    const isResAdmin =
+                                                        isAdminAuth ||
+                                                        (appUser && appUser.empId === openedReservationApp.resOperatorId);
+
+                                                    // 비활성화: (로그인 사용자만) 예약 자체가 불가한 경우만 막음
+                                                    const isDisabled =
+                                                        isLoggedIn &&
+                                                        !myRes &&
+                                                        !isResAdmin &&
+                                                        (isPast || isDeadlinePassed || isFull);
+
                                                     return (
-                                                        <div key={time} className={`p-4 rounded-2xl border text-center transition-colors relative ${myRes ? 'bg-teal-50 dark:bg-teal-900/30 border-teal-500' : isDisabled ? 'bg-stone-100 dark:bg-stone-800 border-stone-200 dark:border-stone-700 opacity-60' : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-700 shadow-sm cursor-pointer hover:border-teal-400 btn-press'}`} onClick={() => {
-                                                            if (isDisabled) { if (isPast) return showToast('이미 지난 시간입니다.', true); if (isDeadlinePassed) return showToast(`예약 마감됨`, true); if (isFull) return showToast('마감되었습니다.', true); }
-                                                            if (myRes) return showToast('이미 예약하신 시간입니다.', true);
-                                                            setResPrompt(time);
-                                                        }}>
-                                                            {myRes && <div className="absolute -top-2 -right-2 bg-teal-500 text-white rounded-full p-1"><Icon name="checkCircle" size={12} /></div>}<p className={`text-lg font-black ${myRes ? 'text-teal-700 dark:text-teal-400' : isDisabled ? 'text-stone-400' : 'text-stone-700 dark:text-stone-300'}`}>{time}</p><p className={`text-[10px] font-bold mt-1 ${myRes ? 'text-teal-600' : isDisabled ? 'text-rose-400' : 'text-teal-500'}`}>{myRes ? '내 예약' : isPast ? '종료됨' : isDeadlinePassed ? '마감됨' : isFull ? '예약 꽉참' : `예약 가능 (${currentSlotRes.length}/${maxPerSlot})`}</p>
-                                                            {isResAdmin && currentSlotRes.length > 0 && (<div className="mt-2 pt-2 border-t border-stone-200/50 dark:border-stone-700">{currentSlotRes.map(r => (<div key={r.id} className="flex justify-between items-center text-[9px] text-stone-500 mb-1"><span className="truncate max-w-[80px]">{r.author}</span><button onClick={(e) => { e.stopPropagation(); handleReservationCancel(r.id); }} className="text-rose-400 hover:text-rose-600 font-bold">취소</button></div>))}</div>)}
-                                                            {!isResAdmin && myRes && (<button onClick={(e) => { e.stopPropagation(); handleReservationCancel(myRes.id); }} className="w-full mt-2 bg-white dark:bg-stone-800 text-rose-500 border border-rose-200 dark:border-rose-800 rounded-lg py-1.5 text-[9px] font-black hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors">예약 취소</button>)}
+                                                        <div
+                                                            key={time}
+                                                            className={`p-4 rounded-2xl border text-center transition-colors relative ${myRes
+                                                                ? 'bg-teal-50 dark:bg-teal-900/30 border-teal-500'
+                                                                : isDisabled
+                                                                    ? 'bg-stone-100 dark:bg-stone-800 border-stone-200 dark:border-stone-700 opacity-60'
+                                                                    : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-700 shadow-sm cursor-pointer hover:border-teal-400 btn-press'
+                                                                }`}
+                                                            onClick={() => {
+                                                                if (isDisabled) {
+                                                                    if (isPast) return showToast('이미 지난 시간입니다.', true);
+                                                                    if (isDeadlinePassed) return showToast('예약 마감됨', true);
+                                                                    if (isFull) return showToast('마감되었습니다.', true);
+                                                                }
+                                                                if (myRes) return showToast('이미 예약하신 시간입니다.', true);
+                                                                setResPrompt(time);
+                                                            }}
+                                                        >
+                                                            {myRes && (
+                                                                <div className="absolute -top-2 -right-2 bg-teal-500 text-white rounded-full p-1">
+                                                                    <Icon name="checkCircle" size={12} />
+                                                                </div>
+                                                            )}
+
+                                                            <p
+                                                                className={`text-lg font-black ${myRes
+                                                                    ? 'text-teal-700 dark:text-teal-400'
+                                                                    : isDisabled
+                                                                        ? 'text-stone-400'
+                                                                        : 'text-stone-700 dark:text-stone-300'
+                                                                    }`}
+                                                            >
+                                                                {time}
+                                                            </p>
+
+                                                            <p
+                                                                className={`text-[10px] font-bold mt-1 ${myRes
+                                                                    ? 'text-teal-600'
+                                                                    : isDisabled
+                                                                        ? 'text-rose-400'
+                                                                        : 'text-teal-500'
+                                                                    }`}
+                                                            >
+                                                                {myRes
+                                                                    ? '내 예약'
+                                                                    : isPast
+                                                                        ? '종료됨'
+                                                                        : isDeadlinePassed
+                                                                            ? '마감됨'
+                                                                            : isFull
+                                                                                ? '예약 꽉참'
+                                                                                : `예약 가능 (${currentSlotRes.length}/${maxPerSlot})`}
+                                                            </p>
+
+                                                            {/* 관리자: 슬롯 내 예약 전부 취소 */}
+                                                            {isResAdmin && currentSlotRes.length > 0 && (
+                                                                <div className="mt-2 pt-2 border-t border-stone-200/50 dark:border-stone-700">
+                                                                    {currentSlotRes.map(r => (
+                                                                        <div
+                                                                            key={r.id}
+                                                                            className="flex justify-between items-center text-[9px] text-stone-500 mb-1"
+                                                                        >
+                                                                            <span className="truncate max-w-[80px]">{r.author}</span>
+                                                                            <button
+                                                                                onClick={e => {
+                                                                                    e.stopPropagation();
+                                                                                    handleReservationCancel(r.id);
+                                                                                }}
+                                                                                className="text-rose-400 hover:text-rose-600 font-bold"
+                                                                            >
+                                                                                취소
+                                                                            </button>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+
+                                                            {/* 로그인 사용자: 내 예약 취소 */}
+                                                            {!isResAdmin && myRes && (
+                                                                <button
+                                                                    onClick={e => {
+                                                                        e.stopPropagation();
+                                                                        handleReservationCancel(myRes.id);
+                                                                    }}
+                                                                    className="w-full mt-2 bg-white dark:bg-stone-800 text-rose-500 border border-rose-200 dark:border-rose-800 rounded-lg py-1.5 text-[9px] font-black hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors"
+                                                                >
+                                                                    예약 취소
+                                                                </button>
+                                                            )}
+
+                                                            {/* 비로그인: 성명 입력으로 취소 */}
+                                                            {!isLoggedIn && currentSlotRes.length > 0 && (
+                                                                <button
+                                                                    onClick={e => {
+                                                                        e.stopPropagation();
+                                                                        setCancelGuestInfo({ posts: currentSlotRes });
+                                                                        setCancelGuestName('');
+                                                                    }}
+                                                                    className="w-full mt-2 text-[9px] font-black text-rose-500 hover:underline"
+                                                                >
+                                                                    예약 취소 (비회원)
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     );
                                                 })}
