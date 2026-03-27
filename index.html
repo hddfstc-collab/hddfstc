@@ -326,34 +326,22 @@
             { id: 'folder_1', name: '인사/총무', icon: 'folder', color: 'text-indigo-500', bg: 'bg-indigo-50', isFolder: true, parentId: null, actionType: null, url: '', writePermission: 'all', sortOrder: 4 },
             { id: 'app_6', name: '입점신청', icon: 'users', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: false, parentId: 'folder_1', actionType: 'link', url: 'https://m.hddfs.com/shop/om/consmStoPtnsQust/stoPtnsApplResu.do', writePermission: 'all', sortOrder: 1 },
             { id: 'app_11', name: '퇴점신청', icon: 'logout', color: 'text-rose-500', bg: 'bg-rose-50', isFolder: false, parentId: 'folder_1', actionType: 'link', url: 'https://m.hddfs.com/shop/om/consmStoPtnsQust/stoPtnsLeaveResu.do?', writePermission: 'all', sortOrder: 2 },
-            { id: 'app_1', name: '보수요청', icon: 'wrench', color: 'text-orange-500', bg: 'bg-orange-50', isFolder: false, parentId: 'folder_1', actionType: 'form', url: '', writePermission: 'all', sortOrder: 3 },
-            { id: 'app_7', name: '안전보건', icon: 'heartPulse', color: 'text-rose-500', bg: 'bg-rose-50', isFolder: false, parentId: null, actionType: 'board', url: '', writePermission: 'member', sortOrder: 5 },
-            { id: 'app_8', name: '시설정보', icon: 'info', color: 'text-cyan-500', bg: 'bg-cyan-50', isFolder: false, parentId: null, actionType: 'board', url: '', writePermission: 'member', sortOrder: 6 },
-            { id: 'app_9', name: '작업계제출', icon: 'fileText', color: 'text-purple-500', bg: 'bg-purple-50', isFolder: false, parentId: null, actionType: 'form', url: '', writePermission: 'all', sortOrder: 7 },
-            { id: 'app_10', name: '세관교육', icon: 'globe', color: 'text-indigo-500', bg: 'bg-indigo-50', isFolder: false, parentId: null, actionType: 'form', url: '', writePermission: 'all', sortOrder: 8 },
-            { id: 'app_guide_1', name: '면세한도 안내', icon: 'passport', color: 'text-emerald-500', bg: 'bg-emerald-50', isFolder: false, parentId: null, actionType: 'guide', guideContent: '성인 1인당 면세 한도: USD 800 (약 100만원)\n주류: 1병(1L 이하, $400 이하)\n담배: 1보루(200개비)\n향수: 60ml 이하\n\n* 한도 초과 시 세관 신고 필수', guideImage: '', sortOrder: 9 },
             { id: 'widget_1', name: '오늘 근무 영업관리자', icon: 'users', color: 'text-teal-600', bg: 'bg-white', isFolder: false, parentId: null, actionType: 'widget_managers', sortOrder: 100 },
             { id: 'widget_2', name: '현장 실시간 공지사항', icon: 'bellRing', color: 'text-rose-500', bg: 'bg-white', isFolder: false, parentId: null, actionType: 'widget_notices', sortOrder: 101 }
         ];
-
-        const defaultUsers = [{ id: '1919989', empId: '1919989', name: '노홍균', part: '무역센터', position: '차장', jobTitle: '점장', password: '1919989', category: '점장', birthday: '1990-01-01' }, { id: '1726480', empId: '1726480', name: '조준기', part: '영업1파트', position: '차장', jobTitle: '파트장', password: '1726480', category: 'F&A/LTSF', birthday: '1990-01-01' }];
-        const defaultSchedules = [
-            { id: `${d0}_1919989`, empId: '1919989', date: d0, status: '휴무', name: '노홍균', part: '무역센터' }, { id: `${d0}_1726480`, empId: '1726480', date: d0, status: 'A', name: '조준기', part: '영업1파트' },
-            { id: `${d1}_1919989`, empId: '1919989', date: d1, status: '휴무', name: '노홍균', part: '무역센터' }, { id: `${d1}_1726480`, empId: '1726480', date: d1, status: 'A', name: '조준기', part: '영업1파트' }
-        ];
-        const defaultExtensions = [{ id: 'ext_1', number: '6000', floor: 'B4F', user: '수입 점창고', createdAt: new Date().toISOString() }];
-
         const defaultStatusOptions = [
             { id: 'sopt_1', label: 'A', bg: 'bg-stone-700 dark:bg-stone-600', text: 'text-white', isWork: true },
             { id: 'sopt_2', label: 'B', bg: 'bg-stone-700 dark:bg-stone-600', text: 'text-white', isWork: true },
+            { id: 'sopt_2', label: 'C', bg: 'bg-stone-700 dark:bg-stone-600', text: 'text-white', isWork: true },
+            { id: 'sopt_2', label: 'M', bg: 'bg-stone-700 dark:bg-stone-600', text: 'text-white', isWork: true },
             { id: 'sopt_3', label: '당직', bg: 'bg-stone-700 dark:bg-stone-600', text: 'text-white', isWork: true },
             { id: 'sopt_4', label: '휴무', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: false },
             { id: 'sopt_5', label: '연차', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: false },
             { id: 'sopt_6', label: '오전 반차', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: true },
             { id: 'sopt_7', label: '오후 반차', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: true },
-            { id: 'sopt_8', label: '반반차', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: true },
-            { id: 'sopt_9', label: '기념일반반차', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: true },
-            { id: 'sopt_10', label: '대체 휴무', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: false }
+            { id: 'sopt_8', label: '오전 반반차', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: true },
+            { id: 'sopt_8', label: '오후후 반반차', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: true },
+            { id: 'sopt_9', label: '기념일 반반차', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: true },
         ];
 
         const hashPassword = async (plain) => {
@@ -1888,7 +1876,7 @@ const [wBoardForm, setWBoardForm] = useState({
                                             </div>
                                             {canEdit(app) && (
                                                 <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-                                                    <button onClick={() => { setWBoardForm({ title: post.title, content: post.content, photos: post.photos [] '' }); setWBoardEditId(post.id); setWBoardOpenId(app.id); }} className="text-stone-400 hover:text-teal-500 p-1"><Icon name="edit" size={13} /></button>
+                                                    <button onClick={() => { setWBoardForm({ title: post.title, content: post.content, photos: post.photos || [] }); setWBoardEditId(post.id); setWBoardOpenId(app.id); }} className="text-stone-400 hover:text-teal-500 p-1"><Icon name="edit" size={13} /></button>
                                                     {canDelete(app) && <button onClick={() => handleDeleteWidgetPost(post.id)} className="text-stone-400 hover:text-rose-500 p-1"><Icon name="trash" size={13} /></button>}
                                                 </div>
                                             )}
