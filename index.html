@@ -3163,7 +3163,7 @@
                                                                 <div className="grid grid-cols-7 sm:grid-cols-10 gap-2 bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-100 dark:border-stone-700">
                                                                     {ICON_OPTIONS.map(opt => (
                                                                         <button key={opt.v} onClick={() => setAppManagerForm({ ...appManagerForm, icon: opt.v })} className={`p-2 rounded-lg flex items-center justify-center transition-all ${appManagerForm.icon === opt.v ? 'bg-teal-500 text-white shadow-md scale-110' : 'text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800'}`}>
-                                                                            <Icon name={opt.v} size={20} />
+                                                                            <Icon name={opt.v} size={36} />
                                                                         </button>
                                                                     ))}
                                                                 </div>
@@ -3179,12 +3179,39 @@
                                                                 </div>
                                                             </div>
 
-                                                            <div className="grid grid-cols-2 gap-3">
-                                                                <select className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-4 text-xs font-bold outline-none" value={appManagerForm.isFolder} onChange={e => setAppManagerForm({ ...appManagerForm, isFolder: e.target.value })}>
+                                                            <div className="grid grid-cols-3 gap-3">
+                                                                <select
+                                                                    className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-4 text-xs font-bold outline-none"
+                                                                    value={appManagerForm.isFolder}
+                                                                    onChange={e =>
+                                                                        setAppManagerForm({
+                                                                            ...appManagerForm,
+                                                                            isFolder: e.target.value,
+                                                                            parentId: e.target.value === 'true'
+                                                                                ? ''
+                                                                                : appManagerForm.parentId,
+                                                                        })
+                                                                    }
+                                                                >
                                                                     <option value="false">일반 앱 (기능)</option>
                                                                     <option value="true">폴더 (그룹)</option>
                                                                 </select>
-
+                                                                {appManagerForm.isFolder === 'false' && (
+                                                                <select
+                                                                    className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-4 text-xs font-bold outline-none"
+                                                                    value={appManagerForm.parentId}
+                                                                    onChange={e =>
+                                                                    setAppManagerForm({ ...appManagerForm, parentId: e.target.value })
+                                                                    }
+                                                                >
+                                                                    <option value="">📁 최상위</option>
+                                                                    {dynamicApps
+                                                                    .filter(a => a.isFolder)
+                                                                    .map(f => (
+                                                                        <option key={f.id} value={f.id}>{f.name}</option>
+                                                                    ))}
+                                                                </select>
+                                                                )}
                                                                 <select className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-4 text-xs font-bold outline-none" value={appManagerForm.actionType} onChange={e => setAppManagerForm({ ...appManagerForm, actionType: e.target.value })} disabled={appManagerForm.isFolder === 'true'}>
                                                                     <option value="guide">📘 안내형</option>
                                                                     <option value="board">📝 게시판형</option>
