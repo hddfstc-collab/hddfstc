@@ -455,6 +455,14 @@
                 });
             }, [dynamicApps, notices, readNoticeIds, dynamicPosts, readPostIds]);
 
+            useEffect(() => {
+                alert('view = ' + view);
+            }, [view]);
+
+            useEffect(() => {
+                alert('unreadPopupTargets length = ' + unreadPopupTargets.length);
+            }, [unreadPopupTargets.length]);
+
 
             // ✅ 파트너스(shared) 진입 시 N뱃지 대상 팝업
             useEffect(() => {
