@@ -455,12 +455,14 @@
                 });
             }, [dynamicApps, notices, readNoticeIds, dynamicPosts, readPostIds]);
 
-            // ✅ 5단계: 파트너스 진입 시 팝업
+
+            // ✅ 파트너스(shared) 진입 시 N뱃지 대상 팝업
             useEffect(() => {
-                if (view === 'partners' && unreadPosts.length > 0) {
+                if (view === 'shared' && unreadPopupTargets.length > 0) {
                     setShowNewPostPopup(true);
                 }
-            }, [view, unreadPosts.length]);
+            }, [view, unreadPopupTargets.length]);
+
 
             // ==================================================
             // ✅ 제출 데이터 엑셀 다운로드 (헬스키퍼 제외)
