@@ -461,25 +461,15 @@
             }, [dynamicApps, notices, readNoticeIds, dynamicPosts, readPostIds]);
 
 
-            useEffect(() => {
-                const mode = new URLSearchParams(window.location.search).get('mode');
-                if (mode === 'shared' && unreadPopupTargets.length > 0) {
-                    setShowNewPostPopup(true);
-                }
-            }, [unreadPopupTargets.length]);
-
-
-
-
             // ✅ 파트너스(shared) 진입 시 N뱃지 대상 팝업
-
             useEffect(() => {
-                const mode = new URLSearchParams(window.location.search).get('mode');
+                const hash = window.location.hash; // "#/?mode=shared"
+                const mode = new URLSearchParams(hash.split('?')[1] || '').get('mode');
+
                 if (mode === 'shared' && unreadPopupTargets.length > 0) {
                     setShowNewPostPopup(true);
                 }
             }, [unreadPopupTargets.length]);
-
 
 
             // ==================================================
