@@ -429,6 +429,31 @@
                     .filter(p => !readPostIds.includes(p.id))
                     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             }, [dynamicPosts, readPostIds]);
+            // ✅ N뱃지 기준 팝업 대상 계산 (공지 + 게시판)
+            const unreadPopupTargets = useMemo(() => {
+                return (dynamicApps || []).filter(app => {
+                    // ❌ 제출형 / 예약형 제외
+                    if (['form', 'reservation'].includes(app.actionType)) return false;
+
+                    // ✅ 공지 / 관리자 게시판
+                    if (
+                        app.actionType === 'widget_notices' ||
+                        app.actionType === 'notice' ||
+                        app.actionType === 'admin_board'
+                    ) {
+                        return (notices || []).some(
+                            n => !readNoticeIds.includes(n.id)
+                        );
+                    }
+
+                    // ✅ 일반 게시판
+                    return (dynamicPosts || []).some(
+                        p =>
+                            p.appId === app.id &&
+                            !readPostIds.includes(p.id)
+                    );
+                });
+            }, [dynamicApps, notices, readNoticeIds, dynamicPosts, readPostIds]);
 
             // ✅ 5단계: 파트너스 진입 시 팝업
             useEffect(() => {
