@@ -691,6 +691,18 @@
             const [statusForm, setStatusForm] = useState({ label: '', bg: 'bg-stone-700 dark:bg-stone-600', text: 'text-white', isWork: 'true' });
             const [editingStatusId, setEditingStatusId] = useState(null);
 
+
+            const getMode = () => {
+                // ?mode=shared
+                const searchMode = new URLSearchParams(window.location.search).get('mode');
+                if (searchMode) return searchMode;
+
+                // #/?mode=shared
+                const hash = window.location.hash;
+                return new URLSearchParams(hash.split('?')[1] || '').get('mode');
+            };
+
+
             useEffect(() => {
                 if (isDarkMode) document.documentElement.classList.add('dark');
                 else document.documentElement.classList.remove('dark');
