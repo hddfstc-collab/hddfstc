@@ -400,9 +400,47 @@
         const deleteFromIDB = (storeName, id) => { if (!window.localDB) return; try { window.localDB.transaction(storeName, 'readwrite').objectStore(storeName).delete(id); } catch (e) { } };
 
         function App() {
+
+            // ✅ 1단계: 읽음 상태
+            const [readPostIds, setReadPostIds] = useState(() => {
+                try {
+                    return JSON.parse(localStorage.getItem('hmood_read_posts')) || [];
+                } catch {
+                    return [];
+                }
+            });
+
+            // ✅ 4단계: 팝업 스위치
+            const [showNewPostPopup, setShowNewPostPopup] = useState(false);
+
+            // ✅ 2단계: 읽음 처리
+            const markPostAsRead = (postId) => {
+                setReadPostIds(prev => {
+                    if (prev.includes(postId)) return prev;
+                    const next = [...prev, postId];
+                    localStorage.setItem('hmood_read_posts', JSON.stringify(next));
+                    return next;
+                });
+            };
+
+            // ✅ 3단계: 안 읽은 글 계산
+            const unreadPosts = useMemo(() => {
+                return (dynamicPosts || [])
+                    .filter(p => !readPostIds.includes(p.id))
+                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            }, [dynamicPosts, readPostIds]);
+
+            // ✅ 5단계: 파트너스 진입 시 팝업
+            useEffect(() => {
+                if (view === 'partners' && unreadPosts.length > 0) {
+                    setShowNewPostPopup(true);
+                }
+            }, [view, unreadPosts.length]);
+
             // ==================================================
             // ✅ 제출 데이터 엑셀 다운로드 (헬스키퍼 제외)
             // ==================================================
+
             const downloadPostsExcel = (appId, appName) => {
                 const rows = dynamicPosts
                     .filter(p => p.appId === appId && p.type !== 'reservation')
@@ -2043,6 +2081,7 @@
             if (loading) return <div className="h-screen w-full flex items-center justify-center bg-[#EBE9E4] dark:bg-stone-950"><div className="text-center animate-pulse"><div className="w-16 h-16 bg-teal-600 rounded-[2rem] mx-auto mb-6 flex items-center justify-center text-white shadow-2xl"><Icon name="shield" size={32} /></div><p className="text-stone-400 font-black uppercase tracking-[0.3em] text-[11px]">로딩 중...</p></div></div>;
 
             return (
+
                 <div className="flex flex-col h-screen min-h-screen bg-[#EBE9E4] dark:bg-stone-950 text-stone-700 dark:text-stone-300 fade-in">
 
                     {view !== 'shared' && (
@@ -3315,688 +3354,765 @@
 
                     </main>
 
-                    {/* 💡 파트너스 페이지(shared) 및 로그인 화면에서는 하단 탭 숨김 */}
-                    {view !== 'shared' && view !== 'login' && (
-                        <nav className="flex-none w-full bg-[#F9F8F6]/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200 dark:border-stone-800 flex items-center justify-around z-50 px-2 md:px-12 shadow-[0_-10px_30px_rgba(0,0,0,0.03)] font-black pb-[env(safe-area-inset-bottom,1rem)] pt-2">
-                            <button onClick={() => setView('daily')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'daily' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><Icon name="calendar" size={24} /><span className="text-[10px] tracking-tighter">일간</span></button>
-                            <button onClick={() => setView('monthly')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'monthly' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><Icon name="calendarToday" size={24} /><span className="text-[10px] tracking-tighter">월간</span></button>
-                            <button onClick={() => setView('tasks')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'tasks' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><Icon name="clipboardList" size={24} /><span className="text-[10px] tracking-tighter">담당업무</span></button>
-                            <button onClick={() => setView('directory')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'directory' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><Icon name="phoneForwarded" size={24} /><span className="text-[10px] tracking-tighter">내선</span></button>
-                            <button onClick={() => setView('event')} className={`relative flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'event' ? 'text-rose-600 dark:text-rose-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><div className={currentEvent?.status === 'waiting' ? 'animate-bounce text-amber-500' : ''}><Icon name="gift" size={24} />{currentEvent?.status === 'waiting' && <div className="absolute top-0 right-2 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-[#F9F8F6] dark:border-stone-900"></div>}</div><span className="text-[10px] tracking-tighter">이벤트</span></button>
-                            <button onClick={() => setView('admin')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'admin' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><Icon name="settings" size={24} /><span className="text-[10px] tracking-tighter">관리</span></button>
-                        </nav>
+                    {showNewPostPopup && unreadPosts.length > 0 && (
+                        <ModalWrapper
+                            title="새 소식이 있습니다"
+                            icon="bell"
+                            onClose={() => setShowNewPostPopup(false)}
+                        >
+                            <div className="space-y-3">
+                                {unreadPosts.slice(0, 5).map(post => (
+                                    <button
+                                        key={post.id}
+                                        onClick={() => {
+                                            markPostAsRead(post.id);
+
+                                            const targetApp = dynamicApps.find(
+                                                a => a.id === post.appId
+                                            );
+                                            if (targetApp) {
+                                                setOpenedDynamicApp(targetApp);
+                                            }
+
+                                            setShowNewPostPopup(false);
+                                        }}
+                                        className="w-full text-left bg-stone-50 hover:bg-stone-100 p-3 rounded-xl"
+                                    >
+                                        <p className="text-[12px] font-black text-stone-800 truncate">
+                                            {post.title || post.content?.slice(0, 30)}
+                                        </p>
+                                        <p className="text-[10px] text-stone-500 mt-1">
+                                            {formatLocalTime(post.createdAt)}
+                                        </p>
+                                    </button>
+                                ))}
+
+                                <button
+                                    onClick={() => setShowNewPostPopup(false)}
+                                    className="w-full mt-2 text-[11px] font-black text-stone-500"
+                                >
+                                    닫기
+                                </button>
+                            </div>
+                        </ModalWrapper>
                     )}
+
+
+
+                    {/* 💡 파트너스 페이지(shared) 및 로그인 화면에서는 하단 탭 숨김 */}
+                    {
+                        view !== 'shared' && view !== 'login' && (
+                            <nav className="flex-none w-full bg-[#F9F8F6]/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200 dark:border-stone-800 flex items-center justify-around z-50 px-2 md:px-12 shadow-[0_-10px_30px_rgba(0,0,0,0.03)] font-black pb-[env(safe-area-inset-bottom,1rem)] pt-2">
+                                <button onClick={() => setView('daily')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'daily' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><Icon name="calendar" size={24} /><span className="text-[10px] tracking-tighter">일간</span></button>
+                                <button onClick={() => setView('monthly')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'monthly' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><Icon name="calendarToday" size={24} /><span className="text-[10px] tracking-tighter">월간</span></button>
+                                <button onClick={() => setView('tasks')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'tasks' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><Icon name="clipboardList" size={24} /><span className="text-[10px] tracking-tighter">담당업무</span></button>
+                                <button onClick={() => setView('directory')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'directory' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><Icon name="phoneForwarded" size={24} /><span className="text-[10px] tracking-tighter">내선</span></button>
+                                <button onClick={() => setView('event')} className={`relative flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'event' ? 'text-rose-600 dark:text-rose-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><div className={currentEvent?.status === 'waiting' ? 'animate-bounce text-amber-500' : ''}><Icon name="gift" size={24} />{currentEvent?.status === 'waiting' && <div className="absolute top-0 right-2 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-[#F9F8F6] dark:border-stone-900"></div>}</div><span className="text-[10px] tracking-tighter">이벤트</span></button>
+                                <button onClick={() => setView('admin')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'admin' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><Icon name="settings" size={24} /><span className="text-[10px] tracking-tighter">관리</span></button>
+                            </nav>
+                        )
+                    }
 
                     {/* MODALS */}
                     {/* 💡 새로운 공지사항 전용 작성/수정 모달 */}
-                    {isNoticeModalOpen && (
-                        <ModalWrapper title="공지사항 작성" icon="edit" color="text-rose-500" onClose={() => { setIsNoticeModalOpen(false); setEditingNoticeId(null); setNoticeForm({ content: '', photos: [], isPinned: false }); }}>
-                            <div className="space-y-4">
-                                <div className="bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-800 p-4 rounded-2xl mb-4"><p className="text-[10px] font-bold text-rose-600 dark:text-rose-300 leading-relaxed text-center">현장 근무자와 파트너스 전체에 노출되는 공지사항입니다.</p></div>
-                                <textarea className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-5 text-xs font-bold shadow-inner outline-none h-32 resize-none focus:border-rose-400" placeholder="공지할 내용을 입력하세요." value={noticeForm.content} onChange={e => setNoticeForm({ ...noticeForm, content: e.target.value })}></textarea>
-                                <div className="flex items-center justify-between gap-3">
-                                    <label className="flex items-center gap-2 cursor-pointer bg-white dark:bg-stone-800 border border-stone-200/70 dark:border-stone-700 rounded-xl px-4 py-2 btn-press text-[11px] font-black text-rose-500 hover:bg-white/70 transition-colors">
-                                        <Icon name="camera" size={14} className="text-stone-500" />
-                                        {noticeForm.photos && noticeForm.photos.length > 0 ? '사진 변경' : '사진 첨부 (선택)'}
-                                        <input type="file" accept="image/*" className="hidden" onChange={handleNoticePhotoSingle} />
-                                    </label>
-                                    {noticeForm.photos && noticeForm.photos.length > 0 && (
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[11px] font-bold text-stone-400 flex items-center gap-1"><Icon name="imageIcon" size={14} /> {noticeForm.photos.length}</span>
-                                            <button onClick={() => setNoticeForm(prev => ({ ...prev, photos: [] }))} className="text-rose-500 hover:text-rose-700 font-black text-[13px] btn-press w-7 h-7 flex items-center justify-center rounded-full bg-rose-50 dark:bg-rose-900/20">×</button>
-                                        </div>
-                                    )}
-                                </div>
-                                <label className="flex items-center gap-2 text-xs font-black cursor-pointer text-rose-500 px-2"><input type="checkbox" checked={noticeForm.isPinned} onChange={e => setNoticeForm({ ...noticeForm, isPinned: e.target.checked })} className="w-4 h-4" /> 중요 공지로 상단에 고정</label>
-                                <div className="flex gap-2 mt-4">
-                                    <button onClick={() => { setIsNoticeModalOpen(false); setEditingNoticeId(null); setNoticeForm({ content: '', photos: [], isPinned: false }); }} className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-4 rounded-2xl btn-press text-[12px]">취소</button>
-                                    <button onClick={handleNoticeSubmit} className="flex-1 bg-rose-500 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[12px]">{editingNoticeId ? '수정 완료' : '등록'}</button>
-                                </div>
-                            </div>
-                        </ModalWrapper>
-                    )}
-
-                    {openedReservationApp && (
-                        <ModalWrapper title={`${openedReservationApp.name} 예약`} icon={openedReservationApp.icon} color={openedReservationApp.color} onClose={() => setOpenedReservationApp(null)}>
-                            <div className="overflow-y-auto scrollbar-hide flex-1 pb-2">
-                                <div className="flex items-center justify-between bg-white dark:bg-stone-900 p-2 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 mb-6"><button onClick={() => setResSelectedDate(new Date(new Date(resSelectedDate).getTime() - 86400000).toISOString().split('T')[0])} className="p-2 text-stone-400 hover:text-teal-500"><Icon name="chevronLeft" size={20} /></button><span className="text-sm font-black text-stone-800 dark:text-stone-200">{resSelectedDate}</span><button onClick={() => setResSelectedDate(new Date(new Date(resSelectedDate).getTime() + 86400000).toISOString().split('T')[0])} className="p-2 text-stone-400 hover:text-teal-500"><Icon name="chevronRight" size={20} /></button></div>
-                                {(() => {
-                                    const operatorId = openedReservationApp.resOperatorId; const operatorName = userMap[operatorId]?.name || '담당자 미지정'; const opSched = scheduleMap[operatorId]?.[resSelectedDate]?.status;
-                                    const opOpt = statusOptions.find(o => o.label === opSched);
-                                    const isOperatorOff = opOpt && (opOpt.isWork === false || opOpt.isWork === 'false') ? true : (!opSched || ['휴무', '연차', '대체 휴무'].includes(opSched));
-
-                                    if (isOperatorOff) return (<div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700"><div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/30 text-rose-400 rounded-full flex items-center justify-center mx-auto mb-3"><Icon name="alertCircle" size={24} /></div><p className="text-[12px] font-black text-stone-600 dark:text-stone-300 mb-1">예약 불가</p><p className="text-[10px] font-bold text-rose-500">사유: 담당자({operatorName}) 부재</p></div>);
-                                    const dayRes = (dynamicPosts || []).filter(p => p.appId === openedReservationApp.id && p.type === 'reservation' && p.resDate === resSelectedDate); const timeSlots = (openedReservationApp.resTimeSlots || '10:00,11:00').split(',').map(t => t.trim()); const maxPerSlot = openedReservationApp.resMaxPerSlot || 1; const leadTimeMs = ((openedReservationApp.resLeadTimeDays || 0) * 24 + (openedReservationApp.resLeadTimeHours || 0)) * 60 * 60 * 1000; const now = new Date(); const [y, m, d] = resSelectedDate.split('-');
-                                    return (
-                                        <div className="space-y-4"><div className="flex items-center justify-between text-[11px] font-bold text-stone-500 mb-2 px-2"><span>담당자: {operatorName} ({opSched})</span><span>타임당 인원: {maxPerSlot}명</span></div>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                {timeSlots.map(time => {
-                                                    // ===== 슬롯 계산 =====
-                                                    const [hr, min] = time.split(':');
-                                                    const slotTime = new Date(y, m - 1, d, hr, min);
-                                                    const nowTs = now.getTime();
-                                                    const slotTs = slotTime.getTime();
-
-                                                    const isPast = slotTs < nowTs;
-                                                    const isDeadlinePassed = slotTs - leadTimeMs <= nowTs;
-
-                                                    const currentSlotRes = dayRes.filter(r => r.resTime === time);
-                                                    const isFull = currentSlotRes.length >= maxPerSlot;
-
-                                                    // 로그인 사용자 내 예약
-                                                    const myRes = currentSlotRes.find(r =>
-                                                        appUser ? r.authorId === appUser.empId : false
-                                                    );
-
-                                                    // 관리자 여부
-                                                    const isResAdmin =
-                                                        isAdminAuth ||
-                                                        (appUser && appUser.empId === openedReservationApp.resOperatorId);
-
-                                                    // 비활성화: (로그인 사용자만) 예약 자체가 불가한 경우만 막음
-                                                    const isDisabled =
-                                                        isLoggedIn &&
-                                                        !myRes &&
-                                                        !isResAdmin &&
-                                                        (isPast || isDeadlinePassed || isFull);
-
-                                                    return (
-                                                        <div
-                                                            key={time}
-                                                            className={`p-4 rounded-2xl border text-center transition-colors relative ${myRes
-                                                                ? 'bg-teal-50 dark:bg-teal-900/30 border-teal-500'
-                                                                : isDisabled
-                                                                    ? 'bg-stone-100 dark:bg-stone-800 border-stone-200 dark:border-stone-700 opacity-60'
-                                                                    : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-700 shadow-sm cursor-pointer hover:border-teal-400 btn-press'
-                                                                }`}
-                                                            onClick={() => {
-                                                                if (isDisabled) {
-                                                                    if (isPast) return showToast('이미 지난 시간입니다.', true);
-                                                                    if (isDeadlinePassed) return showToast('예약 마감됨', true);
-                                                                    if (isFull) return showToast('마감되었습니다.', true);
-                                                                }
-                                                                if (myRes) return showToast('이미 예약하신 시간입니다.', true);
-                                                                setResPrompt(time);
-                                                            }}
-                                                        >
-                                                            {myRes && (
-                                                                <div className="absolute -top-2 -right-2 bg-teal-500 text-white rounded-full p-1">
-                                                                    <Icon name="checkCircle" size={12} />
-                                                                </div>
-                                                            )}
-
-                                                            <p
-                                                                className={`text-lg font-black ${myRes
-                                                                    ? 'text-teal-700 dark:text-teal-400'
-                                                                    : isDisabled
-                                                                        ? 'text-stone-400'
-                                                                        : 'text-stone-700 dark:text-stone-300'
-                                                                    }`}
-                                                            >
-                                                                {time}
-                                                            </p>
-
-                                                            <p
-                                                                className={`text-[10px] font-bold mt-1 ${myRes
-                                                                    ? 'text-teal-600'
-                                                                    : isDisabled
-                                                                        ? 'text-rose-400'
-                                                                        : 'text-teal-500'
-                                                                    }`}
-                                                            >
-                                                                {myRes
-                                                                    ? '내 예약'
-                                                                    : isPast
-                                                                        ? '종료됨'
-                                                                        : isDeadlinePassed
-                                                                            ? '마감됨'
-                                                                            : isFull
-                                                                                ? '예약 꽉참'
-                                                                                : `예약 가능 (${currentSlotRes.length}/${maxPerSlot})`}
-                                                            </p>
-
-                                                            {/* 관리자: 슬롯 내 예약 전부 취소 */}
-                                                            {isResAdmin && currentSlotRes.length > 0 && (
-                                                                <div className="mt-2 pt-2 border-t border-stone-200/50 dark:border-stone-700">
-                                                                    {currentSlotRes.map(r => (
-                                                                        <div
-                                                                            key={r.id}
-                                                                            className="flex justify-between items-center text-[9px] text-stone-500 mb-1"
-                                                                        >
-                                                                            <span className="truncate max-w-[80px]">{r.author}</span>
-                                                                            <button
-                                                                                onClick={e => {
-                                                                                    e.stopPropagation();
-                                                                                    handleReservationCancel(r.id);
-                                                                                }}
-                                                                                className="text-rose-400 hover:text-rose-600 font-bold"
-                                                                            >
-                                                                                취소
-                                                                            </button>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-
-                                                            {/* 로그인 사용자: 내 예약 취소 */}
-                                                            {!isResAdmin && myRes && (
-                                                                <button
-                                                                    onClick={e => {
-                                                                        e.stopPropagation();
-                                                                        handleReservationCancel(myRes.id);
-                                                                    }}
-                                                                    className="w-full mt-2 bg-white dark:bg-stone-800 text-rose-500 border border-rose-200 dark:border-rose-800 rounded-lg py-1.5 text-[9px] font-black hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors"
-                                                                >
-                                                                    예약 취소
-                                                                </button>
-                                                            )}
-
-                                                            {/* 비로그인: 성명 입력으로 취소 */}
-                                                            {!isLoggedIn && currentSlotRes.length > 0 && (
-                                                                <button
-                                                                    onClick={e => {
-                                                                        e.stopPropagation();
-                                                                        setCancelGuestInfo({ posts: currentSlotRes });
-                                                                        setCancelGuestName('');
-                                                                    }}
-                                                                    className="w-full mt-2 text-[9px] font-black text-rose-500 hover:underline"
-                                                                >
-                                                                    예약 취소 (비회원)
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
+                    {
+                        isNoticeModalOpen && (
+                            <ModalWrapper title="공지사항 작성" icon="edit" color="text-rose-500" onClose={() => { setIsNoticeModalOpen(false); setEditingNoticeId(null); setNoticeForm({ content: '', photos: [], isPinned: false }); }}>
+                                <div className="space-y-4">
+                                    <div className="bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-800 p-4 rounded-2xl mb-4"><p className="text-[10px] font-bold text-rose-600 dark:text-rose-300 leading-relaxed text-center">현장 근무자와 파트너스 전체에 노출되는 공지사항입니다.</p></div>
+                                    <textarea className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-5 text-xs font-bold shadow-inner outline-none h-32 resize-none focus:border-rose-400" placeholder="공지할 내용을 입력하세요." value={noticeForm.content} onChange={e => setNoticeForm({ ...noticeForm, content: e.target.value })}></textarea>
+                                    <div className="flex items-center justify-between gap-3">
+                                        <label className="flex items-center gap-2 cursor-pointer bg-white dark:bg-stone-800 border border-stone-200/70 dark:border-stone-700 rounded-xl px-4 py-2 btn-press text-[11px] font-black text-rose-500 hover:bg-white/70 transition-colors">
+                                            <Icon name="camera" size={14} className="text-stone-500" />
+                                            {noticeForm.photos && noticeForm.photos.length > 0 ? '사진 변경' : '사진 첨부 (선택)'}
+                                            <input type="file" accept="image/*" className="hidden" onChange={handleNoticePhotoSingle} />
+                                        </label>
+                                        {noticeForm.photos && noticeForm.photos.length > 0 && (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[11px] font-bold text-stone-400 flex items-center gap-1"><Icon name="imageIcon" size={14} /> {noticeForm.photos.length}</span>
+                                                <button onClick={() => setNoticeForm(prev => ({ ...prev, photos: [] }))} className="text-rose-500 hover:text-rose-700 font-black text-[13px] btn-press w-7 h-7 flex items-center justify-center rounded-full bg-rose-50 dark:bg-rose-900/20">×</button>
                                             </div>
-                                        </div>
-                                    );
-                                })()}
-                            </div>
-                        </ModalWrapper>
-                    )}
-
-                    {resPrompt && (
-                        <ModalWrapper title="예약 정보 입력" icon="calendar" onClose={() => { setResPrompt(null); setResInput({ brand: '', name: '', ext: '', note: '' }); }}>
-                            <div className="space-y-4">
-                                <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 p-4 rounded-2xl mb-2 text-center"><p className="text-[12px] font-black text-indigo-700 dark:text-indigo-300">[{resSelectedDate} / {resPrompt}]</p><p className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1 font-bold">예약에 필요한 정보를 입력해 주세요.</p></div>
-                                <div><label className="text-[10px] font-black text-stone-500 ml-2">브랜드명 (필수)</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="예: 샤넬" value={resInput.brand} onChange={e => setResInput({ ...resInput, brand: e.target.value })} /></div>
-                                <div><label className="text-[10px] font-black text-stone-500 ml-2">성명/직급 (필수)</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="예: 홍길동 사원" value={resInput.name} onChange={e => setResInput({ ...resInput, name: e.target.value })} /></div>
-                                <div><label className="text-[10px] font-black text-stone-500 ml-2">내선번호</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="예: 6011" value={resInput.ext} onChange={e => setResInput({ ...resInput, ext: e.target.value })} /></div>
-                                <div><label className="text-[10px] font-black text-stone-500 ml-2">기타 (하고 싶은 말)</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="전달사항을 남겨주세요." value={resInput.note} onChange={e => setResInput({ ...resInput, note: e.target.value })} /></div>
-                                <div className="flex gap-2 mt-4">
-                                    <button onClick={() => { setResPrompt(null); setResInput({ brand: '', name: '', ext: '', note: '' }); }} className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-4 rounded-2xl btn-press text-[12px]">취소</button>
-                                    <button onClick={submitCustomRes} className="flex-1 bg-teal-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[12px]">예약 확정</button>
-                                </div>
-                            </div>
-                        </ModalWrapper>
-                    )}
-                    {cancelGuestInfo && (
-                        <ModalWrapper
-                            title="예약 취소 확인"
-                            icon="alertCircle"
-                            onClose={() => setCancelGuestInfo(null)}
-                        >
-                            <div className="space-y-4">
-                                <p className="text-center text-[12px] font-black text-stone-700 dark:text-stone-200">
-                                    본인 예약을 취소하시겠습니까?
-                                </p>
-
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => setCancelGuestInfo(null)}
-                                        className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-3 rounded-xl btn-press"
-                                    >
-                                        닫기
-                                    </button>
-
-                                    <button
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            cancelGuestInfo.posts.forEach(p => {
-                                                handleReservationCancel(p.id);
-                                            });
-                                            setCancelGuestInfo(null);
-                                        }}
-                                        className="flex-1 bg-rose-600 text-white font-black py-3 rounded-xl btn-press"
-                                    >
-                                        예약 취소 확정
-                                    </button>
-                                </div>
-                            </div>
-                        </ModalWrapper>
-                    )}
-                    {showProfileEdit && (
-                        <ModalWrapper title="내 정보" icon="user" color="text-teal-500" onClose={() => { setShowProfileEdit(false); setProfileTab('pw'); }}>
-                            <div className="space-y-4">
-                                {/* 탭 */}
-                                <div className="flex gap-2 bg-stone-100 dark:bg-stone-800 p-1 rounded-2xl">
-                                    <button onClick={() => setProfileTab('pw')} className={`flex-1 py-2.5 rounded-xl text-[12px] font-black transition-all btn-press ${profileTab === 'pw' ? 'bg-white dark:bg-stone-700 text-teal-600 shadow-sm' : 'text-stone-400'}`}>🔑 비밀번호 변경</button>
-                                    <button onClick={() => setProfileTab('info')} className={`flex-1 py-2.5 rounded-xl text-[12px] font-black transition-all btn-press ${profileTab === 'info' ? 'bg-white dark:bg-stone-700 text-teal-600 shadow-sm' : 'text-stone-400'}`}>👤 내 정보 수정</button>
-                                </div>
-
-                                {/* 비밀번호 변경 탭 */}
-                                {profileTab === 'pw' && (
-                                    <div className="space-y-4 fade-in">
-                                        <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 p-4 rounded-2xl">
-                                            <p className="text-[11px] font-bold text-teal-700 dark:text-teal-300 leading-relaxed">비밀번호는 암호화되어 저장됩니다.<br />초기 비밀번호는 사번과 동일합니다.</p>
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] font-black text-stone-500 ml-2">새 비밀번호</label>
-                                            <input type="password" className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-teal-500 transition-colors" placeholder="새 비밀번호 입력" value={profileForm.password || ''} onChange={e => setProfileForm({ ...profileForm, password: e.target.value })} autoFocus />
-                                        </div>
-                                        <button onClick={async () => {
-                                            if (!profileForm.password || profileForm.password.length < 4) return showToast('비밀번호는 4자 이상 입력해주세요.', true);
-                                            const targetEmpId = profileForm.targetEmpId || appUser.empId;
-                                            const originalUser = users.find(u => u.empId === targetEmpId);
-                                            const pwHash = await hashPassword(profileForm.password);
-                                            const updatedUser = { ...originalUser, password: pwHash };
-                                            setUsers((users || []).map(u => u.empId === targetEmpId ? updatedUser : u));
-                                            saveToIDB('users', updatedUser);
-                                            if (appUser && appUser.empId === targetEmpId) setAppUser(updatedUser);
-                                            if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/users`).doc(targetEmpId).set(updatedUser, { merge: true });
-                                            setProfileForm({ ...profileForm, password: '' });
-                                            setShowProfileEdit(false);
-                                            showToast('비밀번호가 변경되었습니다.');
-                                        }} className="w-full bg-teal-600 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[13px]">비밀번호 변경</button>
+                                        )}
                                     </div>
-                                )}
-
-                                {/* 내 정보 수정 탭 */}
-                                {profileTab === 'info' && (
-                                    <div className="space-y-3 fade-in">
-                                        <div><label className="text-[10px] font-black text-stone-500 ml-2">성명</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" value={profileForm.name} onChange={e => setProfileForm({ ...profileForm, name: e.target.value })} /></div>
-                                        <div><label className="text-[10px] font-black text-stone-500 ml-2">소속 파트</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" value={profileForm.part} onChange={e => setProfileForm({ ...profileForm, part: e.target.value })} /></div>
-                                        <div><label className="text-[10px] font-black text-stone-500 ml-2">담당 카테고리</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="예: C&P, LTSF" value={profileForm.category || ''} onChange={e => setProfileForm({ ...profileForm, category: e.target.value })} /></div>
-                                        <div><label className="text-[10px] font-black text-stone-500 ml-2">담당 브랜드 <span className="text-stone-400 font-bold">(검색 가능)</span></label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="예: 샤넬, 디올, 에스티로더" value={profileForm.brands || ''} onChange={e => setProfileForm({ ...profileForm, brands: e.target.value })} /></div>
-                                        <div><label className="text-[10px] font-black text-stone-500 ml-2">개인 내선번호</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="예: 6011" value={profileForm.extNumber || ''} onChange={e => setProfileForm({ ...profileForm, extNumber: e.target.value })} /></div>
-                                        <button onClick={async () => {
-                                            const targetEmpId = profileForm.targetEmpId || appUser.empId;
-                                            const originalUser = users.find(u => u.empId === targetEmpId);
-                                            const newExtNum = (profileForm.extNumber || '').trim();
-                                            const updatedUser = { ...originalUser, name: profileForm.name, part: profileForm.part, category: profileForm.category, brands: profileForm.brands || '', extNumber: newExtNum, position: profileForm.position || originalUser.position, jobTitle: profileForm.jobTitle || originalUser.jobTitle };
-
-                                            // 1. 유저 정보 업데이트
-                                            setUsers((users || []).map(u => u.empId === targetEmpId ? updatedUser : u));
-                                            saveToIDB('users', updatedUser);
-                                            setSchedules((schedules || []).map(s => s.empId === targetEmpId ? { ...s, name: profileForm.name, part: profileForm.part } : s));
-                                            if (appUser && appUser.empId === targetEmpId) setAppUser(updatedUser);
-                                            if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/users`).doc(targetEmpId).set(updatedUser, { merge: true });
-
-                                            // 2. 내선번호 앱 목록 자동 연동 로직
-                                            const existingExt = extensions.find(e => e.id === `ext_${targetEmpId}` || e.user === profileForm.name);
-
-                                            if (newExtNum) {
-                                                if (existingExt) {
-                                                    // 기존에 내선번호 목록이 있으면 업데이트
-                                                    const updatedExt = { ...existingExt, number: newExtNum, floor: profileForm.part || existingExt.floor, user: profileForm.name };
-                                                    setExtensions(prev => prev.map(e => e.id === existingExt.id ? updatedExt : e));
-                                                    saveToIDB('extensions', updatedExt);
-                                                    if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/extensions`).doc(existingExt.id).set(updatedExt, { merge: true });
-                                                } else {
-                                                    // 없으면 내선번호 앱에 새로 추가
-                                                    const newExt = { id: `ext_${targetEmpId}`, number: newExtNum, floor: profileForm.part || '', user: profileForm.name, createdAt: new Date().toISOString() };
-                                                    setExtensions(prev => [...(prev || []), newExt]);
-                                                    saveToIDB('extensions', newExt);
-                                                    if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/extensions`).doc(newExt.id).set(newExt);
-                                                }
-                                            } else if (existingExt && existingExt.id === `ext_${targetEmpId}`) {
-                                                // 내선번호를 지웠을 경우 연동된 내선번호 데이터도 삭제
-                                                setExtensions(prev => prev.filter(e => e.id !== existingExt.id));
-                                                deleteFromIDB('extensions', existingExt.id);
-                                                if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/extensions`).doc(existingExt.id).delete();
-                                            }
-
-                                            setShowProfileEdit(false);
-                                            showToast('개인 정보 및 내선번호가 연동되었습니다.');
-                                        }} className="w-full bg-teal-600 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[13px] mt-1">정보 업데이트</button>
+                                    <label className="flex items-center gap-2 text-xs font-black cursor-pointer text-rose-500 px-2"><input type="checkbox" checked={noticeForm.isPinned} onChange={e => setNoticeForm({ ...noticeForm, isPinned: e.target.checked })} className="w-4 h-4" /> 중요 공지로 상단에 고정</label>
+                                    <div className="flex gap-2 mt-4">
+                                        <button onClick={() => { setIsNoticeModalOpen(false); setEditingNoticeId(null); setNoticeForm({ content: '', photos: [], isPinned: false }); }} className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-4 rounded-2xl btn-press text-[12px]">취소</button>
+                                        <button onClick={handleNoticeSubmit} className="flex-1 bg-rose-500 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[12px]">{editingNoticeId ? '수정 완료' : '등록'}</button>
                                     </div>
-                                )}
-                            </div>
-                        </ModalWrapper>
-                    )}
-
-                    {openedFolder && (
-                        <ModalWrapper title={openedFolder.name} icon="folder" color="text-indigo-500" onClose={() => setOpenedFolder(null)}>
-                            <div className="grid grid-cols-4 gap-4 py-4">
-                                {(dynamicApps || []).filter(a => a.parentId === openedFolder.id).sort((a, b) => (a.sortOrder || 99) - (b.sortOrder || 99)).map((app, idx) => (
-                                    <button key={idx} className="flex flex-col items-center gap-2 group w-full" onClick={() => { setOpenedFolder(null); handleAppClick(app); }}>
-                                        <div className={`w-14 h-14 ${app.bg} ${app.color} rounded-[1rem] shadow-sm flex items-center justify-center transition-all btn-press`}><Icon name={app.icon} size={22} /></div><span className="text-[10px] font-black text-stone-600 dark:text-stone-300 tracking-tighter whitespace-nowrap overflow-hidden text-ellipsis w-full text-center">{app.name}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </ModalWrapper>
-                    )}
-
-                    {openedGuide && (
-                        <ModalWrapper title={openedGuide.name} icon={openedGuide.icon || 'bookOpen'} color={openedGuide.color || 'text-stone-800'} onClose={() => { setOpenedGuide(null); setIsGuideEditMode(false); }}>
-                            <div className="overflow-y-auto scrollbar-hide flex-1 pb-4 space-y-6">
-                                {isGuideEditMode ? (
-                                    <div className="space-y-4 fade-in">
-                                        <textarea className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-40 resize-none focus:border-teal-500" placeholder="안내 내용을 입력하세요." value={guideEditForm.content} onChange={e => setGuideEditForm({ ...guideEditForm, content: e.target.value })}></textarea>
-                                        <div className="flex items-center gap-2">
-                                            <label className="flex items-center justify-center flex-1 gap-2 cursor-pointer bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 btn-press text-[11px] font-black text-stone-500 hover:bg-stone-50 transition-colors">
-                                                <Icon name="camera" size={14} /> {guideEditForm.image ? '사진 변경' : '사진 첨부 (선택)'}
-                                                <input type="file" accept="image/*" className="hidden" onChange={async e => { if (e.target.files[0]) { const b64 = await resizeImage(e.target.files[0]); setGuideEditForm(p => ({ ...p, image: b64 })); e.target.value = ''; } }} />
-                                            </label>
-                                            {guideEditForm.image && <button onClick={() => setGuideEditForm(p => ({ ...p, image: '' }))} className="text-rose-500 font-black text-[11px] px-3 py-3 border border-rose-200 bg-rose-50 rounded-xl btn-press shrink-0">사진 삭제</button>}
-                                        </div>
-                                        {guideEditForm.image && <img src={guideEditForm.image} className="w-full rounded-2xl border border-stone-200 shadow-sm" />}
-                                    </div>
-                                ) : (
-                                    <>
-                                        {openedGuide.guideImage && <img src={openedGuide.guideImage} className="w-full h-auto max-h-64 object-contain rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm cursor-pointer" onClick={() => setExpandedImage(openedGuide.guideImage)} />}
-                                        {openedGuide.guideContent ? <p className="text-[14px] font-bold text-stone-700 dark:text-stone-300 leading-relaxed whitespace-pre-wrap">{openedGuide.guideContent}</p> : !openedGuide.guideImage ? <div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700"><p className="text-[11px] font-bold text-stone-400">등록된 안내 내용이 없습니다.</p></div> : null}
-                                    </>
-                                )}
-                            </div>
-
-                            {/* 작성 권한이 있는 경우 버튼 표시 */}
-                            <div className="pt-2 border-t border-stone-100 dark:border-stone-700 space-y-2 shrink-0">
-                                {canWrite(openedGuide) && !isGuideEditMode && (
-                                    <button onClick={() => { setGuideEditForm({ content: openedGuide.guideContent || '', image: openedGuide.guideImage || '' }); setIsGuideEditMode(true); }} className="w-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-3 rounded-2xl btn-press text-[12px] flex items-center justify-center gap-2"><Icon name="edit" size={16} /> 내용 수정하기</button>
-                                )}
-                                {isGuideEditMode ? (
-                                    <div className="flex gap-2">
-                                        <button onClick={() => setIsGuideEditMode(false)} className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 font-black py-4 rounded-2xl btn-press text-[13px]">취소</button>
-                                        <button onClick={async () => {
-                                            const updatedApp = { ...openedGuide, guideContent: guideEditForm.content, guideImage: guideEditForm.image };
-                                            setDynamicApps(prev => prev.map(a => a.id === updatedApp.id ? updatedApp : a));
-                                            saveToIDB('dynamicApps', updatedApp);
-                                            if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_apps`).doc(updatedApp.id).set(updatedApp, { merge: true });
-                                            setOpenedGuide(updatedApp);
-                                            setIsGuideEditMode(false);
-                                            showToast('안내 내용이 저장되었습니다.');
-                                        }} className="flex-1 bg-teal-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[13px]">저장</button>
-                                    </div>
-                                ) : (
-                                    <button onClick={() => { setOpenedGuide(null); setIsGuideEditMode(false); }} className="w-full bg-stone-800 text-white font-black py-4 rounded-2xl btn-press text-[13px] tracking-widest shrink-0">닫기</button>
-                                )}
-                            </div>
-                        </ModalWrapper>
-                    )}
-
-                    {openedDynamicApp && (
-                        <ModalWrapper
-                            title={openedDynamicApp.name}
-                            icon={openedDynamicApp.icon}
-                            color={openedDynamicApp.color}
-                            onClose={() => setOpenedDynamicApp(null)}
-                        >
-                            {/* ✅ 상단 액션 영역 */}
-                            <div className="flex items-center justify-between gap-2 mb-3">
-                                <div className="flex-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-2xl flex items-center gap-2 px-4 py-3 shadow-sm">
-                                    <Icon name="search" size={16} className="text-stone-400 shrink-0" />
-                                    <input
-                                        type="text"
-                                        placeholder="게시글 검색..."
-                                        value={boardSearch}
-                                        onChange={(e) => setBoardSearch(e.target.value)}
-                                        className="w-full bg-transparent outline-none text-[13px] font-bold text-stone-700 dark:text-stone-300 placeholder-stone-400"
-                                    />
                                 </div>
+                            </ModalWrapper>
+                        )
+                    }
 
-                                {/* ✅ 엑셀 다운로드 버튼 (관리자 + 제출형) */}
-                                {isAdminAuth && openedDynamicApp.actionType === 'form' && (
-                                    <button
-                                        onClick={() =>
-                                            downloadPostsExcel(
-                                                openedDynamicApp.id,
-                                                openedDynamicApp.name
-                                            )
-                                        }
-                                        className="shrink-0 bg-teal-50 text-teal-600 font-black text-[11px] px-3 py-2 rounded-xl hover:bg-teal-100 btn-press"
-                                    >
-                                        엑셀 다운로드
-                                    </button>
-                                )}
-                            </div>
+                    {
+                        openedReservationApp && (
+                            <ModalWrapper title={`${openedReservationApp.name} 예약`} icon={openedReservationApp.icon} color={openedReservationApp.color} onClose={() => setOpenedReservationApp(null)}>
+                                <div className="overflow-y-auto scrollbar-hide flex-1 pb-2">
+                                    <div className="flex items-center justify-between bg-white dark:bg-stone-900 p-2 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 mb-6"><button onClick={() => setResSelectedDate(new Date(new Date(resSelectedDate).getTime() - 86400000).toISOString().split('T')[0])} className="p-2 text-stone-400 hover:text-teal-500"><Icon name="chevronLeft" size={20} /></button><span className="text-sm font-black text-stone-800 dark:text-stone-200">{resSelectedDate}</span><button onClick={() => setResSelectedDate(new Date(new Date(resSelectedDate).getTime() + 86400000).toISOString().split('T')[0])} className="p-2 text-stone-400 hover:text-teal-500"><Icon name="chevronRight" size={20} /></button></div>
+                                    {(() => {
+                                        const operatorId = openedReservationApp.resOperatorId; const operatorName = userMap[operatorId]?.name || '담당자 미지정'; const opSched = scheduleMap[operatorId]?.[resSelectedDate]?.status;
+                                        const opOpt = statusOptions.find(o => o.label === opSched);
+                                        const isOperatorOff = opOpt && (opOpt.isWork === false || opOpt.isWork === 'false') ? true : (!opSched || ['휴무', '연차', '대체 휴무'].includes(opSched));
 
-                            {/* ✅ 게시글 리스트 */}
-                            <div className="overflow-y-auto scrollbar-hide flex-1 space-y-4 pb-2 pr-1">
-                                {(() => {
-                                    const filtered = (dynamicPosts || []).filter(
-                                        (p) =>
-                                            p.appId === openedDynamicApp.id &&
-                                            (p.content.includes(boardSearch) ||
-                                                p.author.includes(boardSearch))
-                                    );
-
-                                    if (filtered.length === 0)
+                                        if (isOperatorOff) return (<div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700"><div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/30 text-rose-400 rounded-full flex items-center justify-center mx-auto mb-3"><Icon name="alertCircle" size={24} /></div><p className="text-[12px] font-black text-stone-600 dark:text-stone-300 mb-1">예약 불가</p><p className="text-[10px] font-bold text-rose-500">사유: 담당자({operatorName}) 부재</p></div>);
+                                        const dayRes = (dynamicPosts || []).filter(p => p.appId === openedReservationApp.id && p.type === 'reservation' && p.resDate === resSelectedDate); const timeSlots = (openedReservationApp.resTimeSlots || '10:00,11:00').split(',').map(t => t.trim()); const maxPerSlot = openedReservationApp.resMaxPerSlot || 1; const leadTimeMs = ((openedReservationApp.resLeadTimeDays || 0) * 24 + (openedReservationApp.resLeadTimeHours || 0)) * 60 * 60 * 1000; const now = new Date(); const [y, m, d] = resSelectedDate.split('-');
                                         return (
-                                            <div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700">
-                                                <p className="text-[11px] font-bold text-stone-400">
-                                                    게시글이 없습니다.
-                                                </p>
-                                            </div>
-                                        );
+                                            <div className="space-y-4"><div className="flex items-center justify-between text-[11px] font-bold text-stone-500 mb-2 px-2"><span>담당자: {operatorName} ({opSched})</span><span>타임당 인원: {maxPerSlot}명</span></div>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    {timeSlots.map(time => {
+                                                        // ===== 슬롯 계산 =====
+                                                        const [hr, min] = time.split(':');
+                                                        const slotTime = new Date(y, m - 1, d, hr, min);
+                                                        const nowTs = now.getTime();
+                                                        const slotTs = slotTime.getTime();
 
-                                    return filtered.map((post) => (
-                                        <div
-                                            key={post.id}
-                                            className="bg-white dark:bg-stone-800 p-5 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm space-y-3"
-                                        >
-                                            <p className="text-[12px] font-bold text-stone-800 dark:text-stone-200 whitespace-pre-wrap">
-                                                {post.content}
-                                            </p>
+                                                        const isPast = slotTs < nowTs;
+                                                        const isDeadlinePassed = slotTs - leadTimeMs <= nowTs;
 
-                                            {post.photos && (
-                                                <img
-                                                    src={post.photos}
-                                                    className="w-full h-auto rounded-xl object-cover cursor-pointer border border-stone-100 dark:border-stone-700"
-                                                    onClick={() => setExpandedImage(post.photos)}
-                                                />
-                                            )}
+                                                        const currentSlotRes = dayRes.filter(r => r.resTime === time);
+                                                        const isFull = currentSlotRes.length >= maxPerSlot;
 
-                                            <div className="flex justify-between items-center text-[9px] text-stone-400 font-black mt-2 pt-2 border-t border-stone-50 dark:border-stone-700">
-                                                <span>{post.author}</span>
-                                                <div className="flex items-center gap-2">
-                                                    <span>{formatLocalTime(post.createdAt)}</span>
-                                                    {canDelete(openedDynamicApp) && (
-                                                        <button
-                                                            onClick={(e) =>
-                                                                handleDeleteDynamicPost(e, post.id)
-                                                            }
-                                                            className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg ml-2 btn-press shadow-sm"
-                                                        >
-                                                            <Icon name="trash" size={14} />
-                                                        </button>
-                                                    )}
+                                                        // 로그인 사용자 내 예약
+                                                        const myRes = currentSlotRes.find(r =>
+                                                            appUser ? r.authorId === appUser.empId : false
+                                                        );
+
+                                                        // 관리자 여부
+                                                        const isResAdmin =
+                                                            isAdminAuth ||
+                                                            (appUser && appUser.empId === openedReservationApp.resOperatorId);
+
+                                                        // 비활성화: (로그인 사용자만) 예약 자체가 불가한 경우만 막음
+                                                        const isDisabled =
+                                                            isLoggedIn &&
+                                                            !myRes &&
+                                                            !isResAdmin &&
+                                                            (isPast || isDeadlinePassed || isFull);
+
+                                                        return (
+                                                            <div
+                                                                key={time}
+                                                                className={`p-4 rounded-2xl border text-center transition-colors relative ${myRes
+                                                                    ? 'bg-teal-50 dark:bg-teal-900/30 border-teal-500'
+                                                                    : isDisabled
+                                                                        ? 'bg-stone-100 dark:bg-stone-800 border-stone-200 dark:border-stone-700 opacity-60'
+                                                                        : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-700 shadow-sm cursor-pointer hover:border-teal-400 btn-press'
+                                                                    }`}
+                                                                onClick={() => {
+                                                                    if (isDisabled) {
+                                                                        if (isPast) return showToast('이미 지난 시간입니다.', true);
+                                                                        if (isDeadlinePassed) return showToast('예약 마감됨', true);
+                                                                        if (isFull) return showToast('마감되었습니다.', true);
+                                                                    }
+                                                                    if (myRes) return showToast('이미 예약하신 시간입니다.', true);
+                                                                    setResPrompt(time);
+                                                                }}
+                                                            >
+                                                                {myRes && (
+                                                                    <div className="absolute -top-2 -right-2 bg-teal-500 text-white rounded-full p-1">
+                                                                        <Icon name="checkCircle" size={12} />
+                                                                    </div>
+                                                                )}
+
+                                                                <p
+                                                                    className={`text-lg font-black ${myRes
+                                                                        ? 'text-teal-700 dark:text-teal-400'
+                                                                        : isDisabled
+                                                                            ? 'text-stone-400'
+                                                                            : 'text-stone-700 dark:text-stone-300'
+                                                                        }`}
+                                                                >
+                                                                    {time}
+                                                                </p>
+
+                                                                <p
+                                                                    className={`text-[10px] font-bold mt-1 ${myRes
+                                                                        ? 'text-teal-600'
+                                                                        : isDisabled
+                                                                            ? 'text-rose-400'
+                                                                            : 'text-teal-500'
+                                                                        }`}
+                                                                >
+                                                                    {myRes
+                                                                        ? '내 예약'
+                                                                        : isPast
+                                                                            ? '종료됨'
+                                                                            : isDeadlinePassed
+                                                                                ? '마감됨'
+                                                                                : isFull
+                                                                                    ? '예약 꽉참'
+                                                                                    : `예약 가능 (${currentSlotRes.length}/${maxPerSlot})`}
+                                                                </p>
+
+                                                                {/* 관리자: 슬롯 내 예약 전부 취소 */}
+                                                                {isResAdmin && currentSlotRes.length > 0 && (
+                                                                    <div className="mt-2 pt-2 border-t border-stone-200/50 dark:border-stone-700">
+                                                                        {currentSlotRes.map(r => (
+                                                                            <div
+                                                                                key={r.id}
+                                                                                className="flex justify-between items-center text-[9px] text-stone-500 mb-1"
+                                                                            >
+                                                                                <span className="truncate max-w-[80px]">{r.author}</span>
+                                                                                <button
+                                                                                    onClick={e => {
+                                                                                        e.stopPropagation();
+                                                                                        handleReservationCancel(r.id);
+                                                                                    }}
+                                                                                    className="text-rose-400 hover:text-rose-600 font-bold"
+                                                                                >
+                                                                                    취소
+                                                                                </button>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+
+                                                                {/* 로그인 사용자: 내 예약 취소 */}
+                                                                {!isResAdmin && myRes && (
+                                                                    <button
+                                                                        onClick={e => {
+                                                                            e.stopPropagation();
+                                                                            handleReservationCancel(myRes.id);
+                                                                        }}
+                                                                        className="w-full mt-2 bg-white dark:bg-stone-800 text-rose-500 border border-rose-200 dark:border-rose-800 rounded-lg py-1.5 text-[9px] font-black hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors"
+                                                                    >
+                                                                        예약 취소
+                                                                    </button>
+                                                                )}
+
+                                                                {/* 비로그인: 성명 입력으로 취소 */}
+                                                                {!isLoggedIn && currentSlotRes.length > 0 && (
+                                                                    <button
+                                                                        onClick={e => {
+                                                                            e.stopPropagation();
+                                                                            setCancelGuestInfo({ posts: currentSlotRes });
+                                                                            setCancelGuestName('');
+                                                                        }}
+                                                                        className="w-full mt-2 text-[9px] font-black text-rose-500 hover:underline"
+                                                                    >
+                                                                        예약 취소 (비회원)
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
-                                        </div>
-                                    ));
-                                })()}
-                            </div>
+                                        );
+                                    })()}
+                                </div>
+                            </ModalWrapper>
+                        )
+                    }
 
-                            {/* ✅ 하단 작성 영역 */}
-                            {canWrite(openedDynamicApp) ? (
-                                <div className="shrink-0 pt-4 border-t border-stone-200 dark:border-stone-700 mt-2 space-y-3">
-                                    {!appUser && (
-                                        <input
-                                            className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-stone-400"
-                                            placeholder="작성자 성명 (필수)"
-                                            value={submitFormState.authorName || ''}
-                                            onChange={(e) =>
-                                                setSubmitFormState({
-                                                    ...submitFormState,
-                                                    authorName: e.target.value,
-                                                })
-                                            }
-                                        />
-                                    )}
-
-                                    <textarea
-                                        className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-20 resize-none focus:border-indigo-300"
-                                        placeholder="자유롭게 글을 남겨주세요."
-                                        value={submitFormState.content}
-                                        onChange={(e) =>
-                                            setSubmitFormState({
-                                                ...submitFormState,
-                                                content: e.target.value,
-                                            })
-                                        }
-                                    />
+                    {
+                        resPrompt && (
+                            <ModalWrapper title="예약 정보 입력" icon="calendar" onClose={() => { setResPrompt(null); setResInput({ brand: '', name: '', ext: '', note: '' }); }}>
+                                <div className="space-y-4">
+                                    <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 p-4 rounded-2xl mb-2 text-center"><p className="text-[12px] font-black text-indigo-700 dark:text-indigo-300">[{resSelectedDate} / {resPrompt}]</p><p className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1 font-bold">예약에 필요한 정보를 입력해 주세요.</p></div>
+                                    <div><label className="text-[10px] font-black text-stone-500 ml-2">브랜드명 (필수)</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="예: 샤넬" value={resInput.brand} onChange={e => setResInput({ ...resInput, brand: e.target.value })} /></div>
+                                    <div><label className="text-[10px] font-black text-stone-500 ml-2">성명/직급 (필수)</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="예: 홍길동 사원" value={resInput.name} onChange={e => setResInput({ ...resInput, name: e.target.value })} /></div>
+                                    <div><label className="text-[10px] font-black text-stone-500 ml-2">내선번호</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="예: 6011" value={resInput.ext} onChange={e => setResInput({ ...resInput, ext: e.target.value })} /></div>
+                                    <div><label className="text-[10px] font-black text-stone-500 ml-2">기타 (하고 싶은 말)</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="전달사항을 남겨주세요." value={resInput.note} onChange={e => setResInput({ ...resInput, note: e.target.value })} /></div>
+                                    <div className="flex gap-2 mt-4">
+                                        <button onClick={() => { setResPrompt(null); setResInput({ brand: '', name: '', ext: '', note: '' }); }} className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-4 rounded-2xl btn-press text-[12px]">취소</button>
+                                        <button onClick={submitCustomRes} className="flex-1 bg-teal-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[12px]">예약 확정</button>
+                                    </div>
+                                </div>
+                            </ModalWrapper>
+                        )
+                    }
+                    {
+                        cancelGuestInfo && (
+                            <ModalWrapper
+                                title="예약 취소 확인"
+                                icon="alertCircle"
+                                onClose={() => setCancelGuestInfo(null)}
+                            >
+                                <div className="space-y-4">
+                                    <p className="text-center text-[12px] font-black text-stone-700 dark:text-stone-200">
+                                        본인 예약을 취소하시겠습니까?
+                                    </p>
 
                                     <div className="flex gap-2">
-                                        <label className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer btn-press text-[11px]">
-                                            <Icon name="camera" size={14} />{' '}
-                                            {submitFormState.photo ? '사진 변경' : '사진 첨부'}
-                                            <input
-                                                type="file"
-                                                className="hidden"
-                                                accept="image/*"
-                                                onChange={(e) =>
-                                                    handlePhotoSingle(e, setSubmitFormState)
-                                                }
-                                            />
-                                        </label>
+                                        <button
+                                            onClick={() => setCancelGuestInfo(null)}
+                                            className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-3 rounded-xl btn-press"
+                                        >
+                                            닫기
+                                        </button>
 
                                         <button
-                                            onClick={handleGenericPostSubmit}
-                                            className="flex-1 bg-stone-800 text-white font-black py-3 rounded-xl shadow-md btn-press text-[11px]"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                cancelGuestInfo.posts.forEach(p => {
+                                                    handleReservationCancel(p.id);
+                                                });
+                                                setCancelGuestInfo(null);
+                                            }}
+                                            className="flex-1 bg-rose-600 text-white font-black py-3 rounded-xl btn-press"
                                         >
-                                            게시글 등록
+                                            예약 취소 확정
                                         </button>
                                     </div>
                                 </div>
-                            ) : (
-                                <div className="shrink-0 pt-4 border-t border-stone-200 dark:border-stone-700 mt-2 text-center">
-                                    <p className="text-[11px] font-bold text-stone-400 bg-stone-50 dark:bg-stone-800 py-3 rounded-xl border border-stone-100 dark:border-stone-700">
-                                        {writeBlockedMsg(openedDynamicApp)}
-                                    </p>
+                            </ModalWrapper>
+                        )
+                    }
+                    {
+                        showProfileEdit && (
+                            <ModalWrapper title="내 정보" icon="user" color="text-teal-500" onClose={() => { setShowProfileEdit(false); setProfileTab('pw'); }}>
+                                <div className="space-y-4">
+                                    {/* 탭 */}
+                                    <div className="flex gap-2 bg-stone-100 dark:bg-stone-800 p-1 rounded-2xl">
+                                        <button onClick={() => setProfileTab('pw')} className={`flex-1 py-2.5 rounded-xl text-[12px] font-black transition-all btn-press ${profileTab === 'pw' ? 'bg-white dark:bg-stone-700 text-teal-600 shadow-sm' : 'text-stone-400'}`}>🔑 비밀번호 변경</button>
+                                        <button onClick={() => setProfileTab('info')} className={`flex-1 py-2.5 rounded-xl text-[12px] font-black transition-all btn-press ${profileTab === 'info' ? 'bg-white dark:bg-stone-700 text-teal-600 shadow-sm' : 'text-stone-400'}`}>👤 내 정보 수정</button>
+                                    </div>
+
+                                    {/* 비밀번호 변경 탭 */}
+                                    {profileTab === 'pw' && (
+                                        <div className="space-y-4 fade-in">
+                                            <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 p-4 rounded-2xl">
+                                                <p className="text-[11px] font-bold text-teal-700 dark:text-teal-300 leading-relaxed">비밀번호는 암호화되어 저장됩니다.<br />초기 비밀번호는 사번과 동일합니다.</p>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black text-stone-500 ml-2">새 비밀번호</label>
+                                                <input type="password" className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-teal-500 transition-colors" placeholder="새 비밀번호 입력" value={profileForm.password || ''} onChange={e => setProfileForm({ ...profileForm, password: e.target.value })} autoFocus />
+                                            </div>
+                                            <button onClick={async () => {
+                                                if (!profileForm.password || profileForm.password.length < 4) return showToast('비밀번호는 4자 이상 입력해주세요.', true);
+                                                const targetEmpId = profileForm.targetEmpId || appUser.empId;
+                                                const originalUser = users.find(u => u.empId === targetEmpId);
+                                                const pwHash = await hashPassword(profileForm.password);
+                                                const updatedUser = { ...originalUser, password: pwHash };
+                                                setUsers((users || []).map(u => u.empId === targetEmpId ? updatedUser : u));
+                                                saveToIDB('users', updatedUser);
+                                                if (appUser && appUser.empId === targetEmpId) setAppUser(updatedUser);
+                                                if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/users`).doc(targetEmpId).set(updatedUser, { merge: true });
+                                                setProfileForm({ ...profileForm, password: '' });
+                                                setShowProfileEdit(false);
+                                                showToast('비밀번호가 변경되었습니다.');
+                                            }} className="w-full bg-teal-600 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[13px]">비밀번호 변경</button>
+                                        </div>
+                                    )}
+
+                                    {/* 내 정보 수정 탭 */}
+                                    {profileTab === 'info' && (
+                                        <div className="space-y-3 fade-in">
+                                            <div><label className="text-[10px] font-black text-stone-500 ml-2">성명</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" value={profileForm.name} onChange={e => setProfileForm({ ...profileForm, name: e.target.value })} /></div>
+                                            <div><label className="text-[10px] font-black text-stone-500 ml-2">소속 파트</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" value={profileForm.part} onChange={e => setProfileForm({ ...profileForm, part: e.target.value })} /></div>
+                                            <div><label className="text-[10px] font-black text-stone-500 ml-2">담당 카테고리</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="예: C&P, LTSF" value={profileForm.category || ''} onChange={e => setProfileForm({ ...profileForm, category: e.target.value })} /></div>
+                                            <div><label className="text-[10px] font-black text-stone-500 ml-2">담당 브랜드 <span className="text-stone-400 font-bold">(검색 가능)</span></label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="예: 샤넬, 디올, 에스티로더" value={profileForm.brands || ''} onChange={e => setProfileForm({ ...profileForm, brands: e.target.value })} /></div>
+                                            <div><label className="text-[10px] font-black text-stone-500 ml-2">개인 내선번호</label><input className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 transition-colors" placeholder="예: 6011" value={profileForm.extNumber || ''} onChange={e => setProfileForm({ ...profileForm, extNumber: e.target.value })} /></div>
+                                            <button onClick={async () => {
+                                                const targetEmpId = profileForm.targetEmpId || appUser.empId;
+                                                const originalUser = users.find(u => u.empId === targetEmpId);
+                                                const newExtNum = (profileForm.extNumber || '').trim();
+                                                const updatedUser = { ...originalUser, name: profileForm.name, part: profileForm.part, category: profileForm.category, brands: profileForm.brands || '', extNumber: newExtNum, position: profileForm.position || originalUser.position, jobTitle: profileForm.jobTitle || originalUser.jobTitle };
+
+                                                // 1. 유저 정보 업데이트
+                                                setUsers((users || []).map(u => u.empId === targetEmpId ? updatedUser : u));
+                                                saveToIDB('users', updatedUser);
+                                                setSchedules((schedules || []).map(s => s.empId === targetEmpId ? { ...s, name: profileForm.name, part: profileForm.part } : s));
+                                                if (appUser && appUser.empId === targetEmpId) setAppUser(updatedUser);
+                                                if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/users`).doc(targetEmpId).set(updatedUser, { merge: true });
+
+                                                // 2. 내선번호 앱 목록 자동 연동 로직
+                                                const existingExt = extensions.find(e => e.id === `ext_${targetEmpId}` || e.user === profileForm.name);
+
+                                                if (newExtNum) {
+                                                    if (existingExt) {
+                                                        // 기존에 내선번호 목록이 있으면 업데이트
+                                                        const updatedExt = { ...existingExt, number: newExtNum, floor: profileForm.part || existingExt.floor, user: profileForm.name };
+                                                        setExtensions(prev => prev.map(e => e.id === existingExt.id ? updatedExt : e));
+                                                        saveToIDB('extensions', updatedExt);
+                                                        if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/extensions`).doc(existingExt.id).set(updatedExt, { merge: true });
+                                                    } else {
+                                                        // 없으면 내선번호 앱에 새로 추가
+                                                        const newExt = { id: `ext_${targetEmpId}`, number: newExtNum, floor: profileForm.part || '', user: profileForm.name, createdAt: new Date().toISOString() };
+                                                        setExtensions(prev => [...(prev || []), newExt]);
+                                                        saveToIDB('extensions', newExt);
+                                                        if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/extensions`).doc(newExt.id).set(newExt);
+                                                    }
+                                                } else if (existingExt && existingExt.id === `ext_${targetEmpId}`) {
+                                                    // 내선번호를 지웠을 경우 연동된 내선번호 데이터도 삭제
+                                                    setExtensions(prev => prev.filter(e => e.id !== existingExt.id));
+                                                    deleteFromIDB('extensions', existingExt.id);
+                                                    if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/extensions`).doc(existingExt.id).delete();
+                                                }
+
+                                                setShowProfileEdit(false);
+                                                showToast('개인 정보 및 내선번호가 연동되었습니다.');
+                                            }} className="w-full bg-teal-600 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[13px] mt-1">정보 업데이트</button>
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                        </ModalWrapper>
-                    )}
+                            </ModalWrapper>
+                        )
+                    }
 
-                    {openedSubmitForm && (
-                        <ModalWrapper title={openedSubmitForm.name} icon={openedSubmitForm.icon} color={openedSubmitForm.color} onClose={() => setOpenedSubmitForm(null)}>
-                            <div className="space-y-4">
-                                <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 p-4 rounded-2xl mb-4"><p className="text-[10px] font-bold text-indigo-600 dark:text-indigo-300 leading-relaxed text-center">이곳에서 제출하신 내용은 <b>본인과 관리자</b>만 열람 가능합니다.<br />안심하고 양식을 작성해 주세요.</p></div>
-                                {canWrite(openedSubmitForm) ? (
-                                    <>
-                                        {!appUser && <input className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none focus:border-indigo-400" placeholder="작성자 성명 (필수)" value={submitFormState.authorName || ''} onChange={e => setSubmitFormState({ ...submitFormState, authorName: e.target.value })} />}
-                                        <textarea className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-5 text-xs font-bold shadow-inner outline-none h-32 resize-none focus:border-indigo-400" placeholder="상세 내용을 입력하세요." value={submitFormState.content} onChange={e => setSubmitFormState({ ...submitFormState, content: e.target.value })}></textarea>
-                                        <div className="flex gap-2">
-                                            <label className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-4 rounded-2xl flex items-center justify-center gap-1.5 cursor-pointer btn-press text-[12px]"><Icon name="camera" size={16} /> {submitFormState.photo ? '사진 변경' : '사진 첨부'}<input type="file" className="hidden" accept="image/*" onChange={(e) => handlePhotoSingle(e, setSubmitFormState)} /></label>
-                                            <button onClick={() => { handleGenericPostSubmit(); setOpenedSubmitForm(null); }} className="w-24 bg-stone-800 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[12px]">접수</button>
-                                        </div>
-                                        {submitFormState.photo && <img src={submitFormState.photo} className="w-full h-32 rounded-2xl object-cover border border-stone-200 dark:border-stone-700 mt-2 shadow-sm" />}
-                                    </>
-                                ) : (<div className="text-center"><p className="text-[11px] font-bold text-stone-400 bg-stone-50 dark:bg-stone-800 py-4 rounded-xl border border-stone-100 dark:border-stone-700">{writeBlockedMsg(openedSubmitForm)}</p></div>)}
-                            </div>
-                        </ModalWrapper>
-                    )}
-
-                    {openedAdminBoard && (
-                        <ModalWrapper title={openedAdminBoard.name} icon={openedAdminBoard.icon} color={openedAdminBoard.color} onClose={() => { setOpenedAdminBoard(null); setSelectedAdminPost(null); }}>
-                            <div className="overflow-y-auto scrollbar-hide flex-1 pb-2">
-                                {canWrite(openedAdminBoard) && !selectedAdminPost && (
-                                    <div className="bg-white dark:bg-stone-800 rounded-[2rem] border border-stone-200 dark:border-stone-700 p-5 mb-5 space-y-3 shadow-sm">
-                                        <p className="text-[11px] font-black text-indigo-600 flex items-center gap-1.5"><Icon name="edit" size={14} /> 공지/자료 등록</p>
-                                        <input className="w-full bg-stone-50 dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-indigo-400" placeholder="제목" value={adminBoardForm.title} onChange={e => setAdminBoardForm({ ...adminBoardForm, title: e.target.value })} />
-                                        <textarea className="w-full bg-stone-50 dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-24 resize-none" placeholder="내용" value={adminBoardForm.content} onChange={e => setAdminBoardForm({ ...adminBoardForm, content: e.target.value })} />
-                                        <label className="flex items-center gap-2 cursor-pointer bg-stone-50 dark:bg-stone-900 border border-dashed border-stone-300 dark:border-stone-600 rounded-xl px-4 py-2.5 btn-press hover:bg-stone-100 transition-colors">
-                                            <Icon name="camera" size={14} className="text-stone-400" /><span className="text-[11px] font-bold text-stone-400">{adminBoardForm.photo ? '사진 변경' : '사진 첨부 (선택)'}</span>
-                                            <input type="file" accept="image/*" className="hidden" onChange={async e => { if (e.target.files[0]) { const b64 = await resizeImage(e.target.files[0]); setAdminBoardForm(prev => ({ ...prev, photos: b64 })); e.target.value = []; } }} />
-                                        </label>
-                                        {adminBoardForm.photo && <div className="relative w-16 h-16"><img src={adminBoardForm.photo} className="w-full h-full object-cover rounded-xl border" /><button onClick={() => setAdminBoardForm(p => ({ ...p, photos: [] }))} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">×</button></div>}
-                                        <div className="flex gap-2"><button onClick={handleAdminBoardPost} className="w-full bg-indigo-600 text-white font-black py-3 rounded-2xl shadow-md btn-press text-[11px]">게시글 등록</button></div>
-                                    </div>
-                                )}
-                                {selectedAdminPost ? (
-                                    <div className="bg-white dark:bg-stone-800 rounded-[2rem] border border-stone-200 dark:border-stone-700 p-6 shadow-sm space-y-4 fade-in">
-                                        <h4 className="text-[16px] font-black text-stone-800 dark:text-stone-200">{selectedAdminPost.title}</h4><p className="text-[10px] text-stone-400 font-bold mt-1">{selectedAdminPost.author} · {formatLocalTime(selectedAdminPost.createdAt)}</p>
-                                        {selectedAdminpost.photos && <img src={selectedAdminpost.photos} className="w-full h-auto rounded-2xl object-cover cursor-pointer" onClick={() => setExpandedImage(selectedAdminpost.photos)} />}
-                                        <div className="border-t border-stone-100 dark:border-stone-700 pt-4"><p className="text-[13px] font-bold text-stone-700 dark:text-stone-300 whitespace-pre-wrap">{selectedAdminPost.content}</p></div>
-                                        <button onClick={() => setSelectedAdminPost(null)} className="w-full bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300 font-black py-3 rounded-2xl btn-press text-[11px]">목록으로</button>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {(dynamicPosts || []).filter(p => p.appId === openedAdminBoard.id).length === 0 && (<div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700"><p className="text-[11px] font-bold text-stone-400">등록된 게시글이 없습니다.</p></div>)}
-                                        {(dynamicPosts || []).filter(p => p.appId === openedAdminBoard.id).map(post => {
-                                            const isUnread = !readNoticeIds.includes(post.id);
-                                            return (
-                                                <div key={post.id} className="flex items-center justify-between bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm group hover:border-indigo-200 transition-colors relative" onClick={() => { if (isUnread) { const next = [...readNoticeIds, post.id]; setReadNoticeIds(next); localStorage.setItem('hmood_read_notices', JSON.stringify(next)); } }}>
-                                                    {isUnread && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full shadow-sm"></div>}
-                                                    <button onClick={() => setSelectedAdminPost(post)} className="flex-1 text-left btn-press"><p className="text-[13px] font-black text-stone-800 dark:text-stone-200 truncate group-hover:text-indigo-600">{post.title}</p><p className="text-[10px] text-stone-400 font-bold mt-1">{post.author} · {formatLocalTime(post.createdAt)}</p></button>
-                                                    {canDelete(openedAdminBoard) && (<button onClick={(e) => handleDeleteDynamicPost(e, post.id)} className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg ml-2 btn-press shadow-sm z-10"><Icon name="trash" size={14} /></button>)}
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        </ModalWrapper>
-                    )}
-
-                    {showExtModal && (
-                        <ModalWrapper title="내선번호 통합 조회" icon="phoneForwarded" color="text-teal-500" onClose={() => setShowExtModal(false)}>
-                            <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl flex items-center gap-2 px-4 py-3 shadow-sm mb-4"><Icon name="search" size={16} className="text-stone-400 shrink-0" /><input type="text" placeholder="번호, 층, 사용자 검색..." value={extSearch} onChange={(e) => setExtSearch(e.target.value)} className="w-full bg-transparent outline-none text-[13px] font-bold text-stone-700 dark:text-stone-300 placeholder-stone-400" /></div>
-                            <div className="overflow-y-auto scrollbar-hide flex-1 space-y-4 pb-2 pr-1">
-                                <div className="bg-rose-50 dark:bg-rose-900/20 p-4 rounded-2xl border border-rose-200 dark:border-rose-800 flex justify-between items-center cursor-pointer btn-press hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors" onClick={(e) => callExtension('6112', '면세보안 (안전실)', e)}><div className="flex flex-col ml-3"><span className="text-[14px] font-black text-rose-700 dark:text-rose-400">면세보안 (안전실)</span><span className="text-[10px] font-bold text-rose-500 mt-0.5">긴급 연락처 고정</span></div><button className="text-[14px] font-black text-white bg-rose-500 px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2"><Icon name="phoneCall" size={16} /> 6112</button></div>
-                                <h4 className="text-[11px] font-black text-stone-400 tracking-widest mb-3 pt-2">전체 연락처</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    {filteredExtensions.map(ext => (
-                                        <div key={ext.id} className="bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-100 dark:border-stone-800 shadow-sm flex justify-between items-center cursor-pointer hover:border-teal-200 transition-colors" onClick={(e) => callExtension(ext?.number, ext?.user, e)}>
-                                            <div className="flex items-center gap-3"><button onClick={(e) => { e.stopPropagation(); toggleFavExt(ext.id); }} className={`${favoriteExts.includes(ext.id) ? 'text-amber-400' : 'text-stone-300'} hover:scale-110 transition-all`}><Icon name={favoriteExts.includes(ext.id) ? 'starFilled' : 'star'} size={20} /></button><div className="flex flex-col"><span className="text-[14px] font-black text-stone-700 dark:text-stone-300">{ext?.user}</span><span className="text-[11px] font-bold text-stone-400 mt-0.5">{ext?.floor}</span></div></div>
-                                            <button className="text-[13px] font-black text-stone-600 dark:text-stone-300 bg-stone-50 dark:bg-stone-800 px-4 py-2.5 rounded-xl btn-press border border-stone-200 dark:border-stone-700 flex items-center gap-2"><Icon name="phoneCall" size={14} /> {ext?.number}</button>
-                                        </div>
+                    {
+                        openedFolder && (
+                            <ModalWrapper title={openedFolder.name} icon="folder" color="text-indigo-500" onClose={() => setOpenedFolder(null)}>
+                                <div className="grid grid-cols-4 gap-4 py-4">
+                                    {(dynamicApps || []).filter(a => a.parentId === openedFolder.id).sort((a, b) => (a.sortOrder || 99) - (b.sortOrder || 99)).map((app, idx) => (
+                                        <button key={idx} className="flex flex-col items-center gap-2 group w-full" onClick={() => { setOpenedFolder(null); handleAppClick(app); }}>
+                                            <div className={`w-14 h-14 ${app.bg} ${app.color} rounded-[1rem] shadow-sm flex items-center justify-center transition-all btn-press`}><Icon name={app.icon} size={22} /></div><span className="text-[10px] font-black text-stone-600 dark:text-stone-300 tracking-tighter whitespace-nowrap overflow-hidden text-ellipsis w-full text-center">{app.name}</span>
+                                        </button>
                                     ))}
                                 </div>
-                            </div>
-                        </ModalWrapper>
-                    )}
+                            </ModalWrapper>
+                        )
+                    }
 
-                    {confirmDialog.isOpen && (
-                        <div className="fixed inset-0 z-[400] flex items-center justify-center p-4 bg-stone-900/80 backdrop-blur-sm fade-in">
-                            <div className="bg-white dark:bg-stone-800 w-full max-w-sm rounded-[3rem] p-8 shadow-2xl text-center">
-                                <p className="text-[14px] font-black text-stone-600 dark:text-stone-300 whitespace-pre-wrap leading-relaxed mb-8 mt-4">{confirmDialog.message}</p>
-                                <div className="flex gap-3">
-                                    <button onClick={confirmDialog.onCancel} className="flex-1 bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300 font-black py-4 rounded-2xl text-[13px] btn-press">취소</button>
-                                    {confirmDialog.telHref ? (<a href={confirmDialog.telHref} onClick={confirmDialog.onCancel} className="flex-1 flex items-center justify-center bg-teal-600 text-white font-black py-4 rounded-2xl text-[13px] decoration-none btn-press">통화 연결</a>) : (<button onClick={confirmDialog.onConfirm} className="flex-1 bg-stone-800 text-white font-black py-4 rounded-2xl text-[13px] btn-press">확인</button>)}
+                    {
+                        openedGuide && (
+                            <ModalWrapper title={openedGuide.name} icon={openedGuide.icon || 'bookOpen'} color={openedGuide.color || 'text-stone-800'} onClose={() => { setOpenedGuide(null); setIsGuideEditMode(false); }}>
+                                <div className="overflow-y-auto scrollbar-hide flex-1 pb-4 space-y-6">
+                                    {isGuideEditMode ? (
+                                        <div className="space-y-4 fade-in">
+                                            <textarea className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-40 resize-none focus:border-teal-500" placeholder="안내 내용을 입력하세요." value={guideEditForm.content} onChange={e => setGuideEditForm({ ...guideEditForm, content: e.target.value })}></textarea>
+                                            <div className="flex items-center gap-2">
+                                                <label className="flex items-center justify-center flex-1 gap-2 cursor-pointer bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 btn-press text-[11px] font-black text-stone-500 hover:bg-stone-50 transition-colors">
+                                                    <Icon name="camera" size={14} /> {guideEditForm.image ? '사진 변경' : '사진 첨부 (선택)'}
+                                                    <input type="file" accept="image/*" className="hidden" onChange={async e => { if (e.target.files[0]) { const b64 = await resizeImage(e.target.files[0]); setGuideEditForm(p => ({ ...p, image: b64 })); e.target.value = ''; } }} />
+                                                </label>
+                                                {guideEditForm.image && <button onClick={() => setGuideEditForm(p => ({ ...p, image: '' }))} className="text-rose-500 font-black text-[11px] px-3 py-3 border border-rose-200 bg-rose-50 rounded-xl btn-press shrink-0">사진 삭제</button>}
+                                            </div>
+                                            {guideEditForm.image && <img src={guideEditForm.image} className="w-full rounded-2xl border border-stone-200 shadow-sm" />}
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {openedGuide.guideImage && <img src={openedGuide.guideImage} className="w-full h-auto max-h-64 object-contain rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm cursor-pointer" onClick={() => setExpandedImage(openedGuide.guideImage)} />}
+                                            {openedGuide.guideContent ? <p className="text-[14px] font-bold text-stone-700 dark:text-stone-300 leading-relaxed whitespace-pre-wrap">{openedGuide.guideContent}</p> : !openedGuide.guideImage ? <div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700"><p className="text-[11px] font-bold text-stone-400">등록된 안내 내용이 없습니다.</p></div> : null}
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* 작성 권한이 있는 경우 버튼 표시 */}
+                                <div className="pt-2 border-t border-stone-100 dark:border-stone-700 space-y-2 shrink-0">
+                                    {canWrite(openedGuide) && !isGuideEditMode && (
+                                        <button onClick={() => { setGuideEditForm({ content: openedGuide.guideContent || '', image: openedGuide.guideImage || '' }); setIsGuideEditMode(true); }} className="w-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-3 rounded-2xl btn-press text-[12px] flex items-center justify-center gap-2"><Icon name="edit" size={16} /> 내용 수정하기</button>
+                                    )}
+                                    {isGuideEditMode ? (
+                                        <div className="flex gap-2">
+                                            <button onClick={() => setIsGuideEditMode(false)} className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 font-black py-4 rounded-2xl btn-press text-[13px]">취소</button>
+                                            <button onClick={async () => {
+                                                const updatedApp = { ...openedGuide, guideContent: guideEditForm.content, guideImage: guideEditForm.image };
+                                                setDynamicApps(prev => prev.map(a => a.id === updatedApp.id ? updatedApp : a));
+                                                saveToIDB('dynamicApps', updatedApp);
+                                                if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_apps`).doc(updatedApp.id).set(updatedApp, { merge: true });
+                                                setOpenedGuide(updatedApp);
+                                                setIsGuideEditMode(false);
+                                                showToast('안내 내용이 저장되었습니다.');
+                                            }} className="flex-1 bg-teal-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[13px]">저장</button>
+                                        </div>
+                                    ) : (
+                                        <button onClick={() => { setOpenedGuide(null); setIsGuideEditMode(false); }} className="w-full bg-stone-800 text-white font-black py-4 rounded-2xl btn-press text-[13px] tracking-widest shrink-0">닫기</button>
+                                    )}
+                                </div>
+                            </ModalWrapper>
+                        )
+                    }
+
+                    {
+                        openedDynamicApp && (
+                            <ModalWrapper
+                                title={openedDynamicApp.name}
+                                icon={openedDynamicApp.icon}
+                                color={openedDynamicApp.color}
+                                onClose={() => setOpenedDynamicApp(null)}
+                            >
+                                {/* ✅ 상단 액션 영역 */}
+                                <div className="flex items-center justify-between gap-2 mb-3">
+                                    <div className="flex-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-2xl flex items-center gap-2 px-4 py-3 shadow-sm">
+                                        <Icon name="search" size={16} className="text-stone-400 shrink-0" />
+                                        <input
+                                            type="text"
+                                            placeholder="게시글 검색..."
+                                            value={boardSearch}
+                                            onChange={(e) => setBoardSearch(e.target.value)}
+                                            className="w-full bg-transparent outline-none text-[13px] font-bold text-stone-700 dark:text-stone-300 placeholder-stone-400"
+                                        />
+                                    </div>
+
+                                    {/* ✅ 엑셀 다운로드 버튼 (관리자 + 제출형) */}
+                                    {isAdminAuth && openedDynamicApp.actionType === 'form' && (
+                                        <button
+                                            onClick={() =>
+                                                downloadPostsExcel(
+                                                    openedDynamicApp.id,
+                                                    openedDynamicApp.name
+                                                )
+                                            }
+                                            className="shrink-0 bg-teal-50 text-teal-600 font-black text-[11px] px-3 py-2 rounded-xl hover:bg-teal-100 btn-press"
+                                        >
+                                            엑셀 다운로드
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* ✅ 게시글 리스트 */}
+                                <div className="overflow-y-auto scrollbar-hide flex-1 space-y-4 pb-2 pr-1">
+                                    {(() => {
+                                        const filtered = (dynamicPosts || []).filter(
+                                            (p) =>
+                                                p.appId === openedDynamicApp.id &&
+                                                (p.content.includes(boardSearch) ||
+                                                    p.author.includes(boardSearch))
+                                        );
+
+                                        if (filtered.length === 0)
+                                            return (
+                                                <div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700">
+                                                    <p className="text-[11px] font-bold text-stone-400">
+                                                        게시글이 없습니다.
+                                                    </p>
+                                                </div>
+                                            );
+
+                                        return filtered.map((post) => (
+                                            <div
+                                                key={post.id}
+                                                className="bg-white dark:bg-stone-800 p-5 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm space-y-3"
+                                            >
+                                                <p className="text-[12px] font-bold text-stone-800 dark:text-stone-200 whitespace-pre-wrap">
+                                                    {post.content}
+                                                </p>
+
+                                                {post.photos && (
+                                                    <img
+                                                        src={post.photos}
+                                                        className="w-full h-auto rounded-xl object-cover cursor-pointer border border-stone-100 dark:border-stone-700"
+                                                        onClick={() => setExpandedImage(post.photos)}
+                                                    />
+                                                )}
+
+                                                <div className="flex justify-between items-center text-[9px] text-stone-400 font-black mt-2 pt-2 border-t border-stone-50 dark:border-stone-700">
+                                                    <span>{post.author}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span>{formatLocalTime(post.createdAt)}</span>
+                                                        {canDelete(openedDynamicApp) && (
+                                                            <button
+                                                                onClick={(e) =>
+                                                                    handleDeleteDynamicPost(e, post.id)
+                                                                }
+                                                                className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg ml-2 btn-press shadow-sm"
+                                                            >
+                                                                <Icon name="trash" size={14} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ));
+                                    })()}
+                                </div>
+
+                                {/* ✅ 하단 작성 영역 */}
+                                {canWrite(openedDynamicApp) ? (
+                                    <div className="shrink-0 pt-4 border-t border-stone-200 dark:border-stone-700 mt-2 space-y-3">
+                                        {!appUser && (
+                                            <input
+                                                className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-stone-400"
+                                                placeholder="작성자 성명 (필수)"
+                                                value={submitFormState.authorName || ''}
+                                                onChange={(e) =>
+                                                    setSubmitFormState({
+                                                        ...submitFormState,
+                                                        authorName: e.target.value,
+                                                    })
+                                                }
+                                            />
+                                        )}
+
+                                        <textarea
+                                            className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-20 resize-none focus:border-indigo-300"
+                                            placeholder="자유롭게 글을 남겨주세요."
+                                            value={submitFormState.content}
+                                            onChange={(e) =>
+                                                setSubmitFormState({
+                                                    ...submitFormState,
+                                                    content: e.target.value,
+                                                })
+                                            }
+                                        />
+
+                                        <div className="flex gap-2">
+                                            <label className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer btn-press text-[11px]">
+                                                <Icon name="camera" size={14} />{' '}
+                                                {submitFormState.photo ? '사진 변경' : '사진 첨부'}
+                                                <input
+                                                    type="file"
+                                                    className="hidden"
+                                                    accept="image/*"
+                                                    onChange={(e) =>
+                                                        handlePhotoSingle(e, setSubmitFormState)
+                                                    }
+                                                />
+                                            </label>
+
+                                            <button
+                                                onClick={handleGenericPostSubmit}
+                                                className="flex-1 bg-stone-800 text-white font-black py-3 rounded-xl shadow-md btn-press text-[11px]"
+                                            >
+                                                게시글 등록
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="shrink-0 pt-4 border-t border-stone-200 dark:border-stone-700 mt-2 text-center">
+                                        <p className="text-[11px] font-bold text-stone-400 bg-stone-50 dark:bg-stone-800 py-3 rounded-xl border border-stone-100 dark:border-stone-700">
+                                            {writeBlockedMsg(openedDynamicApp)}
+                                        </p>
+                                    </div>
+                                )}
+                            </ModalWrapper>
+                        )
+                    }
+
+                    {
+                        openedSubmitForm && (
+                            <ModalWrapper title={openedSubmitForm.name} icon={openedSubmitForm.icon} color={openedSubmitForm.color} onClose={() => setOpenedSubmitForm(null)}>
+                                <div className="space-y-4">
+                                    <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 p-4 rounded-2xl mb-4"><p className="text-[10px] font-bold text-indigo-600 dark:text-indigo-300 leading-relaxed text-center">이곳에서 제출하신 내용은 <b>본인과 관리자</b>만 열람 가능합니다.<br />안심하고 양식을 작성해 주세요.</p></div>
+                                    {canWrite(openedSubmitForm) ? (
+                                        <>
+                                            {!appUser && <input className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none focus:border-indigo-400" placeholder="작성자 성명 (필수)" value={submitFormState.authorName || ''} onChange={e => setSubmitFormState({ ...submitFormState, authorName: e.target.value })} />}
+                                            <textarea className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-5 text-xs font-bold shadow-inner outline-none h-32 resize-none focus:border-indigo-400" placeholder="상세 내용을 입력하세요." value={submitFormState.content} onChange={e => setSubmitFormState({ ...submitFormState, content: e.target.value })}></textarea>
+                                            <div className="flex gap-2">
+                                                <label className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-4 rounded-2xl flex items-center justify-center gap-1.5 cursor-pointer btn-press text-[12px]"><Icon name="camera" size={16} /> {submitFormState.photo ? '사진 변경' : '사진 첨부'}<input type="file" className="hidden" accept="image/*" onChange={(e) => handlePhotoSingle(e, setSubmitFormState)} /></label>
+                                                <button onClick={() => { handleGenericPostSubmit(); setOpenedSubmitForm(null); }} className="w-24 bg-stone-800 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[12px]">접수</button>
+                                            </div>
+                                            {submitFormState.photo && <img src={submitFormState.photo} className="w-full h-32 rounded-2xl object-cover border border-stone-200 dark:border-stone-700 mt-2 shadow-sm" />}
+                                        </>
+                                    ) : (<div className="text-center"><p className="text-[11px] font-bold text-stone-400 bg-stone-50 dark:bg-stone-800 py-4 rounded-xl border border-stone-100 dark:border-stone-700">{writeBlockedMsg(openedSubmitForm)}</p></div>)}
+                                </div>
+                            </ModalWrapper>
+                        )
+                    }
+
+                    {
+                        openedAdminBoard && (
+                            <ModalWrapper title={openedAdminBoard.name} icon={openedAdminBoard.icon} color={openedAdminBoard.color} onClose={() => { setOpenedAdminBoard(null); setSelectedAdminPost(null); }}>
+                                <div className="overflow-y-auto scrollbar-hide flex-1 pb-2">
+                                    {canWrite(openedAdminBoard) && !selectedAdminPost && (
+                                        <div className="bg-white dark:bg-stone-800 rounded-[2rem] border border-stone-200 dark:border-stone-700 p-5 mb-5 space-y-3 shadow-sm">
+                                            <p className="text-[11px] font-black text-indigo-600 flex items-center gap-1.5"><Icon name="edit" size={14} /> 공지/자료 등록</p>
+                                            <input className="w-full bg-stone-50 dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-indigo-400" placeholder="제목" value={adminBoardForm.title} onChange={e => setAdminBoardForm({ ...adminBoardForm, title: e.target.value })} />
+                                            <textarea className="w-full bg-stone-50 dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-24 resize-none" placeholder="내용" value={adminBoardForm.content} onChange={e => setAdminBoardForm({ ...adminBoardForm, content: e.target.value })} />
+                                            <label className="flex items-center gap-2 cursor-pointer bg-stone-50 dark:bg-stone-900 border border-dashed border-stone-300 dark:border-stone-600 rounded-xl px-4 py-2.5 btn-press hover:bg-stone-100 transition-colors">
+                                                <Icon name="camera" size={14} className="text-stone-400" /><span className="text-[11px] font-bold text-stone-400">{adminBoardForm.photo ? '사진 변경' : '사진 첨부 (선택)'}</span>
+                                                <input type="file" accept="image/*" className="hidden" onChange={async e => { if (e.target.files[0]) { const b64 = await resizeImage(e.target.files[0]); setAdminBoardForm(prev => ({ ...prev, photos: b64 })); e.target.value = []; } }} />
+                                            </label>
+                                            {adminBoardForm.photo && <div className="relative w-16 h-16"><img src={adminBoardForm.photo} className="w-full h-full object-cover rounded-xl border" /><button onClick={() => setAdminBoardForm(p => ({ ...p, photos: [] }))} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">×</button></div>}
+                                            <div className="flex gap-2"><button onClick={handleAdminBoardPost} className="w-full bg-indigo-600 text-white font-black py-3 rounded-2xl shadow-md btn-press text-[11px]">게시글 등록</button></div>
+                                        </div>
+                                    )}
+                                    {selectedAdminPost ? (
+                                        <div className="bg-white dark:bg-stone-800 rounded-[2rem] border border-stone-200 dark:border-stone-700 p-6 shadow-sm space-y-4 fade-in">
+                                            <h4 className="text-[16px] font-black text-stone-800 dark:text-stone-200">{selectedAdminPost.title}</h4><p className="text-[10px] text-stone-400 font-bold mt-1">{selectedAdminPost.author} · {formatLocalTime(selectedAdminPost.createdAt)}</p>
+                                            {selectedAdminpost.photos && <img src={selectedAdminpost.photos} className="w-full h-auto rounded-2xl object-cover cursor-pointer" onClick={() => setExpandedImage(selectedAdminpost.photos)} />}
+                                            <div className="border-t border-stone-100 dark:border-stone-700 pt-4"><p className="text-[13px] font-bold text-stone-700 dark:text-stone-300 whitespace-pre-wrap">{selectedAdminPost.content}</p></div>
+                                            <button onClick={() => setSelectedAdminPost(null)} className="w-full bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300 font-black py-3 rounded-2xl btn-press text-[11px]">목록으로</button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {(dynamicPosts || []).filter(p => p.appId === openedAdminBoard.id).length === 0 && (<div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700"><p className="text-[11px] font-bold text-stone-400">등록된 게시글이 없습니다.</p></div>)}
+                                            {(dynamicPosts || []).filter(p => p.appId === openedAdminBoard.id).map(post => {
+                                                const isUnread = !readNoticeIds.includes(post.id);
+                                                return (
+                                                    <div key={post.id} className="flex items-center justify-between bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm group hover:border-indigo-200 transition-colors relative" onClick={() => { if (isUnread) { const next = [...readNoticeIds, post.id]; setReadNoticeIds(next); localStorage.setItem('hmood_read_notices', JSON.stringify(next)); } }}>
+                                                        {isUnread && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full shadow-sm"></div>}
+                                                        <button onClick={() => setSelectedAdminPost(post)} className="flex-1 text-left btn-press"><p className="text-[13px] font-black text-stone-800 dark:text-stone-200 truncate group-hover:text-indigo-600">{post.title}</p><p className="text-[10px] text-stone-400 font-bold mt-1">{post.author} · {formatLocalTime(post.createdAt)}</p></button>
+                                                        {canDelete(openedAdminBoard) && (<button onClick={(e) => handleDeleteDynamicPost(e, post.id)} className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg ml-2 btn-press shadow-sm z-10"><Icon name="trash" size={14} /></button>)}
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            </ModalWrapper>
+                        )
+                    }
+
+                    {
+                        showExtModal && (
+                            <ModalWrapper title="내선번호 통합 조회" icon="phoneForwarded" color="text-teal-500" onClose={() => setShowExtModal(false)}>
+                                <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl flex items-center gap-2 px-4 py-3 shadow-sm mb-4"><Icon name="search" size={16} className="text-stone-400 shrink-0" /><input type="text" placeholder="번호, 층, 사용자 검색..." value={extSearch} onChange={(e) => setExtSearch(e.target.value)} className="w-full bg-transparent outline-none text-[13px] font-bold text-stone-700 dark:text-stone-300 placeholder-stone-400" /></div>
+                                <div className="overflow-y-auto scrollbar-hide flex-1 space-y-4 pb-2 pr-1">
+                                    <div className="bg-rose-50 dark:bg-rose-900/20 p-4 rounded-2xl border border-rose-200 dark:border-rose-800 flex justify-between items-center cursor-pointer btn-press hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors" onClick={(e) => callExtension('6112', '면세보안 (안전실)', e)}><div className="flex flex-col ml-3"><span className="text-[14px] font-black text-rose-700 dark:text-rose-400">면세보안 (안전실)</span><span className="text-[10px] font-bold text-rose-500 mt-0.5">긴급 연락처 고정</span></div><button className="text-[14px] font-black text-white bg-rose-500 px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2"><Icon name="phoneCall" size={16} /> 6112</button></div>
+                                    <h4 className="text-[11px] font-black text-stone-400 tracking-widest mb-3 pt-2">전체 연락처</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {filteredExtensions.map(ext => (
+                                            <div key={ext.id} className="bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-100 dark:border-stone-800 shadow-sm flex justify-between items-center cursor-pointer hover:border-teal-200 transition-colors" onClick={(e) => callExtension(ext?.number, ext?.user, e)}>
+                                                <div className="flex items-center gap-3"><button onClick={(e) => { e.stopPropagation(); toggleFavExt(ext.id); }} className={`${favoriteExts.includes(ext.id) ? 'text-amber-400' : 'text-stone-300'} hover:scale-110 transition-all`}><Icon name={favoriteExts.includes(ext.id) ? 'starFilled' : 'star'} size={20} /></button><div className="flex flex-col"><span className="text-[14px] font-black text-stone-700 dark:text-stone-300">{ext?.user}</span><span className="text-[11px] font-bold text-stone-400 mt-0.5">{ext?.floor}</span></div></div>
+                                                <button className="text-[13px] font-black text-stone-600 dark:text-stone-300 bg-stone-50 dark:bg-stone-800 px-4 py-2.5 rounded-xl btn-press border border-stone-200 dark:border-stone-700 flex items-center gap-2"><Icon name="phoneCall" size={14} /> {ext?.number}</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </ModalWrapper>
+                        )
+                    }
+
+                    {
+                        confirmDialog.isOpen && (
+                            <div className="fixed inset-0 z-[400] flex items-center justify-center p-4 bg-stone-900/80 backdrop-blur-sm fade-in">
+                                <div className="bg-white dark:bg-stone-800 w-full max-w-sm rounded-[3rem] p-8 shadow-2xl text-center">
+                                    <p className="text-[14px] font-black text-stone-600 dark:text-stone-300 whitespace-pre-wrap leading-relaxed mb-8 mt-4">{confirmDialog.message}</p>
+                                    <div className="flex gap-3">
+                                        <button onClick={confirmDialog.onCancel} className="flex-1 bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300 font-black py-4 rounded-2xl text-[13px] btn-press">취소</button>
+                                        {confirmDialog.telHref ? (<a href={confirmDialog.telHref} onClick={confirmDialog.onCancel} className="flex-1 flex items-center justify-center bg-teal-600 text-white font-black py-4 rounded-2xl text-[13px] decoration-none btn-press">통화 연결</a>) : (<button onClick={confirmDialog.onConfirm} className="flex-1 bg-stone-800 text-white font-black py-4 rounded-2xl text-[13px] btn-press">확인</button>)}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )
+                    }
 
                     {/* 월간 셀 말풍선 팝업 */}
-                    {expandedCell && (
-                        <div className="fixed inset-0 z-[200]" onClick={() => setExpandedCell(null)}>
-                            <div
-                                className="absolute z-[201] pointer-events-none"
-                                style={{
-                                    left: Math.min(expandedCell.rect.left + expandedCell.rect.width / 2, window.innerWidth - 120),
-                                    top: expandedCell.rect.bottom + 6,
-                                    transform: 'translateX(-50%)'
-                                }}
-                            >
-                                <div className={`px-3 py-2 rounded-xl shadow-xl text-[12px] font-black whitespace-nowrap border ${STATUS_THEME[expandedCell.status] || 'bg-stone-800 text-white border-stone-700'}`}
-                                    style={STATUS_INLINE_STYLE[expandedCell.status] || {}}>
-                                    {expandedCell.status}
+                    {
+                        expandedCell && (
+                            <div className="fixed inset-0 z-[200]" onClick={() => setExpandedCell(null)}>
+                                <div
+                                    className="absolute z-[201] pointer-events-none"
+                                    style={{
+                                        left: Math.min(expandedCell.rect.left + expandedCell.rect.width / 2, window.innerWidth - 120),
+                                        top: expandedCell.rect.bottom + 6,
+                                        transform: 'translateX(-50%)'
+                                    }}
+                                >
+                                    <div className={`px-3 py-2 rounded-xl shadow-xl text-[12px] font-black whitespace-nowrap border ${STATUS_THEME[expandedCell.status] || 'bg-stone-800 text-white border-stone-700'}`}
+                                        style={STATUS_INLINE_STYLE[expandedCell.status] || {}}>
+                                        {expandedCell.status}
+                                    </div>
+                                    <div className="w-2 h-2 mx-auto -mt-1 rotate-45 rounded-sm"
+                                        style={{ background: 'inherit' }}
+                                    />
                                 </div>
-                                <div className="w-2 h-2 mx-auto -mt-1 rotate-45 rounded-sm"
-                                    style={{ background: 'inherit' }}
-                                />
                             </div>
-                        </div>
-                    )}
+                        )
+                    }
 
-                    {expandedImage && (
-                        <div className="fixed inset-0 z-[300] bg-black/90 flex items-center justify-center p-4 fade-in cursor-pointer" onClick={() => setExpandedImage(null)}>
-                            <img src={expandedImage} className="max-w-full max-h-full rounded-2xl object-contain shadow-2xl cursor-auto" onClick={e => e.stopPropagation()} />
-                            <button className="absolute top-6 right-6 text-white p-3 bg-white/20 hover:bg-white/40 rounded-full btn-press"><Icon name="x" size={28} /></button>
-                        </div>
-                    )}
+                    {
+                        expandedImage && (
+                            <div className="fixed inset-0 z-[300] bg-black/90 flex items-center justify-center p-4 fade-in cursor-pointer" onClick={() => setExpandedImage(null)}>
+                                <img src={expandedImage} className="max-w-full max-h-full rounded-2xl object-contain shadow-2xl cursor-auto" onClick={e => e.stopPropagation()} />
+                                <button className="absolute top-6 right-6 text-white p-3 bg-white/20 hover:bg-white/40 rounded-full btn-press"><Icon name="x" size={28} /></button>
+                            </div>
+                        )
+                    }
 
-                    {toast && (
-                        <div className={`fixed top-24 left-1/2 -translate-x-1/2 z-[400] backdrop-blur-md px-10 py-5 rounded-[2rem] shadow-2xl font-black text-[13px] flex items-center gap-3 border ${toastError ? 'bg-rose-500/95 text-white border-rose-400' : 'bg-stone-800/95 text-white border-white/10'}`}>
-                            <Icon name={toastError ? "alertCircle" : "checkCircle"} size={18} className={toastError ? "text-white" : "text-teal-400"} />
-                            {toast}
-                        </div>
-                    )}
-                </div>
+                    {
+                        toast && (
+                            <div className={`fixed top-24 left-1/2 -translate-x-1/2 z-[400] backdrop-blur-md px-10 py-5 rounded-[2rem] shadow-2xl font-black text-[13px] flex items-center gap-3 border ${toastError ? 'bg-rose-500/95 text-white border-rose-400' : 'bg-stone-800/95 text-white border-white/10'}`}>
+                                <Icon name={toastError ? "alertCircle" : "checkCircle"} size={18} className={toastError ? "text-white" : "text-teal-400"} />
+                                {toast}
+                            </div>
+                        )
+                    }
+                </div >
             );
         }
         const root = ReactDOM.createRoot(document.getElementById('root')); root.render(<App />);
