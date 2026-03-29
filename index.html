@@ -433,16 +433,17 @@
             // ✅ N뱃지 기준 팝업 대상 (N뱃지 == 팝업)
             const unreadPopupTargets = useMemo(() => {
                 return (dynamicApps || []).filter(app => {
-                    // 제외
                     if (['form', 'reservation'].includes(app.actionType)) return false;
 
-                    // 현장 실시간 공지 위젯
+                    // ✅ 공지는 notices 기준
                     if (app.actionType === 'widget_notices') {
-                        return (notices || []).some(n => !readNoticeIds.includes(n.id));
+                        return notices.some(n => !readNoticeIds.includes(n.id));
                     }
 
-                    // ✅ 나머지는 N뱃지 기준 그대로 사용
-                    return checkNewBadge(app.id);
+                    // ✅ 일반 게시판: 해당 앱의 게시글 중 안 읽은 게 하나라도 있으면 포함
+                    return dynamicPosts.some(
+                        p => p.appId === app.id && !readNoticeIds.includes(p.id)
+                    );
                 });
             }, [dynamicApps, notices, readNoticeIds, checkNewBadge]);
 
@@ -452,8 +453,7 @@
             const popupShownRef = useRef(false);
 
             useEffect(() => {
-                const hash = window.location.hash;
-                const mode = new URLSearchParams(hash.split('?')[1] || '').get('mode');
+                const mode = new URLSearchParams(window.location.search).get('mode');
 
                 if (
                     mode === 'shared' &&
@@ -463,7 +463,7 @@
                     popupShownRef.current = true;
                     setShowNewPostPopup(true);
                 }
-            }, [unreadPopupTargets.length]);
+            }, [unreadPopupTargets]);
 
             useEffect(() => {
                 console.log(
@@ -833,8 +833,7 @@
             const checkNewBadge = useCallback((targetAppId) => {
                 // ✅ [패치] 헬스키퍼(reservation)는 N 뱃지 대상 아님
                 const app = dynamicApps.find(a => a.id === targetAppId);
-                if (app?.actionType === 'reservation') return false;
-
+                if (app?.actionType === 'form' || app?.actionType === 'reservation') return false;
                 if (!dynamicPosts || dynamicPosts.length === 0) return false;
 
                 const appPosts = dynamicPosts.filter(p => p.appId === targetAppId);
@@ -1253,11 +1252,23 @@
                     (dynamicPosts || []).filter(p => p.appId === app.id).forEach(p => markAsRead(p.id)); // [수정]
                     return;
                 }
+
                 if (type === 'notice' || type === 'admin_board') {
-                    setOpenedAdminBoard(app); setSelectedAdminPost(null);
-                    (dynamicPosts || []).filter(p => p.appId === app.id).forEach(p => markAsRead(p.id)); // [수정]
+                    setOpenedAdminBoard(app);
+                    setSelectedAdminPost(null);
+
+                    // ✅ 관리자 게시판 글
+                    (dynamicPosts || [])
+                        .filter(p => p.appId === app.id)
+                        .forEach(p => markAsRead(p.id));
+
+                    // ✅ 공지 위젯 글
+                    (notices || [])
+                        .forEach(n => markAsRead(n.id));
+
                     return;
                 }
+
                 if (type === 'guide' || type === 'simple_guide' || type === 'link_manual') { setOpenedGuide(app); return; }
                 if (type === 'reservation') { setOpenedReservationApp(app); setResSelectedDate(todayStr); return; }
                 if (type === 'link' || type === 'external_url') { if (app.url && app.url.trim() !== '') window.open(app.url, '_blank', 'noopener,noreferrer'); else showToast('링크가 없습니다.', true); return; }
