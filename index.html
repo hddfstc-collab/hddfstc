@@ -3354,35 +3354,28 @@
 
                     </main>
 
-                    {showNewPostPopup && unreadPosts.length > 0 && (
+                    {/* ✅ N뱃지 기준 새 소식 팝업 */}
+                    {showNewPostPopup && unreadPopupTargets.length > 0 && (
                         <ModalWrapper
                             title="새 소식이 있습니다"
                             icon="bell"
                             onClose={() => setShowNewPostPopup(false)}
                         >
                             <div className="space-y-3">
-                                {unreadPosts.slice(0, 5).map(post => (
+                                {unreadPopupTargets.slice(0, 5).map(app => (
                                     <button
-                                        key={post.id}
+                                        key={app.id}
                                         onClick={() => {
-                                            markPostAsRead(post.id);
-
-                                            const targetApp = dynamicApps.find(
-                                                a => a.id === post.appId
-                                            );
-                                            if (targetApp) {
-                                                setOpenedDynamicApp(targetApp);
-                                            }
-
+                                            handleAppClick(app);   // 공지/게시판 해당 화면으로 이동
                                             setShowNewPostPopup(false);
                                         }}
                                         className="w-full text-left bg-stone-50 hover:bg-stone-100 p-3 rounded-xl"
                                     >
                                         <p className="text-[12px] font-black text-stone-800 truncate">
-                                            {post.title || post.content?.slice(0, 30)}
+                                            {app.name}
                                         </p>
                                         <p className="text-[10px] text-stone-500 mt-1">
-                                            {formatLocalTime(post.createdAt)}
+                                            안 읽은 새 콘텐츠가 있습니다
                                         </p>
                                     </button>
                                 ))}
