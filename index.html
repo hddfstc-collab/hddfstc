@@ -429,47 +429,47 @@
                     .filter(p => !readPostIds.includes(p.id))
                     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             }, [dynamicPosts, readPostIds]);
-            // ✅ N뱃지 기준 팝업 대상 계산 (공지 + 게시판)
+
+            // ✅ N뱃지 기준 팝업 대상 계산 (공지 위젯 + 게시판)
             const unreadPopupTargets = useMemo(() => {
-                return (dynamicApps || []).filter(app => {
-                    // ❌ 제출형 / 예약형 제외
-                    if (['form', 'reservation'].includes(app.actionType)) return false;
+                const result = [];
 
-                    // ✅ 공지 / 관리자 게시판
-                    if (
-                        app.actionType === 'widget_notices' ||
-                        app.actionType === 'notice' ||
-                        app.actionType === 'admin_board'
-                    ) {
-                        return (notices || []).some(
-                            n => !readNoticeIds.includes(n.id)
-                        );
-                    }
-
-                    // ✅ 일반 게시판
-                    return (dynamicPosts || []).some(
-                        p =>
-                            p.appId === app.id &&
-                            !readPostIds.includes(p.id)
+                // ✅ 1. 현장 실시간 공지 위젯 (notices 기준)
+                if ((notices || []).some(n => !readNoticeIds.includes(n.id))) {
+                    const noticeWidget = (dynamicApps || []).find(
+                        a => a.actionType === 'widget_notices'
                     );
+                    if (noticeWidget) {
+                        result.push(noticeWidget);
+                    }
+                }
+
+                // ✅ 2. 일반 게시판 / 관리자 게시판
+                (dynamicApps || []).forEach(app => {
+                    if (['form', 'reservation', 'widget_notices'].includes(app.actionType)) return;
+
+                    const hasUnread = (dynamicPosts || []).some(
+                        p => p.appId === app.id && !readPostIds.includes(p.id)
+                    );
+
+                    if (hasUnread) {
+                        result.push(app);
+                    }
                 });
+
+                return result;
             }, [dynamicApps, notices, readNoticeIds, dynamicPosts, readPostIds]);
-
-            useEffect(() => {
-                alert('view = ' + view);
-            }, [view]);
-
-            useEffect(() => {
-                alert('unreadPopupTargets length = ' + unreadPopupTargets.length);
-            }, [unreadPopupTargets.length]);
 
 
             // ✅ 파트너스(shared) 진입 시 N뱃지 대상 팝업
+
             useEffect(() => {
-                if (view === 'shared' && unreadPopupTargets.length > 0) {
+                const mode = new URLSearchParams(window.location.search).get('mode');
+                if (mode === 'shared' && unreadPopupTargets.length > 0) {
                     setShowNewPostPopup(true);
                 }
-            }, [view, unreadPopupTargets.length]);
+            }, [unreadPopupTargets.length]);
+
 
 
             // ==================================================
@@ -2246,8 +2246,7 @@
                                 </div>
                             )}
 
-                            {/* SHARED VIEW (협력사 파트너스 뷰) */}
-                            {/* SHARED VIEW (협력사 파트너스 뷰) */}
+                              {/* SHARED VIEW (협력사 파트너스 뷰) */}
                             {view === 'shared' && (
                                 <div className="space-y-5 max-w-2xl mx-auto pb-10 mt-2 fade-in">
                                     <div className="flex justify-between items-center mb-4 px-2">
