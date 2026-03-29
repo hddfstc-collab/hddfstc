@@ -462,14 +462,23 @@
 
 
             // ✅ 파트너스(shared) 진입 시 N뱃지 대상 팝업
+
+            const popupShownRef = useRef(false);
+
             useEffect(() => {
-                const hash = window.location.hash; // "#/?mode=shared"
+                const hash = window.location.hash;
                 const mode = new URLSearchParams(hash.split('?')[1] || '').get('mode');
 
-                if (mode === 'shared' && unreadPopupTargets.length > 0) {
+                if (
+                    mode === 'shared' &&
+                    unreadPopupTargets.length > 0 &&
+                    !popupShownRef.current
+                ) {
+                    popupShownRef.current = true;
                     setShowNewPostPopup(true);
                 }
             }, [unreadPopupTargets.length]);
+
 
 
             // ==================================================
