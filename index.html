@@ -430,35 +430,21 @@
                     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             }, [dynamicPosts, readPostIds]);
 
-            // ✅ N뱃지 기준 팝업 대상 계산 (공지 위젯 + 게시판)
+            // ✅ N뱃지 기준 팝업 대상 (N뱃지 == 팝업)
             const unreadPopupTargets = useMemo(() => {
-                const result = [];
+                return (dynamicApps || []).filter(app => {
+                    // 제외
+                    if (['form', 'reservation'].includes(app.actionType)) return false;
 
-                // ✅ 1. 현장 실시간 공지 위젯 (notices 기준)
-                if ((notices || []).some(n => !readNoticeIds.includes(n.id))) {
-                    const noticeWidget = (dynamicApps || []).find(
-                        a => a.actionType === 'widget_notices'
-                    );
-                    if (noticeWidget) {
-                        result.push(noticeWidget);
+                    // 현장 실시간 공지 위젯
+                    if (app.actionType === 'widget_notices') {
+                        return (notices || []).some(n => !readNoticeIds.includes(n.id));
                     }
-                }
 
-                // ✅ 2. 일반 게시판 / 관리자 게시판
-                (dynamicApps || []).forEach(app => {
-                    if (['form', 'reservation', 'widget_notices'].includes(app.actionType)) return;
-
-                    const hasUnread = (dynamicPosts || []).some(
-                        p => p.appId === app.id && !readPostIds.includes(p.id)
-                    );
-
-                    if (hasUnread) {
-                        result.push(app);
-                    }
+                    // ✅ 나머지는 N뱃지 기준 그대로 사용
+                    return checkNewBadge(app.id);
                 });
-
-                return result;
-            }, [dynamicApps, notices, readNoticeIds, dynamicPosts, readPostIds]);
+            }, [dynamicApps, notices, readNoticeIds, checkNewBadge]);
 
 
             // ✅ 파트너스(shared) 진입 시 N뱃지 대상 팝업
