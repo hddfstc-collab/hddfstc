@@ -517,13 +517,15 @@
             const [extensions, setExtensions] = useState([]);
             const [dynamicApps, setDynamicApps] = useState([]);
             const [dynamicPosts, setDynamicPosts] = useState([]);
+            
             // ✅ 1. URL 파라미터 감시 및 viewMode 상태 동기화
             useEffect(() => {
                 const params = new URLSearchParams(window.location.search);
                 const mode = params.get('mode');
+                // 변수명을 view -> viewMode로 전부 수정했습니다.
                 if (mode === 'shared' && viewMode !== 'shared') {
                     console.log("VIEW 동기화: shared 모드로 전환");
-                    setViewMode('shared'); // view -> viewMode로 수정
+                    setViewMode('shared');
                 }
             }, [viewMode]);
 
@@ -535,9 +537,11 @@
 
                 return apps.filter(app => {
                     if (['form', 'reservation'].includes(app.actionType)) return false;
+
                     if (app.actionType === 'widget_notices') {
                         return currentNotices.some(n => !readNoticeIds.includes(n.id));
                     }
+
                     return posts.some(p => {
                         if (p.appId !== app.id) return false;
                         const postDate = new Date(p.createdAt);
@@ -549,11 +553,11 @@
 
             // ✅ 3. 팝업 실행 스위치
             useEffect(() => {
+                // 여기서도 view -> viewMode로 수정했습니다.
                 const isSharedMode = viewMode === 'shared' || new URLSearchParams(window.location.search).get('mode') === 'shared';
                 
-                console.log("POPUP CHECK -> 모드:", isSharedMode, "대상:", unreadPopupTargets.length);
-
                 if (isSharedMode && unreadPopupTargets.length > 0 && !popupShownRef.current) {
+                    console.log("🚀 새 소식 팝업 실행!");
                     popupShownRef.current = true;
                     setShowNewPostPopup(true);
                 }
@@ -3001,6 +3005,7 @@
                                                             )}
                                                         </div>
 
+
                                                         {/* 예약 리스트 */}
                                                         <div className="max-h-[500px] overflow-y-auto scrollbar-hide space-y-3 pr-1">
                                                             {dynamicPosts.filter(p => p.type === 'reservation').length === 0 ? (
@@ -3017,35 +3022,39 @@
                                                                         >
                                                                             <div className="flex flex-col gap-1 w-full mr-2">
                                                                                 <span
-                                                                                    className={`${isLargeTextMode ? 'text-2xl mb-1' : 'text-[13px]'
-                                                                                        } font-black text-stone-800 dark:text-stone-200`}
+                                                                                    className={
+                                                                                        `${isLargeTextMode ? 'text-2xl mb-1' : 'text-[13px]'} font-black text-stone-800 dark:text-stone-200`
+                                                                                    }
                                                                                 >
                                                                                     {res.author}{' '}
                                                                                     <span
-                                                                                        className={`${isLargeTextMode
-                                                                                            ? 'text-base font-bold'
-                                                                                            : 'text-[10px] font-normal'
-                                                                                            } text-stone-400`}
+                                                                                        className={
+                                                                                            `${isLargeTextMode ? 'text-base font-bold' : 'text-[10px] font-normal'} text-stone-400`
+                                                                                        }
                                                                                     >
                                                                                         ({res.ext || '내선없음'})
                                                                                     </span>
                                                                                 </span>
 
                                                                                 <span
-                                                                                    className={`${isLargeTextMode
-                                                                                        ? 'text-lg bg-pink-50 dark:bg-pink-900/30 p-2 rounded-xl mt-1 inline-block'
-                                                                                        : 'text-[10px]'
-                                                                                        } font-bold text-pink-600 w-fit`}
+                                                                                    className={
+                                                                                        `${isLargeTextMode
+                                                                                            ? 'text-lg bg-pink-50 dark:bg-pink-900/30 p-2 rounded-xl mt-1 inline-block'
+                                                                                            : 'text-[10px]'
+                                                                                        } font-bold text-pink-600 w-fit`
+                                                                                    }
                                                                                 >
                                                                                     {res.resDate} {res.resTime}
                                                                                 </span>
 
                                                                                 {res.content && (
                                                                                     <span
-                                                                                        className={`${isLargeTextMode
-                                                                                            ? 'text-sm mt-2 font-bold p-3 bg-stone-50 dark:bg-stone-800 rounded-xl'
-                                                                                            : 'text-[10px] line-clamp-1 mt-1'
-                                                                                            } text-stone-500`}
+                                                                                        className={
+                                                                                            `${isLargeTextMode
+                                                                                                ? 'text-sm mt-2 font-bold p-3 bg-stone-50 dark:bg-stone-800 rounded-xl'
+                                                                                                : 'text-[10px] line-clamp-1 mt-1'
+                                                                                            } text-stone-500`
+                                                                                        }
                                                                                     >
                                                                                         비고: {res.content}
                                                                                     </span>
@@ -3053,17 +3062,16 @@
                                                                             </div>
 
                                                                             <button
-                                                                                onClick={() => handleReservationCancel(res.id)}
-                                                                                className={`bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white ${isLargeTextMode ? 'p-4' : 'p-2.5'
-                                                                                    } rounded-xl transition-colors btn-press shrink-0`}
-                                                                            >
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();      // ✅ 핵심
-                                                                                    handleReservationCancel(post.id);
+                                                                                onClick={e => {
+                                                                                    e.stopPropagation();
+                                                                                    handleReservationCancel(res?.id || post?.id);
                                                                                 }}
-                                                                                className="text-rose-500 text-[10px] font-black mt-1"
-
+                                                                                className={
+                                                                                    `bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white ${isLargeTextMode ? 'p-4' : 'p-2.5'} rounded-xl transition-colors btn-press shrink-0 flex flex-col items-center justify-center`
+                                                                                }
+                                                                            >
                                                                                 <Icon name="trash" size={isLargeTextMode ? 24 : 16} />
+                                                                                <span className="text-[10px] font-black mt-1">취소</span>
                                                                             </button>
                                                                         </div>
                                                                     ))
