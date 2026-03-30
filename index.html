@@ -861,7 +861,10 @@
                 if (!users || users.length === 0) return;
                 const savedSession = localStorage.getItem('hmood_session');
                 if (!savedSession) {
-                    if (view !== 'shared' && view !== 'login') setView('login');
+                    // ✅ view -> viewMode / setView -> setViewMode로 모두 바꿨습니다.
+                    if (viewMode !== 'shared' && viewMode !== 'login') {
+                        setViewMode('login');
+                    }
                     return;
                 }
                 try {
@@ -1756,7 +1759,7 @@
                 if (view === 'monthly' && tableScrollRef.current) {
                     setTimeout(() => { tableScrollRef.current?.focus(); }, 100);
                 }
-            }, [view]);
+            }, [viewMode]);
 
             const handlePhotoSingle = async (e, setter) => {
                 const files = Array.from(e.target.files || []);
@@ -2102,7 +2105,7 @@
 
                 <div className="flex flex-col h-screen min-h-screen bg-[#EBE9E4] dark:bg-stone-950 text-stone-700 dark:text-stone-300 fade-in">
 
-                    {view !== 'shared' && (
+                    {viewMode !== 'shared' && (
                         <header className="flex-none sticky top-0 z-50 bg-[#F9F8F6]/95 dark:bg-stone-900/95 backdrop-blur-md border-b border-stone-200/50 dark:border-stone-800/50 px-4 py-3 flex items-center justify-between shadow-sm">
                             <div className="flex items-center gap-2">
                                 <div className="w-8 h-8 bg-teal-600 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0"><Icon name="calendar" size={18} /></div>
@@ -3442,7 +3445,7 @@
 
                     {/* 💡 파트너스 페이지(shared) 및 로그인 화면에서는 하단 탭 숨김 */}
                     {
-                        view !== 'shared' && view !== 'login' && (
+                        viewMode !== 'shared' && viewMode !== 'login' && (
                             <nav className="flex-none w-full bg-[#F9F8F6]/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200 dark:border-stone-800 flex items-center justify-around z-50 px-2 md:px-12 shadow-[0_-10px_30px_rgba(0,0,0,0.03)] font-black pb-[env(safe-area-inset-bottom,1rem)] pt-2">
                                 <button onClick={() => setView('daily')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'daily' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><Icon name="calendar" size={24} /><span className="text-[10px] tracking-tighter">일간</span></button>
                                 <button onClick={() => setView('monthly')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${view === 'monthly' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><Icon name="calendarToday" size={24} /><span className="text-[10px] tracking-tighter">월간</span></button>
