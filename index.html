@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>H무디 ERP - Perfect Final</title>
+    <title>현대면세 H무디</title>
 
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -452,18 +452,26 @@
 
             const popupShownRef = useRef(false);
 
+            // view가 shared를 벗어날 때 ref 초기화 (재진입 시 팝업 다시 뜨도록)
+            useEffect(() => {
+                if (view !== 'shared') {
+                    popupShownRef.current = false;
+                }
+            }, [view]);
+
             useEffect(() => {
                 const mode = new URLSearchParams(window.location.search).get('mode');
+                const isSharedMode = mode === 'shared' || view === 'shared';
 
                 if (
-                    mode === 'shared' &&
+                    isSharedMode &&
                     unreadPopupTargets.length > 0 &&
                     !popupShownRef.current
                 ) {
                     popupShownRef.current = true;
                     setShowNewPostPopup(true);
                 }
-            }, [unreadPopupTargets]);
+            }, [unreadPopupTargets, view]);
 
             useEffect(() => {
                 console.log(
