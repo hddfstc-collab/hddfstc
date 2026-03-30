@@ -419,7 +419,50 @@
                     return JSON.parse(localStorage.getItem('hmood_read_notices') || '[]');
                 } catch { return []; }
             });
+            // ✅ 모든 일반 게시판용 엑셀 다운로드 함수 (복구용)
+            const downloadPostsExcel = (appId, appName) => {
+                // 1. 해당 앱 ID에 맞는 데이터만 필터링
+                const appData = dynamicPosts.filter(p => p.appId === appId);
 
+                if (appData.length === 0) {
+                    if (typeof showToast === 'function') showToast(`${appName} 데이터가 없습니다.`, true);
+                    else alert(`${appName} 데이터가 없습니다.`);
+                    return;
+                }
+
+                // 2. 엑셀용 데이터 정리
+                const rows = appData.map(p => {
+                    // 기본 데이터 구성
+                    const row = {
+                        "ID": p.id,
+                        "작성일": new Date(p.createdAt).toLocaleString(),
+                        "작성자": p.author || '익명',
+                        "제목": p.title || '-',
+                        "내용": p.content || '-',
+                    };
+
+                    // ✅ 나중에 앱마다 다른 양식(formData)을 쓸 경우를 대비해 데이터를 합쳐줍니다.
+                    if (p.formData) {
+                        return { ...row, ...p.formData };
+                    }
+                    return row;
+                });
+
+                // 3. 엑셀 파일 생성 및 다운로드
+                try {
+                    const worksheet = XLSX.utils.json_to_sheet(rows);
+                    const workbook = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(workbook, worksheet, appName || "데이터");
+                    
+                    const fileName = `${appName || '게시판'}_데이터_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                    XLSX.writeFile(workbook, fileName);
+                    
+                    if (typeof showToast === 'function') showToast(`${appName} 엑셀 다운로드 완료!`);
+                } catch (error) {
+                    console.error("Excel Download Error:", error);
+                    alert("엑셀 생성 중 오류가 발생했습니다.");
+                }
+            };
             const [dynamicApps, setDynamicApps] = useState([]);
             const [dynamicPosts, setDynamicPosts] = useState([]);
             const [notices, setNotices] = useState([]);
