@@ -641,25 +641,6 @@
             const [expandedNoticeId, setExpandedNoticeId] = useState(null); // 공지사항 확장용 상태 추가
             const [dailySearch, setDailySearch] = useState('');
 
-            // [N 배지 관리] 브라우저 저장소에서 '읽은 글 목록'을 불러옵니다.
-            const [readNoticeIds, setReadNoticeIds] = useState(() => {
-                try {
-                    return JSON.parse(localStorage.getItem('hmood_read_notices') || '[]');
-                } catch (e) {
-                    return [];
-                }
-            });
-            // ⭐ 여기에 이 코드를 넣으세요! (클릭 시 실행될 실제 동작)
-            const markAsRead = useCallback((id) => {
-                setReadNoticeIds(prev => {
-                    if (prev.includes(id)) return prev;
-                    const next = [...prev, id];
-                    try {
-                        localStorage.setItem('hmood_read_notices', JSON.stringify(next));
-                    } catch (e) { }
-                    return next;
-                });
-            }, []);
             const [statusOptions, setStatusOptions] = useState([]);
             const [statusForm, setStatusForm] = useState({ label: '', bg: 'bg-stone-700 dark:bg-stone-600', text: 'text-white', isWork: 'true' });
             const [editingStatusId, setEditingStatusId] = useState(null);
