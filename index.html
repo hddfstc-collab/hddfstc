@@ -430,22 +430,48 @@
                     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             }, [dynamicPosts, readPostIds]);
 
-            // ✅ N뱃지 기준 팝업 대상 (N뱃지 == 팝업)
+            // ✅ 수정된 N뱃지 기준 팝업 대상 계산 로직
             const unreadPopupTargets = useMemo(() => {
                 return (dynamicApps || []).filter(app => {
+                    // 헬스키퍼나 예약형은 팝업 대상에서 제외
                     if (['form', 'reservation'].includes(app.actionType)) return false;
 
-                    // ✅ 공지는 notices 기준
+                    // 1. 공지 위젯 체크 (notices는 readNoticeIds 사용)
                     if (app.actionType === 'widget_notices') {
                         return notices.some(n => !readNoticeIds.includes(n.id));
                     }
 
-                    // ✅ 일반 게시판: 해당 앱의 게시글 중 안 읽은 게 하나라도 있으면 포함
-                    return dynamicPosts.some(
-                        p => p.appId === app.id && !readNoticeIds.includes(p.id)
-                    );
+                    // 2. 일반 게시판 체크 (dynamicPosts는 readPostIds 사용 및 72시간 이내 체크)
+                    return dynamicPosts.some(p => {
+                        if (p.appId !== app.id) return false;
+                        
+                        const postDate = new Date(p.createdAt);
+                        const isNew = (new Date() - postDate) / (1000 * 60 * 60) <= 72; // 72시간 이내
+                        const isUnread = !readPostIds.includes(p.id); // 게시판은 readPostIds 사용
+                        
+                        return isNew && isUnread;
+                    });
                 });
-            }, [dynamicApps, dynamicPosts, notices, readNoticeIds, checkNewBadge]);
+            }, [dynamicApps, notices, dynamicPosts, readNoticeIds, readPostIds]); // 의존성에 readPostIds 추가
+
+
+            // ✅ 파트너스(shared) 진입 시 팝업 실행 로직
+            useEffect(() => {
+                const mode = new URLSearchParams(window.location.search).get('mode');
+                const isSharedMode = mode === 'shared' || view === 'shared';
+
+                // 로그 출력을 통해 실제 필터링된 타겟 확인
+                console.log("팝업 체크 타겟 리스트:", unreadPopupTargets);
+
+                if (
+                    isSharedMode &&
+                    unreadPopupTargets.length > 0 &&
+                    !popupShownRef.current
+                ) {
+                    popupShownRef.current = true;
+                    setShowNewPostPopup(true);
+                }
+            }, [unreadPopupTargets, view]);
 
 
             // ✅ 파트너스(shared) 진입 시 N뱃지 대상 팝업
