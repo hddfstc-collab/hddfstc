@@ -2897,7 +2897,7 @@
                                                         <Icon name="edit" size={16} /> 권한 부여된 콘텐츠 작성/관리
                                                     </p>
 
-                                                    {(dynamicApps || []).filter(a => ['board', 'form', 'notice', 'widget_board', 'widget_notices', 'guide'].includes(a.actionType) && canWrite(a)).length === 0 ? (
+                                                    {(dynamicApps || []).filter(a => ['board', 'notice', 'widget_board', 'widget_notices', 'guide'].includes(a.actionType) && canWrite(a)).length === 0 ? (
                                                         <div className="text-center py-12 text-stone-400 font-bold text-sm">작성 권한이 부여된 앱이 없습니다.</div>
                                                     ) : (
                                                         (dynamicApps || []).filter(a => ['board', 'form', 'notice', 'widget_board', 'widget_notices', 'guide'].includes(a.actionType) && canWrite(a)).map(app => (
@@ -4073,66 +4073,83 @@
                                     )}
                                 </div>
 
-                                {/* ✅ 게시글 리스트 */}
+                                {/* ✅ 게시글 리스트 (관리자 보안 및 커스텀 답변 출력 적용) */}
                                 <div className="overflow-y-auto scrollbar-hide flex-1 space-y-4 pb-2 pr-1">
-                                    {(() => {
-                                        const filtered = (dynamicPosts || []).filter((p) => {
-                                            // 1. 해당 앱의 게시글인지 확인
-                                            if (p.appId !== openedDynamicApp.id) return false;
+                                    {openedDynamicApp.actionType === 'form' && !isAdminAuth ? (
+                                        /* 🔒 1. 폼 제출형인데 관리자가 아닌 경우: 잠금 화면 표시 */
+                                        <div className="flex flex-col items-center justify-center py-20 bg-stone-50 dark:bg-stone-900/50 rounded-[2.5rem] border-2 border-dashed border-stone-100 dark:border-stone-800 fade-in">
+                                            <Icon name="lock" size={32} className="text-stone-300 mb-3" />
+                                            <p className="text-[12px] font-bold text-stone-400">제출된 데이터는 관리자만 열람 가능합니다.</p>
+                                            <p className="text-[10px] text-stone-300 mt-1">안심하고 양식을 제출해 주세요.</p>
+                                        </div>
+                                    ) : (
+                                        /* 🔓 2. 관리자이거나 일반 게시판인 경우: 게시글 목록 표시 */
+                                        (() => {
+                                            const filtered = (dynamicPosts || []).filter((p) => {
+                                                if (p.appId !== openedDynamicApp.id) return false;
+                                                if (!boardSearch) return true;
+                                                const searchTarget = Object.values(p).join(' ').toLowerCase();
+                                                return searchTarget.includes(boardSearch.toLowerCase());
+                                            });
 
-                                            // 2. 검색어가 비어있으면 모두 표시
-                                            if (!boardSearch) return true;
+                                            if (filtered.length === 0)
+                                                return (
+                                                    <div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700">
+                                                        <p className="text-[11px] font-bold text-stone-400">게시글이 없습니다.</p>
+                                                    </div>
+                                                );
 
-                                            // 3. 작성자, 내용 뿐만 아니라 모든 커스텀 필드값 내에서 검색어 찾기
-                                            const searchTarget = Object.values(p).join(' ').toLowerCase();
-                                            return searchTarget.includes(boardSearch.toLowerCase());
-                                        });
-
-                                        if (filtered.length === 0)
-                                            return (
-                                                <div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700">
-                                                    <p className="text-[11px] font-bold text-stone-400">
-                                                        게시글이 없습니다.
-                                                    </p>
-                                                </div>
-                                            );
-
-                                        return filtered.map((post) => (
-                                            <div
-                                                key={post.id}
-                                                className="bg-white dark:bg-stone-800 p-5 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm space-y-3"
-                                            >
-                                                <p className="text-[12px] font-bold text-stone-800 dark:text-stone-200 whitespace-pre-wrap">
-                                                    {post.content}
-                                                </p>
-
-                                                {post.photos && (
-                                                    <img
-                                                        src={post.photos}
-                                                        className="w-full h-auto rounded-xl object-cover cursor-pointer border border-stone-100 dark:border-stone-700"
-                                                        onClick={() => setExpandedImage(post.photos)}
-                                                    />
-                                                )}
-
-                                                <div className="flex justify-between items-center text-[9px] text-stone-400 font-black mt-2 pt-2 border-t border-stone-50 dark:border-stone-700">
-                                                    <span>{post.author}</span>
-                                                    <div className="flex items-center gap-2">
-                                                        <span>{formatLocalTime(post.createdAt)}</span>
-                                                        {canDelete(openedDynamicApp) && (
-                                                            <button
-                                                                onClick={(e) =>
-                                                                    handleDeleteDynamicPost(e, post.id)
-                                                                }
-                                                                className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg ml-2 btn-press shadow-sm"
-                                                            >
-                                                                <Icon name="trash" size={14} />
-                                                            </button>
+                                            return filtered.map((post) => (
+                                                <div key={post.id} className="bg-white dark:bg-stone-800 p-5 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm space-y-3 fade-in">
+                                                    {/* ⭐ 커스텀 답변 출력 영역 */}
+                                                    <div className="space-y-2">
+                                                        {openedDynamicApp.fields && openedDynamicApp.fields.length > 0 ? (
+                                                            // 관리자가 설정한 질문(fields)이 있는 경우
+                                                            openedDynamicApp.fields.map(field => (
+                                                                <div key={field.id} className="flex gap-2 text-[11px] border-b border-stone-50 dark:border-stone-700/50 pb-1 last:border-0 last:pb-0">
+                                                                    <span className="font-black text-indigo-500 dark:text-indigo-400 shrink-0 w-24">· {field.label}</span>
+                                                                    <span className="text-stone-700 dark:text-stone-200 break-all">{post[field.id] || '-'}</span>
+                                                                </div>
+                                                            ))
+                                                        ) : (
+                                                            // 질문 설정이 없는 일반 게시판의 경우
+                                                            <p className="text-[12px] font-bold text-stone-800 dark:text-stone-200 whitespace-pre-wrap">{post.content}</p>
+                                                        )}
+                                                        
+                                                        {/* 추가적인 내용(content)이 별도로 있을 경우 출력 */}
+                                                        {openedDynamicApp.fields?.length > 0 && post.content && (
+                                                            <div className="mt-2 pt-2 border-t border-dashed border-stone-100 dark:border-stone-700">
+                                                                <p className="text-[11px] text-stone-500 dark:text-stone-400">{post.content}</p>
+                                                            </div>
                                                         )}
                                                     </div>
+
+                                                    {post.photos && (
+                                                        <img
+                                                            src={post.photos}
+                                                            className="w-full h-auto rounded-xl object-cover cursor-pointer border border-stone-100 dark:border-stone-700"
+                                                            onClick={() => setExpandedImage(post.photos)}
+                                                        />
+                                                    )}
+
+                                                    <div className="flex justify-between items-center text-[9px] text-stone-400 font-black mt-2 pt-2 border-t border-stone-50 dark:border-stone-700">
+                                                        <span>{post.author}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span>{formatLocalTime(post.createdAt)}</span>
+                                                            {canDelete(openedDynamicApp) && (
+                                                                <button
+                                                                    onClick={(e) => handleDeleteDynamicPost(e, post.id)}
+                                                                    className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg ml-2 btn-press shadow-sm"
+                                                                >
+                                                                    <Icon name="trash" size={14} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ));
-                                    })()}
+                                            ));
+                                        })()
+                                    )}
                                 </div>
 
                                 {/* ✅ 하단 작성 영역 */}
