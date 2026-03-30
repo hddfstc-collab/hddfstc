@@ -507,18 +507,54 @@
             const [isAuthReady, setIsAuthReady] = useState(false);
             const isLoggedIn = !!appUser;
             const [loading, setLoading] = useState(true);
-            const [view, setView] = useState('daily');
-            // ✅ 1. URL 파라미터를 감시하여 view 상태를 강제로 동기화
+            // ✅ 1. URL 파라미터 감시 및 view 상태 동기화
             useEffect(() => {
                 const params = new URLSearchParams(window.location.search);
                 const mode = params.get('mode');
-                
-                // URL에 mode=shared가 있으면 무조건 view를 'shared'로 고정
                 if (mode === 'shared' && view !== 'shared') {
-                    console.log("VIEW 강제 변경 시도: shared");
+                    console.log("VIEW 동기화: shared 모드로 전환");
                     setView('shared');
                 }
-            }, [view, window.location.search]); 
+            }, [view]);
+
+            // ✅ 2. 팝업 대상(새 글) 계산 로직
+            const unreadPopupTargets = useMemo(() => {
+                const apps = dynamicApps || [];
+                const posts = dynamicPosts || [];
+                const currentNotices = notices || [];
+
+                return apps.filter(app => {
+                    if (['form', 'reservation'].includes(app.actionType)) return false;
+
+                    // 공지사항 체크
+                    if (app.actionType === 'widget_notices') {
+                        return currentNotices.some(n => !readNoticeIds.includes(n.id));
+                    }
+
+                    // 일반 게시판(식단 등) 체크
+                    return posts.some(p => {
+                        if (p.appId !== app.id) return false;
+                        const postDate = new Date(p.createdAt);
+                        // 72시간 이내 && 안 읽음 조건
+                        const isNew = (new Date() - postDate) / (1000 * 60 * 60) <= 72;
+                        return isNew && !readPostIds.includes(p.id);
+                    });
+                });
+            }, [dynamicApps, notices, dynamicPosts, readNoticeIds, readPostIds]);
+
+            // ✅ 3. 팝업 실행 스위치 (실제 팝업창을 띄우는 곳)
+            useEffect(() => {
+                const isSharedMode = view === 'shared' || new URLSearchParams(window.location.search).get('mode') === 'shared';
+                
+                // 디버깅 로그: 콘솔에서 이 수치를 확인하세요
+                console.log("POPUP CHECK -> 모드:", isSharedMode, "대상개수:", unreadPopupTargets.length, "이미띄움:", popupShownRef.current);
+
+                if (isSharedMode && unreadPopupTargets.length > 0 && !popupShownRef.current) {
+                    console.log("🚀 새 소식 팝업 실행!");
+                    popupShownRef.current = true;
+                    setShowNewPostPopup(true);
+                }
+            }, [view, unreadPopupTargets]);
            
             const [adminTab, setAdminTab] = useState('apps');
             const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('hmood_dark_mode') === 'true');
