@@ -517,7 +517,6 @@
             const [users, setUsers] = useState([]);
             const [schedules, setSchedules] = useState([]);
             const [extensions, setExtensions] = useState([]);
-
             const [currentEvent, setCurrentEvent] = useState(null);
             const [blacklists, setBlacklists] = useState([]);
             const [cancelGuestInfo, setCancelGuestInfo] = useState(null);
@@ -532,7 +531,6 @@
             const [lunchMenuInput, setLunchMenuInput] = useState('');
             const [showEventMgmt, setShowEventMgmt] = useState(false);
             const [monthlyFilters, setMonthlyFilters] = useState({ part: true, cat: true, id: true });
-            const [viewMode, setViewMode] = useState('all');
 
             const [isAdminAuth, setIsAdminAuth] = useState(false);
             const [masterPinHash, setMasterPinHash] = useState(() => localStorage.getItem('hmood_master_pin_hash') || null);
