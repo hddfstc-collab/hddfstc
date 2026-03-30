@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>현대면세 H무디</title>
+    <title>H무디 ERP - Perfect Final</title>
 
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -445,42 +445,39 @@
                         p => p.appId === app.id && !readNoticeIds.includes(p.id)
                     );
                 });
-            }, [dynamicApps, notices, readNoticeIds, checkNewBadge]);
+            }, [dynamicApps, dynamicPosts, notices, readNoticeIds, checkNewBadge]);
 
 
             // ✅ 파트너스(shared) 진입 시 N뱃지 대상 팝업
-
             const popupShownRef = useRef(false);
 
-            // view가 shared를 벗어날 때 ref 초기화 (재진입 시 팝업 다시 뜨도록)
+            // view가 shared에서 벗어날 때 ref 초기화 → 재진입 시 다시 뜸
             useEffect(() => {
                 if (view !== 'shared') {
                     popupShownRef.current = false;
                 }
             }, [view]);
 
+            // view === 'shared' 이고 unread 대상 있으면 팝업
+            // - 버튼 클릭 진입: view 변경 시 즉시 감지
+            // - URL ?mode=shared 진입: 데이터 로드 후 unreadPopupTargets 변경 시 감지
             useEffect(() => {
-                const mode = new URLSearchParams(window.location.search).get('mode');
-                const isSharedMode = mode === 'shared' || view === 'shared';
-
-                if (
-                    isSharedMode &&
-                    unreadPopupTargets.length > 0 &&
-                    !popupShownRef.current
-                ) {
+                if (view === 'shared' && unreadPopupTargets.length > 0 && !popupShownRef.current) {
                     popupShownRef.current = true;
                     setShowNewPostPopup(true);
                 }
-            }, [unreadPopupTargets, view]);
+            }, [view, unreadPopupTargets]);
 
             useEffect(() => {
                 console.log(
                     'DEBUG popup:',
                     'showNewPostPopup =', showNewPostPopup,
                     'targets =', unreadPopupTargets.length,
+                    'view =', view,
+                    'popupShownRef =', popupShownRef.current,
                     'hash =', window.location.hash
                 );
-            }, [showNewPostPopup, unreadPopupTargets.length]);
+            }, [showNewPostPopup, unreadPopupTargets.length, view]);
 
 
 
