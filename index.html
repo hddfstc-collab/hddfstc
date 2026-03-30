@@ -437,9 +437,19 @@
                         "ID": p.id,
                         "작성일": new Date(p.createdAt).toLocaleString(),
                         "작성자": p.author || '익명',
-                        "제목": p.title || '-',
-                        "내용": p.content || '-',
                     };
+
+                    // ✅ 관리자가 설정한 질문(fields)이 있다면, 질문명을 엑셀 헤더로 사용합니다.
+                    if (openedDynamicApp.fields && openedDynamicApp.fields.length > 0) {
+                        openedDynamicApp.fields.forEach(field => {
+                            // field.label은 '방문 목적', field.id는 'q_123...'
+                            // p[field.id]는 사용자가 입력한 실제 답변 값입니다.
+                            row[field.label] = p[field.id] || '-'; 
+                        });
+                    } else {
+                        // 커스텀 질문이 없는 일반 게시판인 경우 기본 내용 표시
+                        row["내용"] = p.content || '-';
+                    }
 
                     // ✅ 나중에 앱마다 다른 양식(formData)을 쓸 경우를 대비해 데이터를 합쳐줍니다.
                     if (p.formData) {
@@ -4066,12 +4076,17 @@
                                 {/* ✅ 게시글 리스트 */}
                                 <div className="overflow-y-auto scrollbar-hide flex-1 space-y-4 pb-2 pr-1">
                                     {(() => {
-                                        const filtered = (dynamicPosts || []).filter(
-                                            (p) =>
-                                                p.appId === openedDynamicApp.id &&
-                                                (p.content.includes(boardSearch) ||
-                                                    p.author.includes(boardSearch))
-                                        );
+                                        const filtered = (dynamicPosts || []).filter((p) => {
+                                            // 1. 해당 앱의 게시글인지 확인
+                                            if (p.appId !== openedDynamicApp.id) return false;
+
+                                            // 2. 검색어가 비어있으면 모두 표시
+                                            if (!boardSearch) return true;
+
+                                            // 3. 작성자, 내용 뿐만 아니라 모든 커스텀 필드값 내에서 검색어 찾기
+                                            const searchTarget = Object.values(p).join(' ').toLowerCase();
+                                            return searchTarget.includes(boardSearch.toLowerCase());
+                                        });
 
                                         if (filtered.length === 0)
                                             return (
