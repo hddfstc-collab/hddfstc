@@ -430,48 +430,6 @@
                     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             }, [dynamicPosts, readPostIds]);
 
-            // ✅ 수정된 N뱃지 기준 팝업 대상 계산 로직
-            const unreadPopupTargets = useMemo(() => {
-                return (dynamicApps || []).filter(app => {
-                    if (['form', 'reservation'].includes(app.actionType)) return false;
-
-                    // 1. 공지사항 위젯 체크 (첫 번째 코드의 장점)
-                    if (app.actionType === 'widget_notices') {
-                        return (notices || []).some(n => !readNoticeIds.includes(n.id));
-                    }
-
-                    // 2. 일반 게시판 체크 (두 번째 코드의 방어 로직 적용)
-                    return (dynamicPosts || []).some(p => {
-                        if (p.appId !== app.id) return false;
-
-                        const postDate = new Date(p.createdAt);
-                        // 날짜 형식이 올바르지 않으면 NaN이 나올 수 있으므로 체크
-                        const isNew = (new Date() - postDate) / (1000 * 60 * 60) <= 72;
-                        const isUnread = !readPostIds.includes(p.id);
-
-                        return isNew && isUnread;
-                    });
-                });
-            }, [dynamicApps, notices, dynamicPosts, readNoticeIds, readPostIds]);
-
-
-            // ✅ 파트너스(shared) 진입 시 팝업 실행 로직
-            useEffect(() => {
-                const mode = new URLSearchParams(window.location.search).get('mode');
-                const isSharedMode = mode === 'shared' || view === 'shared';
-
-                // 로그 출력을 통해 실제 필터링된 타겟 확인
-                console.log("팝업 체크 타겟 리스트:", unreadPopupTargets);
-
-                if (
-                    isSharedMode &&
-                    unreadPopupTargets.length > 0 &&
-                    !popupShownRef.current
-                ) {
-                    popupShownRef.current = true;
-                    setShowNewPostPopup(true);
-                }
-            }, [unreadPopupTargets, view]);
 
 
             // ✅ 파트너스(shared) 진입 시 N뱃지 대상 팝업
@@ -492,32 +450,7 @@
                 }
             }, [view]);
 
-            // 3. 팝업 실행 로직 (view가 shared로 확실히 바뀌어야 실행됨)
-            useEffect(() => {
-                // 로그 추가: 조건 판단 시점의 값 확인
-                console.log("실행 조건 체크 -> view:", view, "targets:", unreadPopupTargets.length, "shown:", popupShownRef.current);
-                
-                if (view === 'shared' && unreadPopupTargets.length > 0 && !popupShownRef.current) {
-                    popupShownRef.current = true;
-                    setShowNewPostPopup(true);
-                }
-            }, [view, unreadPopupTargets]);
-
-            // 4. 디버그 로그
-            useEffect(() => {
-                console.log(
-                    'DEBUG popup:',
-                    'showNewPostPopup =', showNewPostPopup,
-                    'targets =', unreadPopupTargets.length,
-                    'view =', view,
-                    'popupShownRef =', popupShownRef.current,
-                    'hash =', window.location.hash
-                );
-            }, [showNewPostPopup, unreadPopupTargets.length, view]);
-
-
-
-            // ==================================================
+             // ==================================================
             // ✅ 제출 데이터 엑셀 다운로드 (헬스키퍼 제외)
             // ==================================================
 
