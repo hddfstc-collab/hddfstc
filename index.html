@@ -401,19 +401,42 @@
 
         function App() {
 
-            // ✅ 1단계: 읽음 상태
+            // ---------------------------------------------------------
+            // 1. 모든 상태(State) 및 Ref 선언 (맨 위로 모음)
+            // ---------------------------------------------------------
+            const [viewMode, setViewMode] = useState('all'); // 에러 주범 해결: 이름을 viewMode로 통일하고 맨 위로 올림
+            const [showNewPostPopup, setShowNewPostPopup] = useState(false);
+            const popupShownRef = useRef(false);
+
             const [readPostIds, setReadPostIds] = useState(() => {
                 try {
                     return JSON.parse(localStorage.getItem('hmood_read_posts')) || [];
-                } catch {
-                    return [];
-                }
+                } catch { return []; }
             });
 
-            // ✅ 4단계: 팝업 스위치
-            const [showNewPostPopup, setShowNewPostPopup] = useState(false);
+            const [readNoticeIds, setReadNoticeIds] = useState(() => {
+                try {
+                    return JSON.parse(localStorage.getItem('hmood_read_notices') || '[]');
+                } catch { return []; }
+            });
 
-            // ✅ 2단계: 읽음 처리
+            const [dynamicApps, setDynamicApps] = useState([]);
+            const [dynamicPosts, setDynamicPosts] = useState([]);
+            const [notices, setNotices] = useState([]);
+
+            const [expandedDailyCards, setExpandedDailyCards] = useState({});
+            const [db, setDb] = useState(null);
+            const [fbUser, setFbUser] = useState(null);
+            const [appUser, setAppUser] = useState(null);
+            const [isAuthReady, setIsAuthReady] = useState(false);
+            const [loading, setLoading] = useState(true);
+            const [adminTab, setAdminTab] = useState('apps');
+            const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('hmood_dark_mode') === 'true');
+            const [isLargeTextMode, setIsLargeTextMode] = useState(() => localStorage.getItem('hmood_large_text') === 'true');
+
+            // ---------------------------------------------------------
+            // 2. 기능 함수 (읽음 처리 등)
+            // ---------------------------------------------------------
             const markPostAsRead = (postId) => {
                 setReadPostIds(prev => {
                     if (prev.includes(postId)) return prev;
@@ -423,145 +446,77 @@
                 });
             };
 
-            // ✅ 3단계: 안 읽은 글 계산
+            const markAsRead = useCallback((id) => {
+                setReadNoticeIds(prev => {
+                    if (prev.includes(id)) return prev;
+                    const next = [...prev, id];
+                    try { localStorage.setItem('hmood_read_notices', JSON.stringify(next)); } catch (e) { }
+                    return next;
+                });
+            }, []);
+
+            // ---------------------------------------------------------
+            // 3. 계산 로직 (useMemo)
+            // ---------------------------------------------------------
             const unreadPosts = useMemo(() => {
                 return (dynamicPosts || [])
                     .filter(p => !readPostIds.includes(p.id))
                     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             }, [dynamicPosts, readPostIds]);
 
+            const unreadPopupTargets = useMemo(() => {
+                const apps = dynamicApps || [];
+                const posts = dynamicPosts || [];
+                const curNotices = notices || [];
+                return apps.filter(app => {
+                    if (['form', 'reservation'].includes(app.actionType)) return false;
+                    if (app.actionType === 'widget_notices') {
+                        return curNotices.some(n => !readNoticeIds.includes(n.id));
+                    }
+                    return posts.some(p => {
+                        if (p.appId !== app.id) return false;
+                        const isNew = (new Date() - new Date(p.createdAt)) / (1000 * 60 * 60) <= 72;
+                        return isNew && !readPostIds.includes(p.id);
+                    });
+                });
+            }, [dynamicApps, notices, dynamicPosts, readNoticeIds, readPostIds]);
 
+            // ---------------------------------------------------------
+            // 4. 실행 및 감시 로직 (useEffect)
+            // ---------------------------------------------------------
 
-            // ✅ 파트너스(shared) 진입 시 N뱃지 대상 팝업
-            const popupShownRef = useRef(false);
-
-            // 1. view 상태와 URL 파라미터 강제 동기화 (이게 없으면 팝업 조건이 안 맞음)
+            // URL 파라미터 감시 및 viewMode 동기화
             useEffect(() => {
                 const mode = new URLSearchParams(window.location.search).get('mode');
-                if (mode === 'shared' && view !== 'shared') {
-                    setView('shared'); // URL이 shared면 view 상태도 shared로 강제 변경
-                }
-            }, [view]);
-
-            // 2. popupShownRef 관리
-            useEffect(() => {
-                if (view !== 'shared') {
-                    popupShownRef.current = false;
-                }
-            }, [view]);
-
-             // ==================================================
-            // ✅ 제출 데이터 엑셀 다운로드 (헬스키퍼 제외)
-            // ==================================================
-
-            const downloadPostsExcel = (appId, appName) => {
-                const rows = dynamicPosts
-                    .filter(p => p.appId === appId && p.type !== 'reservation')
-                    .map(p => ({
-                        작성자: p.author || '-',
-                        제목: p.title || '-',
-                        내용: p.content || '-',
-                        제출일시: formatLocalTime(p.createdAt),
-                    }));
-
-                if (!rows.length) {
-                    showToast('다운로드할 데이터가 없습니다.', true);
-                    return;
-                }
-
-                const ws = XLSX.utils.json_to_sheet(rows);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, appName.slice(0, 31));
-                XLSX.writeFile(wb, `${appName}_제출데이터.xlsx`);
-            };
-
-            // ==================================================
-            // ✅ 헬스키퍼 이용기록 엑셀 다운로드 (관리자)
-            // ==================================================
-            const downloadHealthExcel = () => {
-                const rows = dynamicPosts
-                    .filter(p => p.type === 'reservation')
-                    .map(p => ({
-                        예약날짜: p.resDate || '-',
-                        예약시간: p.resTime || '-',
-                        예약자: p.author || '-',
-                        내선번호: p.ext || '-',
-                        비고: p.content || '-',
-                        등록일시: formatLocalTime(p.createdAt),
-                    }));
-
-                if (!rows.length) {
-                    showToast('다운로드할 데이터가 없습니다.', true);
-                    return;
-                }
-
-                const ws = XLSX.utils.json_to_sheet(rows);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, '헬스키퍼이용기록');
-                XLSX.writeFile(wb, '헬스키퍼_이용기록.xlsx');
-            };
-            const [expandedDailyCards, setExpandedDailyCards] = useState({});
-            const [db, setDb] = useState(null);
-            const [fbUser, setFbUser] = useState(null);
-            const [appUser, setAppUser] = useState(null);
-            const [isAuthReady, setIsAuthReady] = useState(false);
-            const isLoggedIn = !!appUser;
-            const [loading, setLoading] = useState(true);
-                      
-            const [adminTab, setAdminTab] = useState('apps');
-            const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('hmood_dark_mode') === 'true');
-            const [isLargeTextMode, setIsLargeTextMode] = useState(() => localStorage.getItem('hmood_large_text') === 'true');
-            const [users, setUsers] = useState([]);
-            const [schedules, setSchedules] = useState([]);
-            const [notices, setNotices] = useState([]);
-            const [extensions, setExtensions] = useState([]);
-            const [dynamicApps, setDynamicApps] = useState([]);
-            const [dynamicPosts, setDynamicPosts] = useState([]);
-            
-            // ✅ 1. URL 파라미터 감시 및 viewMode 상태 동기화
-            useEffect(() => {
-                const params = new URLSearchParams(window.location.search);
-                const mode = params.get('mode');
-                // 변수명을 view -> viewMode로 전부 수정했습니다.
                 if (mode === 'shared' && viewMode !== 'shared') {
                     console.log("VIEW 동기화: shared 모드로 전환");
                     setViewMode('shared');
                 }
             }, [viewMode]);
 
-            // ✅ 2. 팝업 대상(새 글) 계산 로직
-            const unreadPopupTargets = useMemo(() => {
-                const apps = dynamicApps || [];
-                const posts = dynamicPosts || [];
-                const currentNotices = notices || [];
-
-                return apps.filter(app => {
-                    if (['form', 'reservation'].includes(app.actionType)) return false;
-
-                    if (app.actionType === 'widget_notices') {
-                        return currentNotices.some(n => !readNoticeIds.includes(n.id));
-                    }
-
-                    return posts.some(p => {
-                        if (p.appId !== app.id) return false;
-                        const postDate = new Date(p.createdAt);
-                        const isNew = (new Date() - postDate) / (1000 * 60 * 60) <= 72;
-                        return isNew && !readPostIds.includes(p.id);
-                    });
-                });
-            }, [dynamicApps, notices, dynamicPosts, readNoticeIds, readPostIds]);
-
-            // ✅ 3. 팝업 실행 스위치
+            // popupShownRef 리셋 (공유모드가 아닐 때)
             useEffect(() => {
-                // 여기서도 view -> viewMode로 수정했습니다.
-                const isSharedMode = viewMode === 'shared' || new URLSearchParams(window.location.search).get('mode') === 'shared';
-                
-                if (isSharedMode && unreadPopupTargets.length > 0 && !popupShownRef.current) {
-                    console.log("🚀 새 소식 팝업 실행!");
+                if (viewMode !== 'shared') {
+                    popupShownRef.current = false;
+                }
+            }, [viewMode]);
+
+            // 실제 팝업 실행 스위치
+            useEffect(() => {
+                const isShared = viewMode === 'shared' || new URLSearchParams(window.location.search).get('mode') === 'shared';
+                if (isShared && unreadPopupTargets.length > 0 && !popupShownRef.current) {
                     popupShownRef.current = true;
                     setShowNewPostPopup(true);
                 }
             }, [viewMode, unreadPopupTargets]);
+
+            // ---------------------------------------------------------
+            // 5. 기타 상태 및 함수 (기존 코드 유지)
+            // ---------------------------------------------------------
+            const isLoggedIn = !!appUser;
+            const [users, setUsers] = useState([]);
+            const [schedules, setSchedules] = useState([]);
+            const [extensions, setExtensions] = useState([]);
 
             const [currentEvent, setCurrentEvent] = useState(null);
             const [blacklists, setBlacklists] = useState([]);
