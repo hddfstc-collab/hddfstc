@@ -1316,9 +1316,36 @@
 
             const handleEditDynamicApp = (app) => {
                 let mappedType = app.actionType;
-                if (mappedType === 'simple_guide') mappedType = 'guide'; if (mappedType === 'custom_board') mappedType = 'board'; if (mappedType === 'admin_board') mappedType = 'notice'; if (mappedType === 'custom_form') mappedType = 'form'; if (mappedType === 'external_url') mappedType = 'link'; if (mappedType === 'link_ext') mappedType = 'popup_ext';
-                setAppManagerForm({ name: app.name, icon: app.icon, color: app.color, bg: app.bg, isFolder: app.isFolder ? 'true' : 'false', parentId: app.parentId || '', actionType: mappedType || 'guide', url: app.url || '', writePermission: app.writePermission || 'all', resOperatorId: app.resOperatorId || '', resTimeSlots: app.resTimeSlots || '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: app.resMaxPerSlot || 1, resLeadTimeDays: app.resLeadTimeDays || 0, resLeadTimeHours: app.resLeadTimeHours || 0, sortOrder: app.sortOrder || 99 });
-                setEditingAppId(app.id); setAdminTab('apps'); window.scrollTo({ top: 0, behavior: 'smooth' });
+                if (mappedType === 'simple_guide') mappedType = 'guide'; 
+                if (mappedType === 'custom_board') mappedType = 'board'; 
+                if (mappedType === 'admin_board') mappedType = 'notice'; 
+                if (mappedType === 'custom_form') mappedType = 'form'; 
+                if (mappedType === 'external_url') mappedType = 'link'; 
+                if (mappedType === 'link_ext') mappedType = 'popup_ext';
+
+                setAppManagerForm({ 
+                    name: app.name, 
+                    icon: app.icon, 
+                    color: app.color, 
+                    bg: app.bg, 
+                    isFolder: app.isFolder ? 'true' : 'false', 
+                    parentId: app.parentId || '', 
+                    actionType: mappedType || 'guide', 
+                    url: app.url || '', 
+                    writePermission: app.writePermission || 'all', 
+                    resOperatorId: app.resOperatorId || '', 
+                    resTimeSlots: app.resTimeSlots || '10:00, 11:00, 14:00, 15:00', 
+                    resMaxPerSlot: app.resMaxPerSlot || 1, 
+                    resLeadTimeDays: app.resLeadTimeDays || 0, 
+                    resLeadTimeHours: app.resLeadTimeHours || 0, 
+                    sortOrder: app.sortOrder || 99,
+                    // ✅ [여기가 핵심!] 기존에 저장된 질문 목록을 불러와야 편집이 가능합니다.
+                    fields: app.fields || [] 
+                });
+
+                setEditingAppId(app.id); 
+                setAdminTab('apps'); 
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             };
 
             const handleSaveDynamicApp = async () => {
@@ -3262,6 +3289,76 @@
                                                                     value={appManagerForm.url || ''}
                                                                     onChange={e => setAppManagerForm({ ...appManagerForm, url: e.target.value })}
                                                                 />
+                                                            )}
+                                                            {/* ✅ [추가] 폼 제출형일 때만 나타나는 질문 구성 편집기 */}
+                                                            {appManagerForm.actionType === 'form' && appManagerForm.isFolder === 'false' && (
+                                                                <div className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-3xl p-6 space-y-4 fade-in shadow-inner">
+                                                                    <div className="flex justify-between items-center border-b border-stone-50 dark:border-stone-800 pb-3">
+                                                                        <p className="text-[12px] font-black text-indigo-600 flex items-center gap-2">
+                                                                            <Icon name="clipboardList" size={18} /> 제출용 질문(양식) 구성
+                                                                        </p>
+                                                                        <button 
+                                                                            onClick={() => {
+                                                                                const newField = { id: `q_${Date.now()}`, label: '', type: 'text' };
+                                                                                setAppManagerForm({
+                                                                                    ...appManagerForm,
+                                                                                    fields: [...(appManagerForm.fields || []), newField]
+                                                                                });
+                                                                            }}
+                                                                            className="bg-indigo-600 text-white px-3 py-2 rounded-xl text-[10px] font-black btn-press shadow-md"
+                                                                        >
+                                                                            + 질문 추가
+                                                                        </button>
+                                                                    </div>
+
+                                                                    <div className="space-y-3">
+                                                                        {appManagerForm.fields && appManagerForm.fields.length > 0 ? (
+                                                                            appManagerForm.fields.map((field, idx) => (
+                                                                                <div key={field.id} className="flex gap-2 items-start bg-stone-50 dark:bg-stone-800/40 p-4 rounded-2xl border border-stone-100 dark:border-stone-700">
+                                                                                    <div className="flex-1 space-y-2">
+                                                                                        <div className="flex items-center gap-2 ml-1">
+                                                                                            <span className="text-[10px] font-black text-stone-400">질문 {idx + 1}</span>
+                                                                                        </div>
+                                                                                        <input 
+                                                                                            className="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400 shadow-sm"
+                                                                                            placeholder="예: 방문자 성함, 신청 사유 등"
+                                                                                            value={field.label}
+                                                                                            onChange={(e) => {
+                                                                                                const newFields = appManagerForm.fields.map(f => f.id === field.id ? { ...f, label: e.target.value } : f);
+                                                                                                setAppManagerForm({ ...appManagerForm, fields: newFields });
+                                                                                            }}
+                                                                                        />
+                                                                                        <select 
+                                                                                            className="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none"
+                                                                                            value={field.type}
+                                                                                            onChange={(e) => {
+                                                                                                const newFields = appManagerForm.fields.map(f => f.id === field.id ? { ...f, type: e.target.value } : f);
+                                                                                                setAppManagerForm({ ...appManagerForm, fields: newFields });
+                                                                                            }}
+                                                                                        >
+                                                                                            <option value="text">단답형 (한 줄 입력)</option>
+                                                                                            <option value="number">숫자형 (숫자만)</option>
+                                                                                            <option value="textarea">설명형 (여러 줄 입력)</option>
+                                                                                        </select>
+                                                                                    </div>
+                                                                                    <button 
+                                                                                        onClick={() => {
+                                                                                            const newFields = appManagerForm.fields.filter(f => f.id !== field.id);
+                                                                                            setAppManagerForm({ ...appManagerForm, fields: newFields });
+                                                                                        }}
+                                                                                        className="mt-8 p-2 text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-xl transition-colors"
+                                                                                    >
+                                                                                        <Icon name="trash" size={18} />
+                                                                                    </button>
+                                                                                </div>
+                                                                            ))
+                                                                        ) : (
+                                                                            <div className="py-10 text-center border-2 border-dashed border-stone-100 dark:border-stone-800 rounded-3xl">
+                                                                                <p className="text-[11px] text-stone-400 font-bold">등록된 질문이 없습니다.<br/>[질문 추가] 버튼을 눌러 양식을 만드세요.</p>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
                                                             )}
                                                             {/* 권한 설정 (아코디언 형태) */}
                                                             <div className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 space-y-3">
