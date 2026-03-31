@@ -3290,100 +3290,92 @@
                                             {/* 관리자 탭 - 구성원 관리 섹션 */}
                                             {/* ✅ 1. 관리자 탭 - 구성원 관리 섹션 (정렬 및 레이아웃 수정) */}
                                             {currentAdminTab === 'members' && (
-                                                <div className="space-y-3 fade-in">
-                                                    {/* 🔍 검색창 */}
-                                                    <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl flex items-center gap-2 px-4 py-3 shadow-sm mb-2">
+                                                <div className="space-y-4 fade-in">
+                                                    {/* 🔍 검색창 (원본 그대로) */}
+                                                    <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl flex items-center gap-2 px-4 py-3 shadow-sm">
                                                         <Icon name="search" size={16} className="text-stone-400 shrink-0" />
                                                         <input 
                                                             type="text" 
                                                             placeholder="이름, 사번, 파트 검색..." 
                                                             value={adminMemberSearch} 
                                                             onChange={(e) => setAdminMemberSearch(e.target.value)} 
-                                                            className="w-full bg-transparent outline-none text-[13px] font-bold text-stone-700 dark:text-stone-300" 
+                                                            className="w-full bg-transparent outline-none text-[13px] font-bold text-stone-700 dark:text-stone-300 placeholder-stone-400" 
                                                         />
                                                     </div>
 
-                                                    {/* 👥 구성원 리스트 */}
+                                                    {/* 👥 구성원 리스트 (사용자님이 좋다고 하신 원본 Grid 비율) */}
                                                     <div className="space-y-2 pb-20">
-                                                        {Array.isArray(filteredAdminMembers) ? (
-                                                            filteredAdminMembers
-                                                                .sort((a, b) => {
-                                                                    // ⭐ [0순위] 점장/무역점장 판별 (파트명이나 직책에 '점장' 포함 시 최상단)
-                                                                    const isAManager = a.jobTitle?.includes('점장') || a.part?.includes('점장');
-                                                                    const isBManager = b.jobTitle?.includes('점장') || b.part?.includes('점장');
-                                                                    if (isAManager && !isBManager) return -1;
-                                                                    if (!isAManager && isBManager) return 1;
+                                                        {filteredAdminMembers
+                                                            .sort((a, b) => {
+                                                                // ⭐ [0순위] '점장' 단어가 포함되면 무조건 최상단 (노홍균님 정렬 해결)
+                                                                const aIsMgr = (a.jobTitle || '').includes('점장') || (a.part || '').includes('점장');
+                                                                const bIsMgr = (b.jobTitle || '').includes('점장') || (b.part || '').includes('점장');
+                                                                if (aIsMgr && !bIsMgr) return -1;
+                                                                if (!aIsMgr && bIsMgr) return 1;
 
-                                                                    // 1순위: 파트장
-                                                                    if (a.jobTitle === '파트장' && b.jobTitle !== '파트장') return -1;
-                                                                    if (a.jobTitle !== '파트장' && b.jobTitle === '파트장') return 1;
+                                                                // 1순위: 직책 (파트장 > 일반)
+                                                                if (a.jobTitle === '파트장' && b.jobTitle !== '파트장') return -1;
+                                                                if (a.jobTitle !== '파트장' && b.jobTitle === '파트장') return 1;
 
-                                                                    // 2순위: 직급순
-                                                                    const posPrio = { '부장': 1, '차장': 2, '과장': 3, '대리': 4, '주임': 5, '사원': 6 };
-                                                                    const aP = posPrio[a.position] || 99;
-                                                                    const bP = posPrio[b.position] || 99;
-                                                                    if (aP !== bP) return aP - bP;
+                                                                // 2순위: 직급 (부장 > 차장 > 과장 > 대리 > 주임 > 사원)
+                                                                const posPrio = { '부장': 1, '차장': 2, '과장': 3, '대리': 4, '주임': 5, '사원': 6 };
+                                                                const aP = posPrio[a.position] || 99;
+                                                                const bP = posPrio[b.position] || 99;
+                                                                if (aP !== bP) return aP - bP;
 
-                                                                    return a.name && b.name ? a.name.localeCompare(b.name) : 0;
-                                                                })
-                                                                .map(u => (
-                                                                    <div 
-                                                                        key={u.empId || u.id || Math.random()} 
-                                                                        className="flex items-center gap-3 bg-white dark:bg-stone-900 px-4 py-4 rounded-[1.5rem] border border-stone-100 dark:border-stone-800 shadow-sm"
-                                                                    >
-                                                                        {/* 1. 파트명 (불필요한 PART 글자 삭제, 슬림하게) */}
-                                                                        <div className="w-[85px] shrink-0">
-                                                                            <span className="text-[12px] font-black text-stone-800 dark:text-stone-200 truncate block">
-                                                                                {u.part}
-                                                                            </span>
-                                                                        </div>
-                                                                        
-                                                                        {/* 2. 직책 배지 (글자 크기에 맞게 슬림하게 수정) */}
-                                                                        <div className="shrink-0">
-                                                                            <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-lg border text-[10px] font-black min-w-[50px] ${
-                                                                                (u.jobTitle?.includes('점장') || u.part?.includes('점장'))
-                                                                                    ? 'bg-rose-50 text-rose-600 border-rose-100' 
-                                                                                    : 'bg-teal-50 text-teal-600 border-teal-100'
-                                                                            }`}>
-                                                                                {u.jobTitle !== '일반' ? u.jobTitle : (u.category || '대원')}
-                                                                            </span>
-                                                                        </div>
-
-                                                                        {/* 3. 사번 (연하게 처리) */}
-                                                                        <div className="flex-1 text-center min-w-0">
-                                                                            <span className="text-[10px] font-mono font-bold text-stone-300">
-                                                                                {u.empId}
-                                                                            </span>
-                                                                        </div>
-
-                                                                        {/* 4. 이름 및 직급 */}
-                                                                        <div className="shrink-0 text-right">
-                                                                            <span className="text-[13px] font-black text-stone-800 dark:text-stone-200 block leading-tight">
-                                                                                {u.name}
-                                                                            </span>
-                                                                            <p className="text-[10px] text-stone-400 font-bold">{u.position}</p>
-                                                                        </div>
-
-                                                                        {/* 5. 수정 버튼 (클릭 반응 확실하게) */}
-                                                                        <div className="shrink-0 pl-2 border-l border-stone-100 dark:border-stone-800">
-                                                                            <button 
-                                                                                onClick={(e) => { 
-                                                                                    e.preventDefault();
-                                                                                    setMemberForm({ ...u, password: '' }); 
-                                                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                                                                                }} 
-                                                                                className="p-2 text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-xl transition-all active:scale-90"
-                                                                            >
-                                                                                <Icon name="edit" size={16}/>
-                                                                            </button>
-                                                                        </div>
+                                                                // 3순위: 이름순
+                                                                return (a.name || '').localeCompare(b.name || '');
+                                                            })
+                                                            .map(u => (
+                                                                <div 
+                                                                    key={u.empId} 
+                                                                    className="grid grid-cols-[1.2fr_1.3fr_1fr_1fr_auto] gap-2 items-center bg-white dark:bg-stone-900 p-4 rounded-[1.5rem] border border-stone-100 dark:border-stone-800 shadow-sm transition-all hover:border-teal-200 dark:hover:border-teal-900"
+                                                                >
+                                                                    {/* 1. 소속 파트 */}
+                                                                    <div className="min-w-0">
+                                                                        <span className="text-[11px] font-black text-stone-700 dark:text-stone-300 truncate block leading-tight">
+                                                                            {u.part}
+                                                                        </span>
                                                                     </div>
-                                                                ))
-                                                        ) : (
-                                                            <div className="text-center text-sm text-rose-500 font-bold py-8">
-                                                                구성원 정보 로딩 중 오류가 발생했습니다.
-                                                            </div>
-                                                        )}
+                                                                    
+                                                                    {/* 2. 직책 배지 */}
+                                                                    <div className="flex justify-center">
+                                                                        <span className={`whitespace-nowrap text-[10px] font-black px-2.5 py-1 rounded-lg border min-w-[70px] text-center ${
+                                                                            (u.jobTitle || '').includes('점장') || (u.part || '').includes('점장')
+                                                                            ? 'bg-rose-50 text-rose-600 border-rose-100' 
+                                                                            : 'bg-teal-50 text-teal-600 border-teal-100'
+                                                                        }`}>
+                                                                            {u.jobTitle !== '일반' ? u.jobTitle : (u.category || '데스크')}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    {/* 3. 사번 */}
+                                                                    <div className="text-center font-mono font-bold text-stone-500 text-[11px]">
+                                                                        {u.empId}
+                                                                    </div>
+
+                                                                    {/* 4. 성명 및 직급 */}
+                                                                    <div className="text-right pr-1">
+                                                                        <span className="text-[13px] font-black text-stone-800 dark:text-stone-200 block leading-tight">
+                                                                            {u.name}
+                                                                        </span>
+                                                                        <p className="text-[9px] text-stone-400 font-bold leading-none mt-0.5">{u.position}</p>
+                                                                    </div>
+
+                                                                    {/* 5. 수정 버튼 (잘 되던 원래 방식) */}
+                                                                    <div className="flex gap-1 ml-1 pl-2 border-l border-stone-100 dark:border-stone-800">
+                                                                        <button 
+                                                                            onClick={() => { 
+                                                                                setMemberForm({ ...u, password: '' }); 
+                                                                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                                            }} 
+                                                                            className="p-2.5 text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-xl transition-all active:scale-90"
+                                                                        >
+                                                                            <Icon name="edit" size={15}/>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
                                                     </div>
                                                 </div>
                                             )}
