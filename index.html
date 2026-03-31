@@ -1894,37 +1894,6 @@
             };
 
             /* ---------------------------------------------------------
-            2. 게시글 제출 로직 (커스텀 폼 완벽 대응)
-            --------------------------------------------------------- */
-            const handleGenericPostSubmit = async () => {
-                const author = appUser ? appUser.name : submitFormState.authorName;
-                if (!author) return showToast('작성자 성함을 입력해주세요.', true);
-
-                const newPost = {
-                    id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5),
-                    appId: openedDynamicApp?.id || openedSubmitForm?.id,
-                    ...submitFormState, // ✅ 모든 커스텀 질문 답변 포함
-                    author,
-                    photos: submitFormState.photos || [],
-                    createdAt: new Date().toISOString()
-                };
-
-                try {
-                    setDynamicPosts([newPost, ...(dynamicPosts || [])]);
-                    saveToIDB('dynamicPosts', newPost);
-                    setSubmitFormState({}); // 입력창 초기화
-                    if (openedSubmitForm) setOpenedSubmitForm(null);
-
-                    if (db && fbUser) {
-                        await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newPost.id).set(newPost);
-                    }
-                    showToast('등록되었습니다.');
-                } catch (e) {
-                    showToast('등록 실패', true);
-                }
-            };
-
-            /* ---------------------------------------------------------
             3. 위젯 렌더링 (사진 배열 출력 및 토글 기능)
             --------------------------------------------------------- */
             const renderWidget = (app) => {
