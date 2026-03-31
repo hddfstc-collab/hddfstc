@@ -2025,7 +2025,7 @@
                 </div>
             );
             return (
-
+            <>
                 <div className="flex flex-col h-screen min-h-screen bg-[#EBE9E4] dark:bg-stone-950 text-stone-700 dark:text-stone-300 fade-in">
 
                     {viewMode !== 'shared' && (
@@ -4366,6 +4366,7 @@
                         {renderWidgetBoard(popupWidgetApp)}
                     </ModalWrapper>
                 )}
+            </>
             );
         }
         const root = ReactDOM.createRoot(document.getElementById('root')); root.render(<App />);
