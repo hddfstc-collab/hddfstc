@@ -247,7 +247,6 @@
         const PART_W = { '영업1파트': 1, '영업2파트': 2, '고객관리파트': 3, '무역센터': 4 };
         const RANK_W = { '부장': 1, '차장': 2, '과장': 3, '대리': 4, '주임': 5, '사원': 6 };
 
-        // [스마트 최적화] 용량을 스스로 계산하여 한계치를 넘으면 화질/해상도를 알아서 낮추는 함수
         const resizeImage = (file, maxBytes = 300000) => {
             return new Promise((resolve) => {
                 const reader = new FileReader();
@@ -342,16 +341,9 @@
         const defaultStatusOptions = [
             { id: 'sopt_1', label: 'A', bg: 'bg-stone-700 dark:bg-stone-600', text: 'text-white', isWork: true },
             { id: 'sopt_2', label: 'B', bg: 'bg-stone-700 dark:bg-stone-600', text: 'text-white', isWork: true },
-            { id: 'sopt_2', label: 'C', bg: 'bg-stone-700 dark:bg-stone-600', text: 'text-white', isWork: true },
-            { id: 'sopt_2', label: 'M', bg: 'bg-stone-700 dark:bg-stone-600', text: 'text-white', isWork: true },
             { id: 'sopt_3', label: '당직', bg: 'bg-stone-700 dark:bg-stone-600', text: 'text-white', isWork: true },
             { id: 'sopt_4', label: '휴무', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: false },
             { id: 'sopt_5', label: '연차', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: false },
-            { id: 'sopt_6', label: '오전 반차', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: true },
-            { id: 'sopt_7', label: '오후 반차', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: true },
-            { id: 'sopt_8', label: '오전 반반차', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: true },
-            { id: 'sopt_8', label: '오후후 반반차', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: true },
-            { id: 'sopt_9', label: '기념일 반반차', bg: 'bg-stone-200 border border-stone-300 dark:border-stone-700 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-300', isWork: true },
         ];
 
         const hashPassword = async (plain) => {
@@ -415,14 +407,12 @@
             const [expandedNoticeId, setExpandedNoticeId] = useState(null);
             // ---------------------------------------------------------
             // 1. 모든 상태(State) 및 Ref 선언 (맨 위로 모음)
-            const [viewMode, setViewMode] = useState('all'); // 에러 주범 해결: 이름을 viewMode로 통일하고 맨 위로 올림
+            const [viewMode, setViewMode] = useState('all');
             const [showNewPostPopup, setShowNewPostPopup] = useState(false);
             const popupShownRef = useRef(false);
             
-            
             const [showWidgetNoticesPopup, setShowWidgetNoticesPopup] = useState(false);
             const [popupWidgetApp, setPopupWidgetApp] = useState(null);
-
 
             const [readPostIds, setReadPostIds] = useState(() => {
                 try {
@@ -438,9 +428,8 @@
                     return [];
                 }
             });
-            // ✅ 모든 일반 게시판용 엑셀 다운로드 함수 (복구용)
+            // ✅ 엑셀 다운로드
             const downloadPostsExcel = (appId, appName) => {
-                // 1. 해당 앱 ID에 맞는 데이터만 필터링
                 const appData = dynamicPosts.filter(p => p.appId === appId);
 
                 if (appData.length === 0) {
@@ -449,35 +438,27 @@
                     return;
                 }
 
-                // 2. 엑셀용 데이터 정리
                 const rows = appData.map(p => {
-                    // 기본 데이터 구성
                     const row = {
                         "ID": p.id,
                         "작성일": new Date(p.createdAt).toLocaleString(),
                         "작성자": p.author || '익명',
                     };
 
-                    // ✅ 관리자가 설정한 질문(fields)이 있다면, 질문명을 엑셀 헤더로 사용합니다.
                     if (openedDynamicApp.fields && openedDynamicApp.fields.length > 0) {
                         openedDynamicApp.fields.forEach(field => {
-                            // field.label은 '방문 목적', field.id는 'q_123...'
-                            // p[field.id]는 사용자가 입력한 실제 답변 값입니다.
                             row[field.label] = p[field.id] || '-'; 
                         });
                     } else {
-                        // 커스텀 질문이 없는 일반 게시판인 경우 기본 내용 표시
                         row["내용"] = p.content || '-';
                     }
 
-                    // ✅ 나중에 앱마다 다른 양식(formData)을 쓸 경우를 대비해 데이터를 합쳐줍니다.
                     if (p.formData) {
                         return { ...row, ...p.formData };
                     }
                     return row;
                 });
 
-                // 3. 엑셀 파일 생성 및 다운로드
                 try {
                     const worksheet = XLSX.utils.json_to_sheet(rows);
                     const workbook = XLSX.utils.book_new();
@@ -495,8 +476,7 @@
             const [dynamicApps, setDynamicApps] = useState([
                 {
                     id: 'my_form_01',
-                    name: '커스텀 신청서', // 게시판 이름
-                    // ✅ 여기서 질문을 마음대로 정하세요!
+                    name: '커스텀 신청서', 
                     fields: [
                     { id: 'user_name', label: '성함이 어떻게 되시나요?', type: 'text' },
                     { id: 'user_age', label: '나이를 입력해주세요', type: 'number' },
@@ -568,7 +548,6 @@
             // 4. 실행 및 감시 로직 (useEffect)
             // ---------------------------------------------------------
 
-            // URL 파라미터 감시 및 viewMode 동기화
             useEffect(() => {
                 const isShared =
                     viewMode === 'shared' ||
@@ -601,7 +580,7 @@
             const [cancelGuestInfo, setCancelGuestInfo] = useState(null);
             const [cancelGuestName, setCancelGuestName] = useState('');
             const [eventForm, setEventForm] = useState({ title: '', prize: '', target: 'daily', type: 'random', winnerCount: 1, quizQuestion: '', quizAnswer: '', teamCount: 2 });
-            const [quizAnswer, setQuizAnswer] = useState(''); // ✨ 이 줄을 추가해 주세요!
+            const [quizAnswer, setQuizAnswer] = useState('');
             const [spinDisplay, setSpinDisplay] = useState('');
             const [wheelRotation, setWheelRotation] = useState(0);
             const [eventSettings, setEventSettings] = useState(DEFAULT_EVENT_SETTINGS);
@@ -631,19 +610,16 @@
             const [expandedProfiles, setExpandedProfiles] = useState({});
 
             const [noticeForm, setNoticeForm] = useState({ content: '', photos: [], isPinned: false });
-            // [공지사항용] 사진 여러 장을 처리하는 함수
-            // [25개 게시판 공용] 사진 다중 업로드 처리 함수
+            
             const handleImageUpload = async (e, setForm) => {
                 const files = Array.from(e.target.files);
                 if (files.length === 0) return;
 
                 try {
-                    // 모든 사진을 리사이징 (기존 resizeImage 함수 활용)
                     const resizedImages = await Promise.all(
                         files.map(async (file) => await resizeImage(file))
                     );
 
-                    // 선택한 게시판의 바구니(setForm)에 사진 추가
                     setForm(prev => ({
                         ...prev,
                         photos: [...(prev.photos || []), ...resizedImages]
@@ -652,28 +628,24 @@
                     console.error("이미지 처리 중 오류:", error);
                     alert("이미지 처리 중 문제가 발생했습니다.");
                 }
-
-                e.target.value = ''; // 같은 파일 재선택 가능하게 초기화
+                e.target.value = ''; 
             };
             const handleNoticeImages = async (e) => {
                 const files = Array.from(e.target.files);
                 if (files.length === 0) return;
 
-                // 선택한 모든 사진을 리사이징
                 const resizedImages = await Promise.all(
                     files.map(async (file) => await resizeImage(file))
                 );
 
-                // 기존에 올린 사진이 있다면 그 뒤에 새 사진들을 합칩니다.
                 setNoticeForm(prev => ({
                     ...prev,
                     photos: [...(prev.photos || []), ...resizedImages]
                 }));
 
-                e.target.value = ''; // 같은 파일을 다시 선택할 수 있도록 초기화
+                e.target.value = '';
             };
 
-            // [Fix] handleNoticePhotoSingle: 공지사항 모달에서 사진 단건/다건 첨부
             const handleNoticePhotoSingle = async (e) => {
                 const files = Array.from(e.target.files);
                 if (files.length === 0) return;
@@ -703,21 +675,20 @@
             const [memberForm, setMemberForm] = useState({ empId: '', name: '', part: '', position: '사원', jobTitle: '일반', category: '', brands: '', password: '' });
             const [appManagerForm, setAppManagerForm] = useState({ name: '', icon: 'fileText', color: 'text-blue-500', bg: 'bg-blue-50', isFolder: 'false', parentId: '', actionType: 'guide', url: '', writePermission: 'all', resOperatorId: '', resTimeSlots: '10:00, 11:00, 14:00, 15:00', resMaxPerSlot: 1, resLeadTimeDays: 0, resLeadTimeHours: 1, sortOrder: 99 });
             const [editingAppId, setEditingAppId] = useState(null);
-            const [showPerms, setShowPerms] = useState(false); // 권한 설정 모달 토글
+            const [showPerms, setShowPerms] = useState(false); 
             const [submitFormState, setSubmitFormState] = useState({ content: '', photos: [], authorName: '' });
             const [openedFolder, setOpenedFolder] = useState(null);
             const [openedDynamicApp, setOpenedDynamicApp] = useState(null);
             const [boardSearch, setBoardSearch] = useState('');
             const [openedSubmitForm, setOpenedSubmitForm] = useState(null);
             const [openedGuide, setOpenedGuide] = useState(null);
-            const [isGuideEditMode, setIsGuideEditMode] = useState(false); // ✨ 안내형 수정 모드
-            const [guideEditForm, setGuideEditForm] = useState({ content: '', image: '' }); // ✨ 안내형 데이터
+            const [isGuideEditMode, setIsGuideEditMode] = useState(false); 
+            const [guideEditForm, setGuideEditForm] = useState({ content: '', image: '' }); 
             const [openedAdminBoard, setOpenedAdminBoard] = useState(null);
             const [selectedAdminPost, setSelectedAdminPost] = useState(null);
-            // 배열확인: adminBoardForm의 photos가 배열인지 확인
+            
             const [adminBoardForm, setAdminBoardForm] = useState({ title: '', content: '', photos: Array.isArray([]) ? [] : [] });
-            // 또는, 확인용 로그 추가 (개발 중 배포 전 용도)
-            // useEffect(() => { console.log(Array.isArray(adminBoardForm.photos)); }, [adminBoardForm]);
+            
             const [openedReservationApp, setOpenedReservationApp] = useState(null);
             const [resSelectedDate, setResSelectedDate] = useState(todayStr);
             const [resForm, setResForm] = useState({ operatorId: '', slots: '', max: 1, lDays: 0, lHours: 0 });
@@ -743,11 +714,9 @@
 
 
             const getMode = () => {
-                // ?mode=shared
                 const searchMode = new URLSearchParams(window.location.search).get('mode');
                 if (searchMode) return searchMode;
 
-                // #/?mode=shared
                 const hash = window.location.hash;
                 return new URLSearchParams(hash.split('?')[1] || '').get('mode');
             };
@@ -815,13 +784,10 @@
             const showConfirm = (options) => { setConfirmDialog({ ...options, isOpen: true }); };
 
             const hasPermission = useCallback((permRaw, appItem) => {
-                // 관리자는 항상 허용
                 if (isAdminAuth) return true;
                 if (!permRaw) return false;
 
-                // 비로그인 사용자
                 if (!appUser) {
-                    // 폼 / 예약형 앱만 접근 허용
                     if (appItem && (appItem.actionType === 'form' || appItem.actionType === 'reservation')) {
                         if (permRaw === 'all' || (Array.isArray(permRaw) && permRaw.includes('all'))) {
                             return true;
@@ -830,7 +796,6 @@
                     return false;
                 }
 
-                // 로그인 사용자 권한 체크
                 const checkPerm = (p) => {
                     if (p === 'all') return true;
                     if (p === 'admin_only') return isAdminAuth;
@@ -848,7 +813,7 @@
             }, [isAdminAuth, appUser]);
 
             const canWrite = useCallback((appItem) => {
-                if (isAdminAuth) return true; // 관리자는 항상 작성 가능
+                if (isAdminAuth) return true; 
                 if (!appItem) return false;
                 const p = appItem.writePermission;
                 if (!p || p.length === 0) return false;
@@ -857,7 +822,7 @@
 
             const canEdit = canWrite;
             const canDelete = canWrite;
-            // [수정 추가] canViewPosts: 데이터 열람 권한 판별
+            
             const canViewPosts = useCallback((app) => {
                 if (isAdminAuth) return true;
                 if (!appUser) return false;
@@ -865,13 +830,10 @@
                 return canWrite(app);
             }, [isAdminAuth, appUser, canWrite]);
             const canCancelReservation = useCallback((post, guestInput) => {
-                // 1. 관리자
                 if (isAdminAuth) return true;
 
-                // 2. 로그인 사용자 본인 예약
                 if (appUser && post.authorId === appUser.empId) return true;
 
-                // 3. ✅ 비회원 본인 예약
                 if (
                     !appUser &&
                     post.type === 'reservation' &&
@@ -889,8 +851,6 @@
                 if (!appUser) return '로그인이 필요합니다.';
                 return '권한이 없습니다.';
             }, [appUser]);
-            // [N 배지 판독기] 72시간 이내의 안 읽은 새 글이 있을 때만 정확히 N 표시
-
             
             const checkNewBadge = useCallback((targetAppId) => {
                 const app = dynamicApps.find(a => a.id === targetAppId);
@@ -935,10 +895,9 @@
                 const savedEmpId = localStorage.getItem('hmood_empId');
                 if (savedEmpId) { setLoginForm(prev => ({ ...prev, id: savedEmpId })); setRememberMe(true); }
                 
-                // URL 파라미터를 확인하여 view 상태를 즉시 변경해줘야 합니다.
                 const mode = new URLSearchParams(window.location.search).get('mode');
                 if (mode === 'shared') {
-                    setViewMode('shared'); // ✅ 이 줄이 확실히 실행되어야 합니다.
+                    setViewMode('shared'); 
                 } else if (!localStorage.getItem('hmood_session')) {
                     setViewMode('login');
                 }
@@ -948,7 +907,6 @@
                 if (!users || users.length === 0) return;
                 const savedSession = localStorage.getItem('hmood_session');
                 if (!savedSession) {
-                    // ✅ view -> viewMode / setView -> setViewMode로 모두 바꿨습니다.
                     if (viewMode !== 'shared' && viewMode !== 'login') {
                         setViewMode('login');
                     }
@@ -1038,7 +996,6 @@
 
             // 2. [실시간 동기화] 로그인 여부와 상관없이 모든 사용자에게 실시간 데이터 전송
             useEffect(() => {
-                // 수정: fbUser, isAuthReady 조건을 제거하여 비로그인(파트너)도 실시간 감시 가능하게 변경
                 if (!db || !appId) return;
 
                 const unsubApps = db.collection(`artifacts/${appId}/public/data/dynamic_apps`).onSnapshot((snapshot) => {
@@ -1107,7 +1064,7 @@
                     unsubStatusOpts(); unsubBlacklists(); unsubUsers();
                     unsubSchedules(); unsubExtensions();
                 };
-            }, [db, appId]); // 의존성에서 fbUser를 제거하여 로그인 여부와 무관하게 작동하도록 함
+            }, [db, appId]);
 
             const sortedUsers = useMemo(() => {
                 return [...(users || [])].filter(Boolean).sort((a, b) => {
@@ -1140,11 +1097,9 @@
                     if (viewMode.startsWith('PART_')) return u.part === viewMode.replace('PART_', '');
                     return true;
                 }).sort((a, b) => {
-                    // 1. [절대 원칙] 점장은 파트에 상관없이 무조건 최상단
                     if (a.jobTitle === '점장' && b.jobTitle !== '점장') return -1;
                     if (a.jobTitle !== '점장' && b.jobTitle === '점장') return 1;
 
-                    // 2. [추가된 절대 원칙] 소속이 없는 경우(미지정, 빈칸 등) 무조건 맨 아래로!
                     const partA = a.part?.trim() || '미지정';
                     const partB = b.part?.trim() || '미지정';
                     const isUnassignedA = (partA === '미지정' || partA === 'undefined' || partA === 'null');
@@ -1152,31 +1107,25 @@
                     if (isUnassignedA && !isUnassignedB) return 1;
                     if (!isUnassignedA && isUnassignedB) return -1;
 
-                    // 3. 파트 가중치 정렬
                     const wA = PART_W[partA] || 99;
                     const wB = PART_W[partB] || 99;
                     if (wA !== wB) return wA - wB;
 
-                    // 4. 파트장
                     if (a.jobTitle === '파트장' && b.jobTitle !== '파트장') return -1;
                     if (a.jobTitle !== '파트장' && b.jobTitle === '파트장') return 1;
 
-                    // 5. 직급
                     const rA = RANK_W[a.position] || 99;
                     const rB = RANK_W[b.position] || 99;
                     if (rA !== rB) return rA - rB;
 
-                    // 6. 카테고리
                     const cA = a.category || '';
                     const cB = b.category || '';
                     if (cA !== cB) return cA.localeCompare(cB, 'ko');
 
-                    // 7. 이름
                     return (a.name || '').localeCompare(b.name || '', 'ko');
                 });
             }, [sortedUsers, viewMode, appUser]);
 
-            // 1. 잃어버렸던 dailyGroups (원본 데이터 그룹화)
             const dailyGroups = useMemo(() => {
                 const act = (schedules || []).filter(s => {
                     if (s?.date !== todayStr) return false;
@@ -1188,7 +1137,7 @@
                     let p = userMap[s.empId]?.part || s.part || '';
                     if (p === 'undefined' || p === 'null') p = '';
                     p = p.trim();
-                    if (!p) p = '미지정'; // 소속이 없으면 무조건 '미지정'
+                    if (!p) p = '미지정';
 
                     if (!acc[p]) acc[p] = [];
                     acc[p].push(s);
@@ -1196,24 +1145,20 @@
                 }, {});
             }, [schedules, todayStr, statusOptions, userMap]);
 
-            // 2. 완벽하게 정렬된 sortedDailyGroups (직책 -> 직급 -> 카테고리 -> 이름 순)
             const sortedDailyGroups = useMemo(() => {
                 if (!dailyGroups) return [];
 
                 return Object.entries(dailyGroups).sort(([pA], [pB]) => {
-                    // 1. [절대 원칙] 점장이 포함된 파트를 가장 먼저 노출! (띄어쓰기 방어 포함)
                     const hasManagerA = dailyGroups[pA].some(m => (userMap[m.empId]?.jobTitle || '').includes('점장'));
                     const hasManagerB = dailyGroups[pB].some(m => (userMap[m.empId]?.jobTitle || '').includes('점장'));
                     if (hasManagerA && !hasManagerB) return -1;
                     if (!hasManagerA && hasManagerB) return 1;
 
-                    // 2. '미지정' 그룹은 맨 아래로
                     const isUnassignedA = (pA === '미지정');
                     const isUnassignedB = (pB === '미지정');
                     if (isUnassignedA && !isUnassignedB) return 1;
                     if (!isUnassignedA && isUnassignedB) return -1;
 
-                    // 3. 파트 지정된 가중치(PART_W)
                     const wA = PART_W[pA] || 99;
                     const wB = PART_W[pB] || 99;
                     if (wA !== wB) return wA - wB;
@@ -1227,7 +1172,6 @@
                         const titleA = uA.jobTitle || '';
                         const titleB = uB.jobTitle || '';
 
-                        // 1순위: 직책 (점장, 파트장 우선) - includes로 숨은 띄어쓰기 무시하고 잡아냄
                         const isManagerA = titleA.includes('점장');
                         const isManagerB = titleB.includes('점장');
                         if (isManagerA && !isManagerB) return -1;
@@ -1238,17 +1182,14 @@
                         if (isPartLeaderA && !isPartLeaderB) return -1;
                         if (!isPartLeaderA && isPartLeaderB) return 1;
 
-                        // 2순위: 직급 (부장 -> 차장 -> ...)
                         const rankA = RANK_W[uA.position] || 99;
                         const rankB = RANK_W[uB.position] || 99;
                         if (rankA !== rankB) return rankA - rankB;
 
-                        // 3순위: 카테고리 (가나다순)
                         const cA = uA.category || '';
                         const cB = uB.category || '';
                         if (cA !== cB) return cA.localeCompare(cB, 'ko');
 
-                        // 4순위: 이름 (가나다순)
                         return (a.name || '').localeCompare(b.name || '', 'ko');
                     });
                     return [part, sorted];
@@ -1279,12 +1220,40 @@
 
             const toggleFavExt = (id) => { setFavoriteExts(prev => { const next = prev.includes(id) ? prev.filter(favId => favId !== id) : [...prev, id]; localStorage.setItem('hmood_fav_exts', JSON.stringify(next)); return next; }); };
 
+            // ✅ 수정 적용: 로그인 처리 시, 평문 비교와 암호화 비교를 안전하게 동시에 처리
             const handleLogin = async (e) => {
-                e.preventDefault(); const loginId = String(loginForm.id || '').trim(); const loginPw = String(loginForm.pw || '').trim();
+                e.preventDefault(); 
+                const loginId = String(loginForm.id || '').trim(); 
+                const loginPw = String(loginForm.pw || '').trim();
+                
                 if (!loginId || !loginPw) return showToast('사원번호와 비밀번호를 모두 입력해주세요.', true);
+                
                 const pwHash = await hashPassword(loginPw);
-                const f = (users || []).find(u => String(u?.empId) === loginId && (u?.password === pwHash || u?.password === loginPw));
-                if (f) { if (rememberMe) localStorage.setItem('hmood_empId', loginForm.id); else localStorage.removeItem('hmood_empId'); localStorage.setItem('hmood_session', JSON.stringify({ empId: f.empId })); setAppUser(f); setViewMode('daily'); setCurrentDate(new Date()); showToast(`${f.name}님 환영합니다!`); } else showToast('사원번호 또는 비밀번호가 올바르지 않습니다.', true);
+                let f = null;
+
+                for (const u of (users || [])) {
+                    if (String(u?.empId) === loginId) {
+                        const empIdHash = await hashPassword(u?.empId); 
+                        // 저장된 비밀번호가 1. 사용자가 입력한 패스워드의 해시값 2. 평문 3. 사번의 해시값 중 하나인지 검증
+                        if (u?.password === pwHash || u?.password === loginPw || u?.password === empIdHash) {
+                            f = u;
+                            break;
+                        }
+                    }
+                }
+
+                if (f) { 
+                    if (rememberMe) localStorage.setItem('hmood_empId', loginForm.id); 
+                    else localStorage.removeItem('hmood_empId'); 
+                    
+                    localStorage.setItem('hmood_session', JSON.stringify({ empId: f.empId })); 
+                    setAppUser(f); 
+                    setViewMode('daily'); 
+                    setCurrentDate(new Date()); 
+                    showToast(`${f.name}님 환영합니다!`); 
+                } else {
+                    showToast('사원번호 또는 비밀번호가 올바르지 않습니다.', true);
+                }
             };
 
             const handleUpdateDuty = async (empId, dateStr, newStatus, isAdminOverride = false) => {
@@ -1302,12 +1271,12 @@
                 if (type === 'popup_ext' || type === 'link_ext' || app.name.includes('내선')) { setShowExtModal(true); return; }
                 if (type === 'form' || type === 'custom_form') {
                     setOpenedSubmitForm(app);
-                    (dynamicPosts || []).filter(p => p.appId === app.id).forEach(p => markAsRead(p.id)); // [수정]
+                    (dynamicPosts || []).filter(p => p.appId === app.id).forEach(p => markAsRead(p.id)); 
                     return;
                 }
                 if (type === 'board' || type === 'custom_board') {
                     setBoardSearch(''); setOpenedDynamicApp(app);
-                    (dynamicPosts || []).filter(p => p.appId === app.id).forEach(p => markAsRead(p.id)); // [수정]
+                    (dynamicPosts || []).filter(p => p.appId === app.id).forEach(p => markAsRead(p.id)); 
                     return;
                 }
 
@@ -1315,12 +1284,10 @@
                     setOpenedAdminBoard(app);
                     setSelectedAdminPost(null);
 
-                    // ✅ 관리자 게시판 글
                     (dynamicPosts || [])
                         .filter(p => p.appId === app.id)
                         .forEach(p => markAsRead(p.id));
 
-                    // ✅ 공지 위젯 글
                     (notices || [])
                         .forEach(n => markAsRead(n.id));
 
@@ -1333,7 +1300,6 @@
 
                     setOpenedGuide(app);
 
-                    // ✅ 안내형도 읽음 처리
                     (dynamicPosts || [])
                         .filter(p => p.appId === app.id)
                         .forEach(p => markPostAsRead(p.id));
@@ -1384,7 +1350,6 @@
                     resLeadTimeDays: app.resLeadTimeDays || 0, 
                     resLeadTimeHours: app.resLeadTimeHours || 0, 
                     sortOrder: app.sortOrder || 99,
-                    // ✅ [여기가 핵심!] 기존에 저장된 질문 목록을 불러와야 편집이 가능합니다.
                     fields: app.fields || [] 
                 });
 
@@ -1412,11 +1377,9 @@
                 setShowPerms(false);
             };
 
-            // [수정 3] 파트, 개인 등 다중 선택을 처리하는 새로운 권한 토글 함수
             const togglePerm = (permKey, forceState) => {
                 let current = Array.isArray(appManagerForm.writePermission) ? [...appManagerForm.writePermission] : [];
 
-                // 모두 허용이나 관리자 전용을 누르면 다른 세부 권한을 지움
                 if (current.includes('all') && permKey !== 'all') current = current.filter(k => k !== 'all');
                 if (current.includes('admin_only') && permKey !== 'admin_only') current = current.filter(k => k !== 'admin_only');
 
@@ -1486,39 +1449,30 @@
             };
 
             const handleGenericPostSubmit = async () => {
-                // 1. 작성자 확인
                 const author = appUser ? appUser.name : submitFormState.authorName;
                 
-                // [수정] 필수값 체크: 커스텀 폼에서는 'content'가 없을 수 있으므로 체크 로직을 유연하게 변경하거나 제거합니다.
                 if (!author) return showToast('작성자 성함을 입력해주세요.', true);
 
-                // 2. 새로운 게시글 객체 생성
                 const newPost = {
                     id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5),
                     appId: openedDynamicApp?.id || openedSubmitForm?.id,
                     
-                    // ✅ [핵심] 사용자가 입력한 모든 커스텀 필드(성함, 나이, 사유 등)를 통째로 저장
                     ...submitFormState, 
                     
-                    // 기존 필드 유지 (호환성을 위해)
                     author,
                     photos: submitFormState.photos || [],
                     createdAt: new Date().toISOString()
                 };
 
                 try {
-                    // 3. 로컬 상태 업데이트
                     setDynamicPosts([newPost, ...(dynamicPosts || [])]);
                     
-                    // 4. IndexedDB 저장 (브라우저 저장소)
                     saveToIDB('dynamicPosts', newPost);
                     
-                    // 5. 입력창 초기화 (모든 값 싹 비우기)
                     setSubmitFormState({}); 
                     
                     if (openedSubmitForm) setOpenedSubmitForm(null);
 
-                    // 6. Firebase 서버 저장 (서버 설정이 되어 있는 경우)
                     if (db && fbUser) {
                         const path = `artifacts/${appId}/public/data/dynamic_posts`;
                         await db.collection(path).doc(newPost.id).set(newPost);
@@ -1540,7 +1494,7 @@
                     appId: useAppId,
                     title: adminBoardForm.title,
                     content: adminBoardForm.content,
-                    photos: adminBoardForm.photos || [], // [수정] photo → photos
+                    photos: adminBoardForm.photos || [], 
                     author: appUser?.name || '관리자',
                     createdAt: new Date().toISOString(),
                     type: 'admin_board'
@@ -1548,7 +1502,7 @@
                 try {
                     setDynamicPosts([newPost, ...(dynamicPosts || [])]);
                     saveToIDB('dynamicPosts', newPost);
-                    setAdminBoardForm({ title: '', content: '', photos: [] }); // [수정]
+                    setAdminBoardForm({ title: '', content: '', photos: [] });
                     if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newPost.id).set(newPost);
                     showToast('게시글이 등록되었습니다.');
                 } catch (e) { showToast('게시글 등록 실패', true); }
@@ -1658,33 +1612,25 @@
                 } catch (err) { showToast('저장 실패', true); }
             };
 
-            // [Fix] handleEditMember: 구성원 수정 버튼 클릭 시 폼에 데이터 채우기
             const handleEditMember = (u) => {
                 setMemberForm({ ...u, password: '' });
-                // 관리자 탭의 members 섹션 상단으로 스크롤
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             };
 
             const handleMemberSubmit = async () => {
                 if (!memberForm.empId || !memberForm.name) return showToast('사번과 이름을 입력해주세요.', true);
 
-                // 1. 기존에 등록된 유저인지 먼저 확인합니다.
                 const existingUser = users.find(u => u.empId === memberForm.empId);
                 let finalPasswordHash = '';
 
-                // 2. 비밀번호 유지/초기화/변경 로직
                 if (memberForm.password) {
-                    // 관리자가 새로운 비밀번호를 직접 입력한 경우 (변경)
                     finalPasswordHash = await hashPassword(memberForm.password);
                 } else if (existingUser && existingUser.password) {
-                    // 수정 모드인데 비밀번호 칸을 비워둔 경우 (기존 비밀번호 안전하게 유지!)
                     finalPasswordHash = existingUser.password;
                 } else {
-                    // 신규 생성인데 비밀번호 칸을 비워둔 경우 (사번으로 자동 초기화)
                     finalPasswordHash = await hashPassword(memberForm.empId);
                 }
 
-                // 3. 기존 데이터가 있다면 덮어쓰지 않고 유지(생일 등)하면서 폼 데이터만 쏙 업데이트합니다.
                 const newMember = {
                     ...existingUser,
                     ...memberForm,
@@ -1913,17 +1859,12 @@
 
             useEffect(() => { let interval; if (currentEvent?.status === 'spinning') { interval = setInterval(() => { const participants = currentEvent.participants || []; if (participants.length > 0) { const randomId = participants[Math.floor(Math.random() * participants.length)]; setSpinDisplay(userMap[randomId]?.name || '...'); } else { setSpinDisplay('참여자 없음'); } }, 80); } return () => clearInterval(interval); }, [currentEvent?.status, currentEvent?.participants, userMap]);
 
-            /* ---------------------------------------------------------
-            1. 상태 관리 및 공통 로직 (중복 제거)
-            --------------------------------------------------------- */
-            // viewMode 변경 시 스크롤 포커스 (하나로 통합)
             useEffect(() => {
                 if (viewMode === 'monthly' && tableScrollRef.current) {
                     setTimeout(() => { tableScrollRef.current?.focus(); }, 100);
                 }
             }, [viewMode]);
 
-            // 사진 업로드 로직 (기존 사진에 추가되도록 개선)
             const handlePhotoSingle = async (e, setter) => {
                 const files = Array.from(e.target.files || []);
                 if (!files.length) return;
@@ -1935,10 +1876,6 @@
                 e.target.value = '';
             };
 
-            /* ---------------------------------------------------------
-            3. 위젯 렌더링 (사진 배열 출력 및 토글 기능)
-            --------------------------------------------------------- */
-            
             const renderWidget = (app) => {
                 if (app.actionType === 'widget_notices') {
                     return (
@@ -1946,18 +1883,17 @@
                             key={app.id}
                             className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in"
                         >
-                            {/* ✅ 헤더: 제목 + 전체보기 버튼 */}
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}>
                                         <Icon name={app.icon} size={16} /> {app.name}
                                     </h3>
 
-                                    {/* ✅ 게시판 전체 팝업 버튼 (여기서만 처리) */}
+                                    {/* ✅ 수정된 부분: 팝업 연결 */}
                                     <button
                                         onClick={() => {
-                                            setOpenedDynamicApp(app);        // ✅ 게시판 대상 설정
-                                            setShowWidgetNoticesPopup(true); // ✅ 팝업 오픈
+                                            setOpenedDynamicApp(app);
+                                            setShowWidgetNoticesPopup(true);
                                         }}
                                         className="text-stone-400 hover:text-rose-500"
                                         title="전체 보기"
@@ -1966,7 +1902,6 @@
                                     </button>
                                 </div>
 
-                                {/* ✅ 공지 등록 (권한 그대로) */}
                                 {canWrite(app) && (
                                     <button
                                         onClick={() => setIsNoticeModalOpen(true)}
@@ -1977,7 +1912,6 @@
                                 )}
                             </div>
 
-                            {/* ✅ 공지 리스트 (아코디언만 유지) */}
                             <div className="space-y-3">
                                 {(notices || []).slice(0, 5).map(n => {
                                     const isExpanded = expandedNoticeId === n.id;
@@ -2039,15 +1973,9 @@
                         </div>
                     );
                 }
-
-                // ... widget_managers 등 다른 위젯
             };
 
 
-            /* ---------------------------------------------------------
-            4. 구성원 목록 (그리드 레이아웃 - 아까 이미지 문제 해결)
-            --------------------------------------------------------- */
-            // currentAdminTab === 'members' 부분의 리스트 아이템 수정
             const renderMemberItem = (u) => (
                 <div key={u.empId} className="grid grid-cols-[1.2fr_0.8fr_1fr_0.8fr_auto] gap-2 items-center bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-100 shadow-sm mb-2">
                     <div className="min-w-0">
@@ -2088,7 +2016,6 @@
                                             title="파트너스 채널"
                                         >
                                             <Icon name="externalLink" size={16} /> 
-                                            {/* 💡 sm:inline 추가: 모바일에서는 숨기고 넓은 화면에서만 표시 */}
                                             <span className="hidden sm:inline text-[10px] font-bold ml-1">파트너스 채널</span>
                                         </button>
                                     </div>
@@ -2103,27 +2030,25 @@
                                 {appUser ? (
                                     <div className="flex items-center gap-1.5 bg-white dark:bg-stone-800 px-3 py-1.5 rounded-full border border-stone-200 dark:border-stone-700 shadow-sm">
                                         <button 
-                                            onClick={(e) => { /* 기존 프로필 수정 로직 유지 */ }} 
+                                            onClick={(e) => {  }} 
                                             className="flex items-center gap-1 text-[10px] font-black text-stone-600 dark:text-stone-300 hover:text-teal-600 transition-colors btn-press"
                                         >
                                             <span className="underline decoration-stone-300 dark:decoration-stone-600 underline-offset-2">{appUser.name}</span>
-                                            {/* 💡 '님' 자를 모바일에서 숨기거나 작게 유지 */}
                                             <span className="hidden xs:inline">님</span>
                                         </button>
 
                                         <div className="w-px h-3 bg-stone-200 dark:bg-stone-700 mx-0.5"></div>
 
                                         <button
-                                            onClick={() => { /* 기존 내 정보 열기 로직 유지 */ }}
+                                            onClick={() => {  }}
                                             className="text-stone-400 hover:text-teal-500 transition-colors flex items-center gap-1"
                                         >
                                             <Icon name="user" size={12} />
-                                            {/* 💡 모바일에서는 '내 정보' 글자 숨기기 */}
                                             <span className="hidden sm:inline text-[10px] font-bold">내 정보</span>
                                         </button>
 
                                         <button
-                                            onClick={() => { /* 기존 로그아웃 로직 유지 */ }}
+                                            onClick={() => {  }}
                                             className="text-stone-400 hover:text-rose-500 transition-colors flex items-center gap-1 pl-1"
                                         >
                                             <Icon name="logout" size={12} />
@@ -2170,7 +2095,6 @@
                                         <button type="button" onClick={() => setViewMode('shared')} className="text-[12px] text-stone-400 hover:text-teal-500 font-bold underline underline-offset-2 flex items-center justify-center gap-1.5 mx-auto btn-press"><Icon name="externalLink" size={14} /> 파트너스 채널로 이동</button>
                                     </div>
 
-                                    {/* 👇 여기에 시스템 관리자 전용 로그인 버튼이 추가되었습니다! 👇 */}
                                     <div className="mt-6 text-center border-t border-stone-100 dark:border-stone-800 pt-5 fade-in">
                                         <button
                                             type="button"
@@ -2196,11 +2120,10 @@
                                             <Icon name="shield" size={13} /> 시스템 관리자 전용 로그인
                                         </button>
                                     </div>
-                                    {/* 👆 추가 끝 👆 */}
                                 </div>
                             )}
 
-                            {/* SHARED VIEW (협력사 파트너스 뷰) */}
+                            {/* SHARED VIEW */}
                             {viewMode === 'shared' && (
                                 <div className="space-y-5 max-w-2xl mx-auto pb-10 mt-2 fade-in">
                                     <div className="flex justify-between items-center mb-4 px-2">
@@ -2208,7 +2131,6 @@
                                             <h2 className="text-xl font-black flex items-center gap-2 text-stone-800 dark:text-stone-200">
                                                 <Icon name="shield" className="text-teal-600" size={24} /> 파트너스 채널
                                             </h2>
-                                            {/* 직영채널 이동 버튼을 작은 아이콘으로 변경 */}
                                             <button onClick={() => handleNavClick('daily')} className="bg-stone-800 dark:bg-stone-700 text-white p-1.5 rounded-lg shadow flex items-center justify-center btn-press ml-1 transition-transform" title="직영채널 이동">
                                                 <Icon name="calendar" size={16} />
                                             </button>
@@ -2221,10 +2143,8 @@
                                         </div>
                                     </div>
 
-                                    {/* 위젯 영역 */}
                                     {(dynamicApps || []).filter(a => !a.parentId && a.actionType?.startsWith('widget_') && (a.sortOrder || 99) < 100).sort((a, b) => (a.sortOrder || 99) - (b.sortOrder || 99)).map(app => app.actionType === 'widget_board' ? renderWidgetBoard(app) : renderWidget(app))}
 
-                                    {/* 채널 퀵 메뉴 영역 */}
                                     <div className="bg-white dark:bg-stone-900 rounded-[2rem] p-5 sm:p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 mt-4">
                                         <h3 className="text-xs font-black flex items-center gap-2 text-stone-700 dark:text-stone-300 mb-4">채널 퀵 메뉴</h3>
                                         <div className="grid grid-cols-4 sm:grid-cols-5 gap-3 sm:gap-4 w-full">
@@ -2236,10 +2156,8 @@
                                                         <div className={`w-14 h-14 sm:w-16 sm:h-16 ${app.bg} ${app.color} rounded-[1.2rem] shadow-sm flex items-center justify-center transition-all group-hover:shadow-md relative`}>
                                                             <Icon name={app.icon} size={26} className="transition-colors" />
 
-                                                            {/* 폴더 아이콘 표시 */}
                                                             {app.isFolder && <div className="absolute top-0 right-0 w-3.5 h-3.5 bg-white border border-stone-200 rounded-full flex items-center justify-center"><div className="w-1.5 h-1.5 bg-stone-300 rounded-full" /></div>}
 
-                                                            {/* 1. 안 읽은 '숫자' 배지 (공지사항/관리자게시판 용) */}
                                                             {(app.actionType === 'widget_notices' || app.actionType === 'notice' || app.actionType === 'admin_board') && (() => {
                                                                 const unread = app.actionType === 'widget_notices'
                                                                     ? (notices || []).filter(n => !readNoticeIds.includes(n.id)).length
@@ -2247,7 +2165,6 @@
                                                                 return unread > 0 ? <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-black rounded-full min-w-[17px] h-[17px] flex items-center justify-center px-1 shadow z-10">{unread > 9 ? '9+' : unread}</span> : null;
                                                             })()}
 
-                                                            {/* 2. 추가된 로직: 숫자 배지가 없는 일반 앱일 때, 깜빡이는 빨간 'N' 배지 */}
                                                             {app.actionType !== 'widget_notices' && app.actionType !== 'notice' && app.actionType !== 'admin_board' && checkNewBadge(app.id) && (
                                                                 <span className="absolute -top-1 -right-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-rose-500 text-[9px] sm:text-[10px] font-black text-white shadow-md ring-2 ring-white dark:ring-stone-900 z-10 animate-pulse">N</span>
                                                             )}
@@ -2302,7 +2219,6 @@
                                                 <div key={part} className="space-y-2 w-full">
                                                     <h3 className="text-[11px] font-black flex items-center gap-2 tracking-tighter ml-1 text-stone-700 dark:text-stone-300"><div className="w-1.5 h-3 bg-teal-500 rounded-full" />{part}</h3>
                                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                                                        {/* ✅ 점장 최상단 + 직급순 정렬 추가 */}
                                                         {members
                                                             .sort((a, b) => {
                                                                 const ua = userMap[a.empId]; const ub = userMap[b.empId];
@@ -2386,7 +2302,6 @@
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {/* ✅ 점장 최상단 + 직급순 정렬 추가 */}
                                                         {filteredMonthly
                                                             .sort((a, b) => {
                                                                 if (a.jobTitle === '점장' && b.jobTitle !== '점장') return -1;
