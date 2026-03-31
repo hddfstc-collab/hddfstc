@@ -905,11 +905,15 @@
 
             useEffect(() => {
                 if (!users || users.length === 0) return;
+                
+                const urlMode = new URLSearchParams(window.location.search).get('mode') || new URLSearchParams(window.location.hash.split('?')[1] || '').get('mode');
+                const isSharedMode = urlMode === 'shared';
+
                 const savedSession = localStorage.getItem('hmood_session');
+                
                 if (!savedSession) {
-                    if (viewMode !== 'shared' && viewMode !== 'login') {
-                        setViewMode('login');
-                    }
+                    if (isSharedMode) setViewMode('shared');
+                    else setViewMode('login');
                     return;
                 }
                 try {
@@ -918,8 +922,11 @@
                     const found = users.find(u => u.empId === empId);
                     if (found && !appUser) {
                         setAppUser(found);
-                        const mode = new URLSearchParams(window.location.search).get('mode');
-                        if (mode !== 'shared' && viewMode === 'login') setViewMode('daily');
+                        if (isSharedMode) {
+                            setViewMode('shared');
+                        } else if (viewMode === 'login' || viewMode === 'all') {
+                            setViewMode('daily');
+                        }
                     }
                 } catch (e) { localStorage.removeItem('hmood_session'); }
             }, [users]);
@@ -1229,13 +1236,14 @@
                 if (!loginId || !loginPw) return showToast('사원번호와 비밀번호를 모두 입력해주세요.', true);
                 
                 const pwHash = await hashPassword(loginPw);
-                // ✅ 픽스: 초기 평문 사번 로그인 지원을 위해 입력된 아이디 자체도 해시화하여 대조
-                const empIdHash = await hashPassword(loginId); 
+                const idHash = await hashPassword(loginId); 
                 
-                const f = (users || []).find(u => 
-                    String(u?.empId) === loginId && 
-                    (u?.password === pwHash || u?.password === loginPw || u?.password === empIdHash)
-                );
+                const f = (users || []).find(u => {
+                    if (String(u?.empId) !== loginId) return false;
+                    const dbPw = String(u?.password || '').trim();
+                    // 해시, 평문, 사번해시, 평문사번 모두 호환되도록 완벽 방어
+                    return dbPw === pwHash || dbPw === loginPw || dbPw === idHash || dbPw === loginId;
+                });
 
                 if (f) { 
                     if (rememberMe) localStorage.setItem('hmood_empId', loginForm.id); 
@@ -1243,7 +1251,12 @@
                     
                     localStorage.setItem('hmood_session', JSON.stringify({ empId: f.empId })); 
                     setAppUser(f); 
-                    setViewMode('daily'); 
+                    
+                    // 로그인 직후 URL 모드 판독하여 이동
+                    const urlMode = new URLSearchParams(window.location.search).get('mode') || new URLSearchParams(window.location.hash.split('?')[1] || '').get('mode');
+                    if (urlMode === 'shared') setViewMode('shared');
+                    else setViewMode('daily'); 
+                    
                     setCurrentDate(new Date()); 
                     showToast(`${f.name}님 환영합니다!`); 
                 } else {
@@ -1869,6 +1882,32 @@
                     photos: [...(prev.photos || []), ...resized].slice(0, 3) 
                 }));
                 e.target.value = '';
+            };
+            const renderWidgetBoard = (app) => {
+                const posts = (dynamicPosts || []).filter(p => p.appId === app.id).slice(0, 5);
+                return (
+                    <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in">
+                        <div className="flex items-center justify-between">
+                            <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}><Icon name={app.icon} size={16} /> {app.name}</h3>
+                            <button onClick={() => { setOpenedDynamicApp(app); posts.forEach(p => markPostAsRead(p.id)); }} className="text-stone-400 hover:text-teal-500"><Icon name="externalLink" size={14}/></button>
+                        </div>
+                        <div className="space-y-2">
+                            {posts.map(p => {
+                                const isUnread = !readPostIds.includes(p.id);
+                                return (
+                                    <div key={p.id} className="flex justify-between items-center bg-stone-50 dark:bg-stone-800/60 p-3 rounded-xl border border-stone-100 dark:border-stone-700 cursor-pointer hover:border-teal-200 transition-colors" onClick={() => { setOpenedDynamicApp(app); markPostAsRead(p.id); }}>
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            {isUnread && <div className="w-1.5 h-1.5 bg-rose-500 rounded-full shrink-0"></div>}
+                                            <p className="text-[11px] font-black text-stone-700 dark:text-stone-300 truncate">{p.title || p.content}</p>
+                                        </div>
+                                        <span className="text-[9px] text-stone-400 shrink-0">{formatLocalTime(p.createdAt).slice(5, 10)}</span>
+                                    </div>
+                                )
+                            })}
+                            {posts.length === 0 && <p className="text-[11px] text-center text-stone-400 py-4">게시글이 없습니다.</p>}
+                        </div>
+                    </div>
+                );
             };
 
             const renderWidget = (app) => {
@@ -2716,6 +2755,7 @@
                                                                 )}
 
                                                                 {/* ✅ 위젯형 공지사항 - 아코디언 방식 [Fix] */}
+                                                                {/* ✅ 위젯형 공지사항 - 아코디언 방식 및 썸네일 추가 [Fix] */}
                                                                 {app.actionType === 'widget_notices' && (
                                                                     <div className="pt-2 space-y-2">
                                                                         {/* 1. 아코디언 공지사항 리스트 */}
@@ -2727,16 +2767,11 @@
                                                                                 return (
                                                                                     <div
                                                                                         key={notice.id}
-                                                                                        className={`p-4 rounded-2xl border cursor-pointer transition-all ${
-                                                                                            isExpanded
-                                                                                                ? 'bg-white dark:bg-stone-800 ring-2 ring-stone-100 shadow-md'
-                                                                                                : 'bg-stone-50 dark:bg-stone-800 border-stone-100'
-                                                                                        }`}
+                                                                                        className={`rounded-xl border cursor-pointer transition-all ${isExpanded ? 'bg-white dark:bg-stone-800 ring-2 ring-rose-100 dark:ring-rose-900 shadow-md' : 'bg-stone-50 dark:bg-stone-800/60 border-stone-100 dark:border-stone-700 hover:border-rose-200'}`}
                                                                                         onClick={() => {
                                                                                             if (!isRead) markAsRead(notice.id);
-                                                                                            // ✅ 픽스: 조건 비교 삭제하고, 클릭 시 곧바로 팝업 모달 열기!
-                                                                                            setShowWidgetNoticesPopup(true);
-                                                                                            setOpenedDynamicApp(app);
+                                                                                            // ✅ 픽스: 아코디언 정상 작동하도록 수정
+                                                                                            setExpandedNoticeId(isExpanded ? null : notice.id);
                                                                                         }}
                                                                                     >
                                                                                         <div className="p-3 flex items-start justify-between gap-2">
@@ -2746,7 +2781,13 @@
                                                                                                     {notice.content}
                                                                                                 </p>
                                                                                             </div>
-                                                                                            <Icon name={isExpanded ? "chevronUp" : "chevronDown"} size={13} className="text-stone-300 shrink-0 mt-0.5" />
+                                                                                            {/* ✅ 썸네일 노출 로직 추가 (우측 끝) */}
+                                                                                            <div className="flex items-center gap-2 shrink-0">
+                                                                                                {!isExpanded && images.length > 0 && (
+                                                                                                    <img src={images[0]} className="w-6 h-6 rounded-md object-cover border border-stone-200 dark:border-stone-700 shadow-sm" alt="썸네일" />
+                                                                                                )}
+                                                                                                <Icon name={isExpanded ? "chevronUp" : "chevronDown"} size={13} className="text-stone-300 mt-0.5" />
+                                                                                            </div>
                                                                                         </div>
                                                                                         {isExpanded && (
                                                                                             <div className="px-3 pb-3 space-y-2">
@@ -4334,17 +4375,40 @@
                         )
                     }
                 </div >
-                {/* ✅ 현장 실시간 공지사항 팝업 */}
-                {showWidgetNoticesPopup && openedDynamicApp && (
+                {/* ✅ 현장 실시간 공지사항 팝업 완벽 수정 */}
+                {showWidgetNoticesPopup && (
                     <ModalWrapper
                         title="현장 실시간 공지사항"
                         icon="bellRing"
+                        color="text-rose-500"
                         onClose={() => {
                             setShowWidgetNoticesPopup(false);
                             setOpenedDynamicApp(null);
                         }}
                     >
-                        {renderBoard(openedDynamicApp)}
+                        <div className="space-y-3 overflow-y-auto scrollbar-hide max-h-[60vh] pr-1">
+                            {(notices || []).map(notice => {
+                                const images = Array.isArray(notice.photos) ? notice.photos : (notice.photo ? [notice.photo] : []);
+                                return (
+                                    <div key={notice.id} className="bg-stone-50 dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <span className="text-[10px] text-stone-400 font-bold">{notice.author} · {formatLocalTime(notice.createdAt)}</span>
+                                        </div>
+                                        <p className="text-[13px] font-bold text-stone-800 dark:text-stone-200 whitespace-pre-wrap">{notice.content}</p>
+                                        {images.length > 0 && (
+                                            <div className="mt-3 space-y-2">
+                                                {images.map((img, i) => (
+                                                    <img key={i} src={img} className="w-full rounded-xl border object-cover cursor-pointer" onClick={(e) => { e.stopPropagation(); setExpandedImage(img); }} />
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                            {(notices || []).length === 0 && (
+                                <p className="text-[11px] text-center text-stone-400 py-6">등록된 공지사항이 없습니다.</p>
+                            )}
+                        </div>
                     </ModalWrapper>
                 )}
             </>
