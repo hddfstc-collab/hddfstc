@@ -415,10 +415,14 @@
             const [expandedNoticeId, setExpandedNoticeId] = useState(null);
             // ---------------------------------------------------------
             // 1. 모든 상태(State) 및 Ref 선언 (맨 위로 모음)
-            // ---------------------------------------------------------
             const [viewMode, setViewMode] = useState('all'); // 에러 주범 해결: 이름을 viewMode로 통일하고 맨 위로 올림
             const [showNewPostPopup, setShowNewPostPopup] = useState(false);
             const popupShownRef = useRef(false);
+            
+            
+            const [showWidgetNoticesPopup, setShowWidgetNoticesPopup] = useState(false);
+            const [popupWidgetApp, setPopupWidgetApp] = useState(null);
+
 
             const [readPostIds, setReadPostIds] = useState(() => {
                 try {
