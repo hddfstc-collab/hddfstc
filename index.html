@@ -6,16 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>H무디 ERP - Perfect Final</title>
 
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
 
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
@@ -141,6 +141,7 @@
             chevronLeft: <polyline points="15 18 9 12 15 6" />,
             chevronRight: <polyline points="9 18 15 12 9 6" />,
             chevronDown: <polyline points="6 9 12 15 18 9" />,
+            chevronUp: <polyline points="18 15 12 9 6 15" />,
             settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" /></>,
             alertCircle: <><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></>,
             checkCircle: <><path d="M22 11.08V12a10 10 0 11-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></>,
@@ -657,6 +658,24 @@
                 }));
 
                 e.target.value = ''; // 같은 파일을 다시 선택할 수 있도록 초기화
+            };
+
+            // [Fix] handleNoticePhotoSingle: 공지사항 모달에서 사진 단건/다건 첨부
+            const handleNoticePhotoSingle = async (e) => {
+                const files = Array.from(e.target.files);
+                if (files.length === 0) return;
+                try {
+                    const resizedImages = await Promise.all(
+                        files.map(async (file) => await resizeImage(file))
+                    );
+                    setNoticeForm(prev => ({
+                        ...prev,
+                        photos: [...(prev.photos || []), ...resizedImages].slice(0, 5)
+                    }));
+                } catch (err) {
+                    showToast('이미지 처리 중 오류가 발생했습니다.', true);
+                }
+                e.target.value = '';
             };
             const [editingNoticeId, setEditingNoticeId] = useState(null);
             const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
@@ -1621,6 +1640,13 @@
                     });
                     saveToIDB('notices', newNotice); setEditingNoticeId(null); setIsNoticeModalOpen(false); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/notices`).doc(id).set(newNotice, { merge: true }); showToast('저장되었습니다.'); setNoticeForm({ content: '', photos: [], isPinned: false });
                 } catch (err) { showToast('저장 실패', true); }
+            };
+
+            // [Fix] handleEditMember: 구성원 수정 버튼 클릭 시 폼에 데이터 채우기
+            const handleEditMember = (u) => {
+                setMemberForm({ ...u, password: '' });
+                // 관리자 탭의 members 섹션 상단으로 스크롤
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             };
 
             const handleMemberSubmit = async () => {
@@ -2697,35 +2723,46 @@
                                                                     </div>
                                                                 )}
 
-                                                                {/* ✅ 위젯형 공지사항 - 팝업 방식 */}
+                                                                {/* ✅ 위젯형 공지사항 - 아코디언 방식 [Fix] */}
                                                                 {app.actionType === 'widget_notices' && (
                                                                     <div className="pt-2 space-y-2">
-                                                                        {/* 1. 개별 공지사항 리스트 (클릭 시 상세 팝업 호출) */}
-                                                                        <div className="space-y-1">
+                                                                        {/* 1. 아코디언 공지사항 리스트 */}
+                                                                        <div className="space-y-1.5">
                                                                             {(notices || []).slice(0, 5).map(notice => {
                                                                                 const isRead = readNoticeIds.includes(notice.id);
-
+                                                                                const isExpanded = expandedNoticeId === notice.id;
+                                                                                const images = Array.isArray(notice.photos) ? notice.photos : (notice.photo ? [notice.photo] : []);
                                                                                 return (
-                                                                                    <button
+                                                                                    <div
                                                                                         key={notice.id}
+                                                                                        className={`rounded-xl border cursor-pointer transition-all ${isExpanded ? 'bg-white dark:bg-stone-800 ring-2 ring-rose-100 dark:ring-rose-900 shadow-md' : 'bg-stone-50 dark:bg-stone-800/60 border-stone-100 dark:border-stone-700 hover:border-rose-200'}`}
                                                                                         onClick={() => {
-                                                                                            // 💡 사용자 정의 팝업 상태에 데이터 세팅 및 열기
-                                                                                            setSelectedNoticePopup(notice);
-                                                                                            // 💡 읽지 않은 공지라면 즉시 읽음 처리
                                                                                             if (!isRead) markAsRead(notice.id);
+                                                                                            setExpandedNoticeId(isExpanded ? null : notice.id);
                                                                                         }}
-                                                                                        className="w-full text-left p-3 flex items-center justify-between gap-2 bg-white dark:bg-stone-900 rounded-xl border border-stone-100 dark:border-stone-800 hover:border-teal-500/50 transition-all shadow-sm group"
                                                                                     >
-                                                                                        <div className="flex items-center gap-2 min-w-0">
-                                                                                            {!isRead && (
-                                                                                                <div className="w-1.5 h-1.5 bg-rose-500 rounded-full shrink-0 animate-pulse" />
-                                                                                            )}
-                                                                                            <p className={`text-[11px] font-black truncate ${isRead ? 'text-stone-400' : 'text-stone-700 dark:text-stone-300'}`}>
-                                                                                                {notice.title}
-                                                                                            </p>
+                                                                                        <div className="p-3 flex items-start justify-between gap-2">
+                                                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                                                {!isRead && <div className="w-1.5 h-1.5 bg-rose-500 rounded-full shrink-0 animate-pulse mt-0.5" />}
+                                                                                                <p className={`text-[11px] font-black ${isRead ? 'text-stone-400' : 'text-stone-700 dark:text-stone-300'} ${isExpanded ? '' : 'truncate'}`}>
+                                                                                                    {notice.content}
+                                                                                                </p>
+                                                                                            </div>
+                                                                                            <Icon name={isExpanded ? "chevronUp" : "chevronDown"} size={13} className="text-stone-300 shrink-0 mt-0.5" />
                                                                                         </div>
-                                                                                        <Icon name="chevronRight" size={12} className="text-stone-300 group-hover:text-teal-500 transition-colors" />
-                                                                                    </button>
+                                                                                        {isExpanded && (
+                                                                                            <div className="px-3 pb-3 space-y-2">
+                                                                                                <p className="text-[10px] text-stone-400 font-bold">{notice.author} · {formatLocalTime(notice.createdAt)}</p>
+                                                                                                {images.length > 0 && (
+                                                                                                    <div className="space-y-1.5 mt-1">
+                                                                                                        {images.map((img, i) => (
+                                                                                                            <img key={i} src={img} className="w-full rounded-xl border object-cover cursor-pointer" onClick={(e) => { e.stopPropagation(); setExpandedImage(img); }} />
+                                                                                                        ))}
+                                                                                                    </div>
+                                                                                                )}
+                                                                                            </div>
+                                                                                        )}
+                                                                                    </div>
                                                                                 );
                                                                             })}
 
@@ -2739,14 +2776,14 @@
                                                                         {/* 2. 하단 관리자 바 (canWrite 권한 있을 때만 노출) */}
                                                                         {canWrite(app) && (
                                                                             <div 
-                                                                                className="mt-1 py-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800 text-center cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all btn-press"
-                                                                                onClick={() => {
-                                                                                    setOpenedAdminBoard(app);
-                                                                                    setSelectedAdminPost(null);
+                                                                                className="mt-1 py-2 bg-rose-50 dark:bg-rose-900/20 rounded-xl border border-rose-100 dark:border-rose-800 text-center cursor-pointer hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-all btn-press"
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setIsNoticeModalOpen(true);
                                                                                 }}
                                                                             >
-                                                                                <p className="text-[9px] text-indigo-600 dark:text-indigo-400 font-black flex items-center justify-center gap-1">
-                                                                                    <Icon name="edit" size={10} /> 클릭하여 공지사항 등록 및 관리
+                                                                                <p className="text-[9px] text-rose-600 dark:text-rose-400 font-black flex items-center justify-center gap-1">
+                                                                                    <Icon name="edit" size={10} /> 공지사항 등록 및 관리
                                                                                 </p>
                                                                             </div>
                                                                         )}
@@ -3462,17 +3499,17 @@
                                             // 2. 앱 화면 실행 (안내형/게시판형에 맞는 화면)
                                             handleAppClick(app);
 
-                                            // 3. 💥 안내형 데이터(`notices`) 읽음 처리 (물류보세, 식단안내 등)
-                                            // 모든 앱이 안내형이므로 notices 배열에서 해당 앱 ID를 가진 글을 모두 읽음 처리합니다.
+                                            // 3. 💥 안내형 데이터(`notices`) 읽음 처리
+                                            // widget_notices는 readNoticeIds, 일반 board형은 readPostIds 기준
                                             const targetNotices = (notices || []).filter(n => 
                                                 app.actionType === 'widget_notices' || String(n.appId) === String(app.id)
                                             );
                                             targetNotices.forEach(n => markAsRead(n.id));
 
                                             // 4. 일반 게시글 데이터(`dynamicPosts`) 읽음 처리
-                                            // 혹시 게시판형으로 섞여있을 경우를 대비해 함께 처리합니다.
+                                            // readPostIds 기준으로 추적되므로 markPostAsRead 사용
                                             const appPosts = (dynamicPosts || []).filter(p => String(p.appId) === String(app.id));
-                                            appPosts.forEach(p => markAsRead(p.id));
+                                            appPosts.forEach(p => markPostAsRead(p.id));
                                             
                                             // 5. 팝업 닫기
                                             setShowNewPostPopup(false);
@@ -4165,17 +4202,19 @@
                                             <input className="w-full bg-stone-50 dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-indigo-400" placeholder="제목" value={adminBoardForm.title} onChange={e => setAdminBoardForm({ ...adminBoardForm, title: e.target.value })} />
                                             <textarea className="w-full bg-stone-50 dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-24 resize-none" placeholder="내용" value={adminBoardForm.content} onChange={e => setAdminBoardForm({ ...adminBoardForm, content: e.target.value })} />
                                             <label className="flex items-center gap-2 cursor-pointer bg-stone-50 dark:bg-stone-900 border border-dashed border-stone-300 dark:border-stone-600 rounded-xl px-4 py-2.5 btn-press hover:bg-stone-100 transition-colors">
-                                                <Icon name="camera" size={14} className="text-stone-400" /><span className="text-[11px] font-bold text-stone-400">{adminBoardForm.photo ? '사진 변경' : '사진 첨부 (선택)'}</span>
-                                                <input type="file" accept="image/*" className="hidden" onChange={async e => { if (e.target.files[0]) { const b64 = await resizeImage(e.target.files[0]); setAdminBoardForm(prev => ({ ...prev, photos: b64 })); e.target.value = []; } }} />
+                                                <Icon name="camera" size={14} className="text-stone-400" /><span className="text-[11px] font-bold text-stone-400">{adminBoardForm.photos && adminBoardForm.photos.length > 0 ? '사진 변경' : '사진 첨부 (선택)'}</span>
+                                                <input type="file" accept="image/*" className="hidden" onChange={async e => { if (e.target.files[0]) { const b64 = await resizeImage(e.target.files[0]); setAdminBoardForm(prev => ({ ...prev, photos: [b64] })); e.target.value = ''; } }} />
                                             </label>
-                                            {adminBoardForm.photo && <div className="relative w-16 h-16"><img src={adminBoardForm.photo} className="w-full h-full object-cover rounded-xl border" /><button onClick={() => setAdminBoardForm(p => ({ ...p, photos: [] }))} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">×</button></div>}
-                                            <div className="flex gap-2"><button onClick={handleAdminBoardPost} className="w-full bg-indigo-600 text-white font-black py-3 rounded-2xl shadow-md btn-press text-[11px]">게시글 등록</button></div>
+                                            {adminBoardForm.photos && adminBoardForm.photos.length > 0 && <div className="relative w-16 h-16"><img src={adminBoardForm.photos[0]} className="w-full h-full object-cover rounded-xl border" /><button onClick={() => setAdminBoardForm(p => ({ ...p, photos: [] }))} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">×</button></div>}
+                                            <div className="flex gap-2"><button onClick={() => handleAdminBoardPost(openedAdminBoard.id)} className="w-full bg-indigo-600 text-white font-black py-3 rounded-2xl shadow-md btn-press text-[11px]">게시글 등록</button></div>
                                         </div>
                                     )}
                                     {selectedAdminPost ? (
                                         <div className="bg-white dark:bg-stone-800 rounded-[2rem] border border-stone-200 dark:border-stone-700 p-6 shadow-sm space-y-4 fade-in">
                                             <h4 className="text-[16px] font-black text-stone-800 dark:text-stone-200">{selectedAdminPost.title}</h4><p className="text-[10px] text-stone-400 font-bold mt-1">{selectedAdminPost.author} · {formatLocalTime(selectedAdminPost.createdAt)}</p>
-                                            {selectedAdminpost.photos && <img src={selectedAdminpost.photos} className="w-full h-auto rounded-2xl object-cover cursor-pointer" onClick={() => setExpandedImage(selectedAdminpost.photos)} />}
+                                            {selectedAdminPost.photos && Array.isArray(selectedAdminPost.photos) && selectedAdminPost.photos.length > 0 && selectedAdminPost.photos.map((ph, i) => (
+                                                <img key={i} src={ph} className="w-full h-auto rounded-2xl object-cover cursor-pointer mb-1" onClick={() => setExpandedImage(ph)} />
+                                            ))}
                                             <div className="border-t border-stone-100 dark:border-stone-700 pt-4"><p className="text-[13px] font-bold text-stone-700 dark:text-stone-300 whitespace-pre-wrap">{selectedAdminPost.content}</p></div>
                                             <button onClick={() => setSelectedAdminPost(null)} className="w-full bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300 font-black py-3 rounded-2xl btn-press text-[11px]">목록으로</button>
                                         </div>
