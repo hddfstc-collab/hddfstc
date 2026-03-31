@@ -1323,7 +1323,19 @@
                     return;
                 }
 
-                if (type === 'guide' || type === 'simple_guide' || type === 'link_manual') { setOpenedGuide(app); return; }
+                if (type === 'guide' ||
+                    type === 'simple_guide' ||
+                    type === 'link_manual') {
+
+                    setOpenedGuide(app);
+
+                    // ✅ 안내형도 읽음 처리
+                    (dynamicPosts || [])
+                        .filter(p => p.appId === app.id)
+                        .forEach(p => markPostAsRead(p.id));
+
+                    return;
+                }
                 if (type === 'reservation') { setOpenedReservationApp(app); setResSelectedDate(todayStr); return; }
                 if (type === 'link' || type === 'external_url') { if (app.url && app.url.trim() !== '') window.open(app.url, '_blank', 'noopener,noreferrer'); else showToast('링크가 없습니다.', true); return; }
                 showToast('지원하지 않는 동작입니다.', true);
@@ -1941,7 +1953,13 @@
                                     const images = Array.isArray(n.photos) ? n.photos : (n.photo ? [n.photo] : []);
                                     return (
                                         <div key={n.id} className={`p-4 rounded-2xl border cursor-pointer transition-all ${isExpanded ? 'bg-white dark:bg-stone-800 ring-2 ring-stone-100 shadow-md' : 'bg-stone-50 dark:bg-stone-800 border-stone-100'}`}
-                                            onClick={() => { markAsRead(n.id); setExpandedNoticeId(isExpanded ? null : n.id); }}>
+                                            onClick={() => { 
+                                                markAsRead(n.id); 
+                                                app.actionType === 'widget_board'
+                                                    ? setShowNoticePopup(true)
+                                                    : setExpandedNoticeId(isExpanded ? null : n.id);
+                                            }}
+                                            >
                                             <div className="flex justify-between items-start mb-1">
                                                 <span className="text-[10px] text-stone-400 font-bold">{formatLocalTime(n.createdAt)}</span>
                                                 <Icon name={isExpanded ? "chevronUp" : "chevronDown"} size={14} className="text-stone-300" />
@@ -2713,7 +2731,7 @@
                                                                         }}
                                                                     >
                                                                         {renderWidgetBoard(app)}
-                                                                        {canWrite(app) && (
+                                                                        {(canWrite(app) || appUser?.jobTitle === '영업관리자') && (
                                                                             <div className="mt-2 py-1.5 bg-teal-50 dark:bg-teal-900/20 rounded-lg border border-teal-100 dark:border-teal-800 text-center">
                                                                                 <p className="text-[10px] text-teal-600 font-black">
                                                                                     <Icon name="edit" size={10} className="inline mr-1" /> 클릭하여 게시물 등록 및 관리
@@ -2738,7 +2756,9 @@
                                                                                         className={`rounded-xl border cursor-pointer transition-all ${isExpanded ? 'bg-white dark:bg-stone-800 ring-2 ring-rose-100 dark:ring-rose-900 shadow-md' : 'bg-stone-50 dark:bg-stone-800/60 border-stone-100 dark:border-stone-700 hover:border-rose-200'}`}
                                                                                         onClick={() => {
                                                                                             if (!isRead) markAsRead(notice.id);
-                                                                                            setExpandedNoticeId(isExpanded ? null : notice.id);
+                                                                                            app.actionType === 'widget_board'
+                                                                                                ? setShowNoticePopup(true)
+                                                                                                : setExpandedNoticeId(isExpanded ? null : notice.id);
                                                                                         }}
                                                                                     >
                                                                                         <div className="p-3 flex items-start justify-between gap-2">
