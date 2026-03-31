@@ -3290,7 +3290,7 @@
                                             {/* ✅ 1. 관리자 탭 - 구성원 관리 섹션 (정렬 및 레이아웃 수정) */}
                                             {currentAdminTab === 'members' && (
                                                 <div className="space-y-4 fade-in">
-                                                    {/* 🔍 실시간 검색창: 이름, 사번, 파트로 즉시 필터링 */}
+                                                    {/* 🔍 실시간 검색창 */}
                                                     <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl flex items-center gap-2 px-4 py-3 shadow-sm focus-within:ring-2 focus-within:ring-teal-500/20 transition-all">
                                                         <Icon name="search" size={16} className="text-stone-400 shrink-0" />
                                                         <input 
@@ -3303,87 +3303,82 @@
                                                     </div>
 
                                                     {/* 👥 구성원 리스트 영역 */}
-                                                    <div className="space-y-2">
+                                                    <div className="space-y-2 pb-20">
                                                         {filteredAdminMembers
                                                             .sort((a, b) => {
-                                                                // ⭐ [절대 0순위] '점장'은 직책/직급 상관없이 무조건 최상단
-                                                                if (a.jobTitle === '점장' && b.jobTitle !== '점장') return -1;
-                                                                if (a.jobTitle !== '점장' && b.jobTitle === '점장') return 1;
+                                                                const aTitle = a.jobTitle?.trim();
+                                                                const bTitle = b.jobTitle?.trim();
+                                                                
+                                                                // ⭐ [0순위] 점장 무조건 최상단
+                                                                if (aTitle === '점장' && bTitle !== '점장') return -1;
+                                                                if (aTitle !== '점장' && bTitle === '점장') return 1;
 
-                                                                // 1️⃣ 직책(Role) 우선순위: 파트장(2) -> 영업관리자(3) -> 일반(4)
-                                                                const rolePrio = { '파트장': 2, '영업관리자': 3, '일반': 4 };
-                                                                const aRole = rolePrio[a.jobTitle] || 99;
-                                                                const bRole = rolePrio[b.jobTitle] || 99;
-                                                                if (aRole !== bRole) return aRole - bRole;
+                                                                // ⭐ [1순위] 파트장만 우선 (영업관리자 제외)
+                                                                if (aTitle === '파트장' && bTitle !== '파트장') return -1;
+                                                                if (aTitle !== '파트장' && bTitle === '파트장') return 1;
 
-                                                                // 2️⃣ 직급(Rank) 우선순위: 부장(1) -> 차장(2) -> 과장(3) -> 대리(4) -> 주임(5) -> 사원(6)
+                                                                // ⭐ [2순위] 직급 순서 (영업관리자는 본인 직급에 맞춰 여기서 정렬됨)
                                                                 const posPrio = { '부장': 1, '차장': 2, '과장': 3, '대리': 4, '주임': 5, '사원': 6 };
-                                                                const aPos = posPrio[a.position] || 99;
-                                                                const bPos = posPrio[b.position] || 99;
+                                                                const aPos = posPrio[a.position?.trim()] || 99;
+                                                                const bPos = posPrio[b.position?.trim()] || 99;
                                                                 if (aPos !== bPos) return aPos - bPos;
 
-                                                                // 3️⃣ 이름순 정렬
                                                                 return a.name.localeCompare(b.name);
                                                             })
                                                             .map(u => (
                                                                 <div 
                                                                     key={u.empId} 
-                                                                    className="grid grid-cols-[1.2fr_1.3fr_1fr_1fr_auto] gap-2 items-center bg-white dark:bg-stone-900 p-4 rounded-[1.5rem] border border-stone-100 dark:border-stone-800 shadow-sm transition-all hover:border-teal-200 dark:hover:border-teal-900"
+                                                                    className="flex items-center gap-2 bg-white dark:bg-stone-900 p-4 rounded-[1.5rem] border border-stone-100 dark:border-stone-800 shadow-sm transition-all hover:border-teal-200"
                                                                 >
-                                                                    {/* 1. 소속 파트 정보 */}
-                                                                    <div className="min-w-0">
+                                                                    {/* 1. 소속 파트 (너비 고정하여 배지 겹침 방지) */}
+                                                                    <div className="w-[70px] shrink-0 min-w-0">
                                                                         <span className="text-[11px] font-black text-stone-700 dark:text-stone-300 truncate block leading-tight">
                                                                             {u.part}
                                                                         </span>
                                                                         <span className="text-[9px] text-stone-400 font-bold uppercase tracking-tighter">PART</span>
                                                                     </div>
                                                                     
-                                                                    {/* 2. 직책 배지 (점장 전용 색상 적용 및 잘림 방지) */}
-                                                                    <div className="flex justify-center min-w-[75px]">
-                                                                        <span className={`whitespace-nowrap text-[10px] font-black px-2.5 py-1 rounded-lg border w-full text-center transition-colors ${
+                                                                    {/* 2. 직책 배지 (고정 너비로 레이아웃 유지) */}
+                                                                    <div className="w-[85px] shrink-0 flex justify-center">
+                                                                        <span className={`whitespace-nowrap text-[10px] font-black px-2 py-1 rounded-lg border w-full text-center transition-colors ${
                                                                             u.jobTitle === '점장' 
-                                                                            ? 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800' 
-                                                                            : 'bg-teal-50 text-teal-600 border-teal-100 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800'
+                                                                            ? 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-900/30 dark:text-rose-400' 
+                                                                            : 'bg-teal-50 text-teal-600 border-teal-100 dark:bg-teal-900/30 dark:text-teal-400'
                                                                         }`}>
                                                                             {u.jobTitle !== '일반' ? u.jobTitle : (u.category || '데스크')}
                                                                         </span>
                                                                     </div>
 
-                                                                    {/* 3. 사번 정보 */}
-                                                                    <div className="text-center">
-                                                                        <span className="text-[11px] font-mono font-bold text-stone-500 tracking-tighter">
+                                                                    {/* 3. 사번 정보 (가운데 유동 영역) */}
+                                                                    <div className="flex-1 text-center min-w-0">
+                                                                        <span className="text-[10px] font-mono font-bold text-stone-400 tracking-tighter">
                                                                             {u.empId}
                                                                         </span>
                                                                     </div>
 
-                                                                    {/* 4. 이름 및 직급 */}
-                                                                    <div className="text-right pr-1">
-                                                                        <span className="text-[13px] font-black text-stone-800 dark:text-stone-200 block leading-tight">
+                                                                    {/* 4. 이름 및 직급 (우측 정렬) */}
+                                                                    <div className="w-[65px] shrink-0 text-right pr-1">
+                                                                        <span className="text-[13px] font-black text-stone-800 dark:text-stone-200 block leading-tight truncate">
                                                                             {u.name}
                                                                         </span>
-                                                                        <p className="text-[9px] text-stone-400 font-bold">{u.position}</p>
+                                                                        <p className="text-[9px] text-stone-400 font-bold mt-0.5">{u.position}</p>
                                                                     </div>
 
-                                                                    {/* 5. 관리 도구 (수정 버튼) */}
-                                                                    <div className="flex gap-1 ml-1 pl-2 border-l border-stone-100 dark:border-stone-800">
+                                                                    {/* 5. 수정 버튼 */}
+                                                                    <div className="shrink-0 pl-1 border-l border-stone-100 dark:border-stone-800">
                                                                         <button 
                                                                             onClick={() => { 
-                                                                                // 수정할 데이터를 폼에 로드
                                                                                 setMemberForm({ ...u, password: '' }); 
-                                                                                // 부드럽게 상단 수정 영역으로 스크롤
                                                                                 window.scrollTo({ top: 0, behavior: 'smooth' }); 
-                                                                                if (typeof showToast === 'function') showToast(`${u.name}님 정보 수정 모드`);
                                                                             }} 
-                                                                            className="p-2.5 text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-xl transition-all active:scale-90"
-                                                                            title="정보 수정"
+                                                                            className="p-2 text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-xl transition-all active:scale-90"
                                                                         >
                                                                             <Icon name="edit" size={15}/>
                                                                         </button>
                                                                     </div>
                                                                 </div>
                                                             ))}
-                                                        
-                                                        {/* 검색 결과가 없을 때 표시 */}
+
                                                         {filteredAdminMembers.length === 0 && (
                                                             <div className="py-20 text-center">
                                                                 <Icon name="search" size={40} className="mx-auto text-stone-200 mb-3" />
@@ -3394,7 +3389,7 @@
                                                 </div>
                                             )}
 
-                                            {/* ✅ 2. 관리자 탭 - 제출 데이터 섹션 (필터 및 이동 로직 강화) */}
+                                            {/* ✅ 2. 관리자 탭 - 제출 데이터 섹션 (기존 로직 유지) */}
                                             {currentAdminTab === 'posts' && (
                                                 <div className="space-y-6 fade-in">
                                                     <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-4 shadow-inner">
