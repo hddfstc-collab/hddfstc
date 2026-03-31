@@ -1229,18 +1229,13 @@
                 if (!loginId || !loginPw) return showToast('사원번호와 비밀번호를 모두 입력해주세요.', true);
                 
                 const pwHash = await hashPassword(loginPw);
-                let f = null;
-
-                for (const u of (users || [])) {
-                    if (String(u?.empId) === loginId) {
-                        const empIdHash = await hashPassword(u?.empId); 
-                        // 저장된 비밀번호가 1. 사용자가 입력한 패스워드의 해시값 2. 평문 3. 사번의 해시값 중 하나인지 검증
-                        if (u?.password === pwHash || u?.password === loginPw || u?.password === empIdHash) {
-                            f = u;
-                            break;
-                        }
-                    }
-                }
+                // ✅ 픽스: 초기 평문 사번 로그인 지원을 위해 입력된 아이디 자체도 해시화하여 대조
+                const empIdHash = await hashPassword(loginId); 
+                
+                const f = (users || []).find(u => 
+                    String(u?.empId) === loginId && 
+                    (u?.password === pwHash || u?.password === loginPw || u?.password === empIdHash)
+                );
 
                 if (f) { 
                     if (rememberMe) localStorage.setItem('hmood_empId', loginForm.id); 
@@ -2732,12 +2727,16 @@
                                                                                 return (
                                                                                     <div
                                                                                         key={notice.id}
-                                                                                        className={`rounded-xl border cursor-pointer transition-all ${isExpanded ? 'bg-white dark:bg-stone-800 ring-2 ring-rose-100 dark:ring-rose-900 shadow-md' : 'bg-stone-50 dark:bg-stone-800/60 border-stone-100 dark:border-stone-700 hover:border-rose-200'}`}
+                                                                                        className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                                                                                            isExpanded
+                                                                                                ? 'bg-white dark:bg-stone-800 ring-2 ring-stone-100 shadow-md'
+                                                                                                : 'bg-stone-50 dark:bg-stone-800 border-stone-100'
+                                                                                        }`}
                                                                                         onClick={() => {
                                                                                             if (!isRead) markAsRead(notice.id);
-                                                                                            app.actionType === 'widget_board'
-                                                                                                ? setShowNoticePopup(true)
-                                                                                                : setExpandedNoticeId(isExpanded ? null : notice.id);
+                                                                                            // ✅ 픽스: 조건 비교 삭제하고, 클릭 시 곧바로 팝업 모달 열기!
+                                                                                            setShowWidgetNoticesPopup(true);
+                                                                                            setOpenedDynamicApp(app);
                                                                                         }}
                                                                                     >
                                                                                         <div className="p-3 flex items-start justify-between gap-2">
@@ -3332,6 +3331,27 @@
                                                             onChange={(e) => setAdminMemberSearch(e.target.value)} 
                                                             className="w-full bg-transparent outline-none text-[13px] font-bold text-stone-700 dark:text-stone-300 placeholder-stone-400" 
                                                         />
+                                                    </div>
+
+                                                    {/* ✅ 픽스: 구성원 등록/수정 폼 추가 */}
+                                                    <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-6 rounded-[2rem] border border-stone-200 dark:border-stone-700 shadow-inner mb-4">
+                                                        <p className="text-[12px] font-black text-teal-600 mb-3 flex items-center gap-2">
+                                                            <Icon name="edit" size={16} /> 구성원 {memberForm.empId && users.find(u => u.empId === memberForm.empId) ? '수정' : '신규 등록'}
+                                                        </p>
+                                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                            <div><label className="text-[10px] font-bold text-stone-500 ml-1">사번 (수정불가)</label><input className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-2 text-xs font-bold outline-none" value={memberForm.empId} onChange={e => setMemberForm({ ...memberForm, empId: e.target.value })} disabled={!!users.find(u => u.empId === memberForm.empId)} /></div>
+                                                            <div><label className="text-[10px] font-bold text-stone-500 ml-1">이름</label><input className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-teal-500" value={memberForm.name} onChange={e => setMemberForm({ ...memberForm, name: e.target.value })} /></div>
+                                                            <div><label className="text-[10px] font-bold text-stone-500 ml-1">소속 파트</label><input className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-teal-500" value={memberForm.part} onChange={e => setMemberForm({ ...memberForm, part: e.target.value })} /></div>
+                                                            <div><label className="text-[10px] font-bold text-stone-500 ml-1">직급</label><input className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-teal-500" value={memberForm.position} onChange={e => setMemberForm({ ...memberForm, position: e.target.value })} /></div>
+                                                            <div><label className="text-[10px] font-bold text-stone-500 ml-1">직책</label><input className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-teal-500" value={memberForm.jobTitle} onChange={e => setMemberForm({ ...memberForm, jobTitle: e.target.value })} /></div>
+                                                            <div><label className="text-[10px] font-bold text-stone-500 ml-1">카테고리</label><input className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-teal-500" value={memberForm.category || ''} onChange={e => setMemberForm({ ...memberForm, category: e.target.value })} /></div>
+                                                            <div><label className="text-[10px] font-bold text-stone-500 ml-1">담당 브랜드</label><input className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-teal-500" value={memberForm.brands || ''} onChange={e => setMemberForm({ ...memberForm, brands: e.target.value })} /></div>
+                                                            <div><label className="text-[10px] font-bold text-stone-500 ml-1">비밀번호 (변경시 입력)</label><input type="password" placeholder="비워두면 유지" className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-rose-400" value={memberForm.password || ''} onChange={e => setMemberForm({ ...memberForm, password: e.target.value })} /></div>
+                                                        </div>
+                                                        <div className="flex gap-2 mt-4">
+                                                            <button onClick={() => setMemberForm({ empId: '', name: '', part: '', position: '사원', jobTitle: '일반', category: '', brands: '', password: '' })} className="flex-1 bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 font-black py-3 rounded-xl text-xs btn-press">초기화</button>
+                                                            <button onClick={handleMemberSubmit} className="flex-1 bg-teal-600 text-white font-black py-3 rounded-xl shadow-md btn-press text-xs">저장/수정 완료</button>
+                                                        </div>
                                                     </div>
 
                                                     <div className="space-y-2 pb-20">
