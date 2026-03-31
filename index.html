@@ -566,30 +566,24 @@
 
             // URL 파라미터 감시 및 viewMode 동기화
             useEffect(() => {
-                const mode = new URLSearchParams(window.location.search).get('mode');
-                if (mode === 'shared' && viewMode !== 'shared') {
-                    console.log("VIEW 동기화: shared 모드로 전환");
-                    setViewMode('shared');
-                }
-            }, [viewMode]);
+                const isShared =
+                    viewMode === 'shared' ||
+                    new URLSearchParams(window.location.search).get('mode') === 'shared';
 
-            // popupShownRef 리셋 (공유모드가 아닐 때)
-            useEffect(() => {
-                if (viewMode !== 'shared') {
+                if (!isShared) {
                     popupShownRef.current = false;
+                    return;
                 }
-            }, [viewMode]);
 
-            // 실제 팝업 실행 스위치
-            useEffect(() => {
-                const isShared = viewMode === 'shared' || new URLSearchParams(window.location.search).get('mode') === 'shared';
-                if (viewMode !== 'shared') {
-                    popupShownRef.current = false;
+                if (
+                    unreadPopupTargets.length > 0 &&
+                    !popupShownRef.current
+                ) {
+                    popupShownRef.current = true;
+                    setShowNewPostPopup(true);
                 }
-                }, [viewMode]);
-                ``
-
             }, [viewMode, unreadPopupTargets]);
+
 
             // ---------------------------------------------------------
             // 5. 기타 상태 및 함수 (기존 코드 유지)
@@ -885,8 +879,7 @@
                 }
 
                 return false;
-            }, [isAdminAuth, appUser]);
-            ``
+            }, [isAdminAuth, appUser]);            
             const writeBlockedMsg = useCallback((appItem) => {
                 if (!appItem) return '권한이 없습니다.';
                 if (!appUser) return '로그인이 필요합니다.';
