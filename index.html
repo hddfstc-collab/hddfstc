@@ -1911,6 +1911,7 @@
             };
 
             const renderWidget = (app) => {
+                // 1. 공지사항 위젯
                 if (app.actionType === 'widget_notices') {
                     return (
                         <div
@@ -1922,8 +1923,6 @@
                                     <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}>
                                         <Icon name={app.icon} size={16} /> {app.name}
                                     </h3>
-
-                                    {/* ✅ 수정된 부분: 팝업 연결 */}
                                     <button
                                         onClick={() => {
                                             setOpenedDynamicApp(app);
@@ -1935,7 +1934,6 @@
                                         <Icon name="externalLink" size={14} />
                                     </button>
                                 </div>
-
                                 {canWrite(app) && (
                                     <button
                                         onClick={() => setIsNoticeModalOpen(true)}
@@ -1947,62 +1945,76 @@
                             </div>
 
                             <div className="space-y-3">
-                                {(notices || []).slice(0, 5).map(n => {
-                                    const isExpanded = expandedNoticeId === n.id;
-                                    const images = Array.isArray(n.photos)
-                                        ? n.photos
-                                        : (n.photo ? [n.photo] : []);
-
+                                {/* ✅ 픽스: 3개까지만 노출하도록 slice(0, 3)으로 변경 */}
+                                {(notices || []).slice(0, 3).map(notice => {
+                                    const isRead = readNoticeIds.includes(notice.id);
+                                    const isExpanded = expandedNoticeId === notice.id;
+                                    const images = Array.isArray(notice.photos) ? notice.photos : (notice.photo ? [notice.photo] : []);
                                     return (
                                         <div
-                                            key={n.id}
-                                            className={`p-4 rounded-2xl border cursor-pointer transition-all ${
-                                                isExpanded
-                                                    ? 'bg-white dark:bg-stone-800 ring-2 ring-stone-100 shadow-md'
-                                                    : 'bg-stone-50 dark:bg-stone-800 border-stone-100'
-                                            }`}
+                                            key={notice.id}
+                                            className={`rounded-xl border cursor-pointer transition-all ${isExpanded ? 'bg-white dark:bg-stone-800 ring-2 ring-rose-100 dark:ring-rose-900 shadow-md' : 'bg-stone-50 dark:bg-stone-800/60 border-stone-100 dark:border-stone-700 hover:border-rose-200'}`}
                                             onClick={() => {
-                                                markAsRead(n.id);
-                                                setExpandedNoticeId(isExpanded ? null : n.id);
+                                                if (!isRead) markAsRead(notice.id);
+                                                setExpandedNoticeId(isExpanded ? null : notice.id);
                                             }}
                                         >
-                                            <div className="flex justify-between items-start mb-1">
-                                                <span className="text-[10px] text-stone-400 font-bold">
-                                                    {formatLocalTime(n.createdAt)}
-                                                </span>
-                                                <Icon
-                                                    name={isExpanded ? "chevronUp" : "chevronDown"}
-                                                    size={14}
-                                                    className="text-stone-300"
-                                                />
+                                            <div className="p-3 flex items-start justify-between gap-2">
+                                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                    {!isRead && <div className="w-1.5 h-1.5 bg-rose-500 rounded-full shrink-0 mt-0.5" />}
+                                                    <p className={`text-[11px] font-black ${isRead ? 'text-stone-400' : 'text-stone-700 dark:text-stone-300'} ${isExpanded ? '' : 'truncate'}`}>
+                                                        {notice.content}
+                                                    </p>
+                                                </div>
+                                                {/* ✅ 픽스: 썸네일 배치 (글자 옆에 예쁘게 붙도록 레이아웃 수정) */}
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    {!isExpanded && images.length > 0 && (
+                                                        <img src={images[0]} className="w-7 h-7 rounded-md object-cover border border-stone-200 dark:border-stone-700 shadow-sm" alt="썸네일" />
+                                                    )}
+                                                    <Icon name={isExpanded ? "chevronUp" : "chevronDown"} size={13} className="text-stone-300" />
+                                                </div>
                                             </div>
-
-                                            <p
-                                                className={`text-[12px] font-bold text-stone-800 dark:text-stone-200 ${
-                                                    isExpanded ? '' : 'line-clamp-1'
-                                                }`}
-                                            >
-                                                {n.content}
-                                            </p>
-
-                                            {isExpanded && images.length > 0 && (
-                                                <div className="mt-3 space-y-2">
-                                                    {images.map((img, i) => (
-                                                        <img
-                                                            key={i}
-                                                            src={img}
-                                                            className="w-full rounded-xl border object-cover"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setExpandedImage(img);
-                                                            }}
-                                                        />
-                                                    ))}
+                                            {isExpanded && (
+                                                <div className="px-3 pb-3 space-y-2 fade-in">
+                                                    <p className="text-[10px] text-stone-400 font-bold">{notice.author} · {formatLocalTime(notice.createdAt)}</p>
+                                                    {images.length > 0 && (
+                                                        <div className="space-y-1.5 mt-1">
+                                                            {images.map((img, i) => (
+                                                                <img key={i} src={img} className="w-full rounded-xl border object-cover cursor-pointer" onClick={(e) => { e.stopPropagation(); setExpandedImage(img); }} />
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
                                     );
                                 })}
+                                {(notices || []).length === 0 && (
+                                    <div className="py-8 text-center text-stone-400 text-[11px] font-bold bg-white dark:bg-stone-900 rounded-xl border border-stone-100 dark:border-stone-800">
+                                        등록된 공지사항이 없습니다.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                }
+
+                // 2. ✅ 영업관리자 위젯 (사라졌던 코드 복구!)
+                if (app.actionType === 'widget_managers') {
+                    return (
+                        <div key={app.id} className="bg-gradient-to-r from-teal-500 to-emerald-500 rounded-[2rem] p-6 shadow-md text-white mt-4 fade-in">
+                            <h3 className="text-xs font-black flex items-center gap-2 mb-4 opacity-90"><Icon name={app.icon} size={16} /> {app.name}</h3>
+                            <div className="flex flex-wrap gap-2">
+                                {activeManagers.map(m => (
+                                    <div key={m.empId} className="bg-white/20 backdrop-blur-sm px-3 py-2 rounded-xl flex items-center gap-2 border border-white/10">
+                                        <span className="text-[11px] font-black">{m.user?.name}</span>
+                                        <span className="text-[9px] opacity-80">{m.user?.part}</span>
+                                        {m.user?.extNumber && (
+                                            <button onClick={(e) => callExtension(m.user.extNumber, m.user.name, e)} className="ml-1 bg-white text-teal-600 p-1 rounded-full btn-press"><Icon name="phoneCall" size={10} /></button>
+                                        )}
+                                    </div>
+                                ))}
+                                {activeManagers.length === 0 && <p className="text-[11px] font-bold opacity-80 py-2">현재 출근한 영업관리자가 없습니다.</p>}
                             </div>
                         </div>
                     );
@@ -2064,7 +2076,7 @@
                                 {appUser ? (
                                     <div className="flex items-center gap-1.5 bg-white dark:bg-stone-800 px-3 py-1.5 rounded-full border border-stone-200 dark:border-stone-700 shadow-sm">
                                         <button 
-                                            onClick={(e) => {  }} 
+                                            onClick={() => { setShowProfileEdit(true); setProfileTab('info'); setProfileForm({ name: appUser.name, part: appUser.part, category: appUser.category, brands: appUser.brands || '', extNumber: appUser.extNumber || '', position: appUser.position, jobTitle: appUser.jobTitle || '일반', password: '', targetEmpId: appUser.empId }); }} 
                                             className="flex items-center gap-1 text-[10px] font-black text-stone-600 dark:text-stone-300 hover:text-teal-600 transition-colors btn-press"
                                         >
                                             <span className="underline decoration-stone-300 dark:decoration-stone-600 underline-offset-2">{appUser.name}</span>
@@ -2074,7 +2086,7 @@
                                         <div className="w-px h-3 bg-stone-200 dark:bg-stone-700 mx-0.5"></div>
 
                                         <button
-                                            onClick={() => {  }}
+                                            onClick={() => { setShowProfileEdit(true); setProfileTab('pw'); }}
                                             className="text-stone-400 hover:text-teal-500 transition-colors flex items-center gap-1"
                                         >
                                             <Icon name="user" size={12} />
@@ -2082,7 +2094,7 @@
                                         </button>
 
                                         <button
-                                            onClick={() => {  }}
+                                            onClick={() => { setAppUser(null); localStorage.removeItem('hmood_session'); setViewMode('login'); showToast('로그아웃 되었습니다.'); }}
                                             className="text-stone-400 hover:text-rose-500 transition-colors flex items-center gap-1 pl-1"
                                         >
                                             <Icon name="logout" size={12} />
@@ -3124,7 +3136,6 @@
                                                                     <option value="guide">📘 안내형</option>
                                                                     <option value="board">📝 게시판형</option>
                                                                     <option value="widget_board">🖼️ 위젯 게시판 (메인 노출)</option>
-                                                                    <option value="widget_notices">📢 위젯 공지사항 (메인 노출)</option>
                                                                     <option value="form">📮 폼 제출형</option>
                                                                     <option value="reservation">📅 예약 시스템</option>
                                                                     <option value="link">🔗 외부 링크</option>
