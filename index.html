@@ -193,7 +193,17 @@
         };
 
         const Icon = ({ name, size = 20, className = "" }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+            <svg
+                width={size}
+                height={size}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={className}
+            >
                 {ICON_PATHS[name] || ICON_PATHS.fileText}
             </svg>
         );
@@ -416,10 +426,13 @@
                 } catch { return []; }
             });
 
+            // ✅ 하나만 유지
             const [readNoticeIds, setReadNoticeIds] = useState(() => {
                 try {
                     return JSON.parse(localStorage.getItem('hmood_read_notices') || '[]');
-                } catch { return []; }
+                } catch {
+                    return [];
+                }
             });
             // ✅ 모든 일반 게시판용 엑셀 다운로드 함수 (복구용)
             const downloadPostsExcel = (appId, appName) => {
@@ -570,10 +583,12 @@
             // 실제 팝업 실행 스위치
             useEffect(() => {
                 const isShared = viewMode === 'shared' || new URLSearchParams(window.location.search).get('mode') === 'shared';
-                if (isShared && unreadPopupTargets.length > 0 && !popupShownRef.current) {
-                    popupShownRef.current = true;
-                    setShowNewPostPopup(true);
+                if (viewMode !== 'shared') {
+                    popupShownRef.current = false;
                 }
+                }, [viewMode]);
+                ``
+
             }, [viewMode, unreadPopupTargets]);
 
             // ---------------------------------------------------------
@@ -896,13 +911,13 @@
                     const diffHours = diffTime / (1000 * 60 * 60);
 
                     const isNew = diffHours <= 72;
-                    const isUnread = !readNoticeIds.includes(post.id);
+                    const isUnread = !readPostIds.includes(post.id);
 
                     return isNew && isUnread;
                 });
 
                 return hasUnreadNewPost;
-            }, [dynamicApps, dynamicPosts, readNoticeIds]);
+            }, [dynamicApps, dynamicPosts, readPostIds]);
 
             useEffect(() => {
                 if (firebaseConfig && !firebase.apps.length) firebase.initializeApp(firebaseConfig);
@@ -4223,7 +4238,7 @@
                                         <div className="space-y-3">
                                             {(dynamicPosts || []).filter(p => p.appId === openedAdminBoard.id).length === 0 && (<div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700"><p className="text-[11px] font-bold text-stone-400">등록된 게시글이 없습니다.</p></div>)}
                                             {(dynamicPosts || []).filter(p => p.appId === openedAdminBoard.id).map(post => {
-                                                const isUnread = !readNoticeIds.includes(post.id);
+                                                const isUnread = !readPostIds.includes(post.id);
                                                 return (
                                                     <div key={post.id} className="flex items-center justify-between bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm group hover:border-indigo-200 transition-colors relative" onClick={() => { if (isUnread) { const next = [...readNoticeIds, post.id]; setReadNoticeIds(next); localStorage.setItem('hmood_read_notices', JSON.stringify(next)); } }}>
                                                         {isUnread && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full shadow-sm"></div>}
