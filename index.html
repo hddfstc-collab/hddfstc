@@ -887,8 +887,8 @@
             }, [appUser]);
             // [N 배지 판독기] 72시간 이내의 안 읽은 새 글이 있을 때만 정확히 N 표시
 
+            
             const checkNewBadge = useCallback((targetAppId) => {
-                // ✅ [패치] 헬스키퍼(reservation)는 N 뱃지 대상 아님
                 const app = dynamicApps.find(a => a.id === targetAppId);
                 if (app?.actionType === 'form' || app?.actionType === 'reservation') return false;
                 if (!dynamicPosts || dynamicPosts.length === 0) return false;
@@ -897,20 +897,12 @@
                 if (appPosts.length === 0) return false;
 
                 const hasUnreadNewPost = appPosts.some(post => {
-                    const postDate = new Date(post.createdAt);
-                    if (isNaN(postDate.getTime())) return false;
-
-                    const diffTime = new Date() - postDate;
-                    const diffHours = diffTime / (1000 * 60 * 60);
-
-                    const isNew = diffHours <= 72;
-                    const isUnread = !readPostIds.includes(post.id);
-
-                    return isNew && isUnread;
+                    return !readPostIds.includes(post.id);
                 });
 
                 return hasUnreadNewPost;
             }, [dynamicApps, dynamicPosts, readPostIds]);
+
 
             useEffect(() => {
                 if (firebaseConfig && !firebase.apps.length) firebase.initializeApp(firebaseConfig);
