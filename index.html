@@ -1938,47 +1938,70 @@
             /* ---------------------------------------------------------
             3. 위젯 렌더링 (사진 배열 출력 및 토글 기능)
             --------------------------------------------------------- */
+            
             const renderWidget = (app) => {
                 if (app.actionType === 'widget_notices') {
                     return (
-                        <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in">
+                        <div
+                            key={app.id}
+                            className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in"
+                        >
+                            {/* ✅ 헤더: 제목 + 전체보기 버튼 */}
                             <div className="flex items-center justify-between">
-                                <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}>
-                                    <Icon name={app.icon} size={16} /> {app.name}
-                                </h3>
+                                <div className="flex items-center gap-2">
+                                    <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}>
+                                        <Icon name={app.icon} size={16} /> {app.name}
+                                    </h3>
+
+                                    {/* ✅ 게시판 전체 팝업 버튼 (여기서만 처리) */}
+                                    <button
+                                        onClick={() => {
+                                            setOpenedDynamicApp(app);        // ✅ 게시판 대상 설정
+                                            setShowWidgetNoticesPopup(true); // ✅ 팝업 오픈
+                                        }}
+                                        className="text-stone-400 hover:text-rose-500"
+                                        title="전체 보기"
+                                    >
+                                        <Icon name="externalLink" size={14} />
+                                    </button>
+                                </div>
+
+                                {/* ✅ 공지 등록 (권한 그대로) */}
                                 {canWrite(app) && (
-                                    <button onClick={() => setIsNoticeModalOpen(true)} className="text-[10px] font-black text-rose-500 bg-rose-50 px-3 py-1.5 rounded-lg">공지 등록</button>
+                                    <button
+                                        onClick={() => setIsNoticeModalOpen(true)}
+                                        className="text-[10px] font-black text-rose-500 bg-rose-50 px-3 py-1.5 rounded-lg"
+                                    >
+                                        공지 등록
+                                    </button>
                                 )}
                             </div>
 
+                            {/* ✅ 공지 리스트 (아코디언만 유지) */}
                             <div className="space-y-3">
-                                {notices.slice(0, 5).map(n => {
+                                {(notices || []).slice(0, 5).map(n => {
                                     const isExpanded = expandedNoticeId === n.id;
-                                    const images = Array.isArray(n.photos) ? n.photos : (n.photo ? [n.photo] : []);
+                                    const images = Array.isArray(n.photos)
+                                        ? n.photos
+                                        : (n.photo ? [n.photo] : []);
+
                                     return (
-                                        <div key={n.id} className={`p-4 rounded-2xl border cursor-pointer transition-all ${isExpanded ? 'bg-white dark:bg-stone-800 ring-2 ring-stone-100 shadow-md' : 'bg-stone-50 dark:bg-stone-800 border-stone-100'}`}
-                                            onClick={() => { 
+                                        <div
+                                            key={n.id}
+                                            className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                                                isExpanded
+                                                    ? 'bg-white dark:bg-stone-800 ring-2 ring-stone-100 shadow-md'
+                                                    : 'bg-stone-50 dark:bg-stone-800 border-stone-100'
+                                            }`}
+                                            onClick={() => {
                                                 markAsRead(n.id);
                                                 setExpandedNoticeId(isExpanded ? null : n.id);
                                             }}
-                                            >
+                                        >
                                             <div className="flex justify-between items-start mb-1">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        markAsRead(n.id);
-                                                        setPopupWidgetApp(app);
-                                                        setShowWidgetNoticesPopup(true);
-                                                    }}
-                                                    className="text-stone-400 hover:text-rose-500 ml-2"
-                                                >
-                                                    <Icon name="externalLink" size={13} />
-                                                </button>
-
                                                 <span className="text-[10px] text-stone-400 font-bold">
                                                     {formatLocalTime(n.createdAt)}
                                                 </span>
-
                                                 <Icon
                                                     name={isExpanded ? "chevronUp" : "chevronDown"}
                                                     size={14}
@@ -1986,10 +2009,27 @@
                                                 />
                                             </div>
 
-                                            <p className={`text-[12px] font-bold text-stone-800 dark:text-stone-200 ${isExpanded ? '' : 'line-clamp-1'}`}>{n.content}</p>
+                                            <p
+                                                className={`text-[12px] font-bold text-stone-800 dark:text-stone-200 ${
+                                                    isExpanded ? '' : 'line-clamp-1'
+                                                }`}
+                                            >
+                                                {n.content}
+                                            </p>
+
                                             {isExpanded && images.length > 0 && (
                                                 <div className="mt-3 space-y-2">
-                                                    {images.map((img, i) => <img key={i} src={img} className="w-full rounded-xl border object-cover" onClick={(e) => { e.stopPropagation(); setExpandedImage(img); }} />)}
+                                                    {images.map((img, i) => (
+                                                        <img
+                                                            key={i}
+                                                            src={img}
+                                                            className="w-full rounded-xl border object-cover"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setExpandedImage(img);
+                                                            }}
+                                                        />
+                                                    ))}
                                                 </div>
                                             )}
                                         </div>
@@ -1999,8 +2039,10 @@
                         </div>
                     );
                 }
-                // ... widget_managers 로직 (동일)
+
+                // ... widget_managers 등 다른 위젯
             };
+
 
             /* ---------------------------------------------------------
             4. 구성원 목록 (그리드 레이아웃 - 아까 이미지 문제 해결)
@@ -4358,16 +4400,16 @@
                     }
                 </div >
                 {/* ✅ 현장 실시간 공지사항 팝업 */}
-                {showWidgetNoticesPopup && popupWidgetApp && (
+                {showWidgetNoticesPopup && openedDynamicApp && (
                     <ModalWrapper
                         title="현장 실시간 공지사항"
                         icon="bellRing"
                         onClose={() => {
                             setShowWidgetNoticesPopup(false);
-                            setPopupWidgetApp(null);
+                            setOpenedDynamicApp(null);
                         }}
                     >
-                        {renderWidgetBoard(popupWidgetApp)}
+                        {renderBoard(openedDynamicApp)}
                     </ModalWrapper>
                 )}
             </>
