@@ -1949,102 +1949,123 @@
             };
 
             const renderWidget = (app) => {
-                // 1. 공지사항 위젯
-                if (app.actionType === 'widget_notices') {
-                    const allNotices = notices || [];
-                    const displayNotices = allNotices.slice(0, 3);
-                    return (
-                        <div key="widget_notices" className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in">
-                            <h3 className="text-xs font-black flex items-center gap-2 text-rose-500"><Icon name="bell" size={16} /> 공지사항</h3>
-                            <div className="space-y-3">
-                                {displayNotices.map(notice => (
-                                    <div key={notice.id} className="p-3 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-100 dark:border-stone-700">
-                                        <p className="text-[11px] font-black text-stone-700 dark:text-stone-300 truncate">{notice.content}</p>
-                                    </div>
-                                ))}
-                                {displayNotices.length === 0 && <div className="py-8 text-center text-stone-400 text-[11px] font-bold">등록된 공지사항이 없습니다.</div>}
-                            </div>
-                        </div>
-                    );
-                }
-
-                // 2. 영업관리자 위젯 (날짜/직책/근무여부 3중 방어 로직)
+                // 1. 영업관리자 위젯 (디자인 & 변수명 유지 + 필터 로직만 수정)
                 if (app.actionType === 'widget_managers') {
-                    const now = new Date();
-                    const y = now.getFullYear();
-                    const m = now.getMonth() + 1;
-                    const d = now.getDate();
+                    const todayStr = new Date().toLocaleDateString('sv-SE'); // 2026-04-01
                     
-                    // ✅ 날짜 불일치 방지: 2026-04-01과 2026-4-1 모두 체크
-                    const date1 = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                    const date2 = `${y}-${m}-${d}`;
-
-                    // ✅ 출근(isWork: true)인 라벨들 추출
+                    // ✅ 근무조 설정에서 'isWork: true'인 라벨들만 추출
                     const workingLabels = (statusOptions || [])
                         .filter(opt => opt.isWork === true || opt.isWork === 'true')
                         .map(opt => opt.label);
 
-                    const todaysManagers = (users || [])
-                        .filter((u) => {
-                            // 직책 체크: 영업관리자, 점장, 관리자 단어가 포함되면 모두 인정 (누락 방지)
-                            const title = (u.jobTitle || '') + (u.position || '');
-                            const isManagerRole = title.includes('영업') || title.includes('관리') || title.includes('점장');
-                            if (!isManagerRole) return false;
-
-                            // 오늘 스케줄 데이터 확인 (두 가지 날짜 형식 대응)
-                            const dutyData = scheduleMap[u.empId]?.[date1] || scheduleMap[u.empId]?.[date2];
-                            if (!dutyData) return false;
-
-                            const statusLabel = dutyData?.status || dutyData;
-
-                            // ✅ 근무 여부 판단 (isWork 설정 기반 + 데이터 로딩 전 대비용 하드코딩 방어)
-                            const isWorking = statusLabel && (
-                                workingLabels.includes(statusLabel) || 
-                                statusLabel === '출근' || 
-                                (workingLabels.length === 0 && !['휴무', 'OFF', '연차'].includes(statusLabel))
-                            );
-
-                            return isWorking;
+                    // ✅ 변수명 activeManagers 유지하며 데이터만 '오늘 출근한 영업관리자'로 필터링
+                    const activeManagers = (users || [])
+                        .filter(u => {
+                            if (u.jobTitle !== '영업관리자') return false; // 정확히 영업관리자만
+                            const duty = scheduleMap[u.empId]?.[todayStr];
+                            const statusLabel = duty?.status || duty;
+                            return statusLabel && workingLabels.includes(statusLabel); // 오늘 출근 여부
+                        })
+                        .map(m => {
+                            const duty = scheduleMap[m.empId]?.[todayStr];
+                            return { ...m, status: duty?.status || duty || '출근' };
                         })
                         .sort((a, b) => getMemberPriority(a) - getMemberPriority(b));
 
                     return (
-                        <div key="mgr_widget" className="grid grid-cols-2 gap-3 mt-4">
-                            {todaysManagers.length > 0 ? (
-                                todaysManagers.map((m) => {
-                                    const ext4 = (extensions || []).find((ex) => ex.user.includes(m.name))?.number || m.ext || '';
-                                    
-                                    // ✅ [복구] 02-2142 접두사 확실히 추가
-                                    const fullTel = ext4 ? `02-2142-${ext4}` : '';
-
-                                    return (
-                                        <a
-                                            key={m.empId}
-                                            href={fullTel ? `tel:${fullTel}` : '#'}
-                                            onClick={(e) => { if (!fullTel) { e.preventDefault(); showToast('번호가 없습니다.', true); } }}
-                                            className="bg-white dark:bg-stone-900 p-4 rounded-[1.8rem] border border-stone-100 dark:border-stone-800 shadow-sm flex flex-col items-center text-center active:scale-95 transition-all hover:border-teal-200"
-                                        >
-                                            <div className="w-full mb-2">
-                                                <p className="text-[14px] font-black text-stone-800 dark:text-stone-200 truncate">{m.name}</p>
-                                                <p className="text-[10px] font-bold text-stone-400 mt-0.5">
-                                                    {m.jobTitle !== '일반' ? m.jobTitle : m.position}
-                                                </p>
-                                            </div>
-                                            <div className="w-full pt-2 border-t border-stone-50 dark:border-stone-800 flex items-center justify-center gap-1.5">
-                                                <Icon name="phoneCall" size={12} className="text-teal-500" />
-                                                <span className="text-[13px] font-black text-teal-600 dark:text-teal-400 font-mono">
-                                                    {ext4 || '번호없음'}
-                                                </span>
-                                            </div>
-                                        </a>
-                                    );
-                                })
+                        <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in">
+                            <div className="flex items-center justify-between">
+                                <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}>
+                                    <Icon name={app.icon} size={16}/> {app.name}
+                                </h3>
+                                {isAdminAuth && (
+                                    <div className="flex gap-2">
+                                        <button onClick={() => handleEditDynamicApp(app)} className="text-stone-400 hover:text-teal-500"><Icon name="edit" size={14}/></button>
+                                        <button onClick={() => handleDeleteDynamicApp(app.id)} className="text-stone-400 hover:text-rose-500"><Icon name="trash" size={14}/></button>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {activeManagers.length === 0 ? (
+                                <p className="text-center py-6 text-stone-300 font-bold text-[11px]">오늘 출근한 영업관리자가 없습니다.</p>
                             ) : (
-                                <div className="col-span-2 py-10 text-center bg-white dark:bg-stone-900 rounded-[2rem] border border-dashed border-stone-200">
-                                    <p className="text-[11px] text-stone-400 font-bold">오늘 근무 중인 관리자가 없습니다.</p>
-                                    <p className="text-[8px] text-stone-300 mt-1 uppercase tracking-tighter">Ref: {date1}</p>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    {activeManagers.map(m => { 
+                                        const ext = (extensions || []).find(e => e?.user?.includes(m.name)); 
+                                        // ✅ [복구] 02-2142 접두사 결합
+                                        const fullNumber = ext ? `02-2142-${ext.number}` : '';
+
+                                        return (
+                                            <div key={m.empId} className="bg-stone-50 dark:bg-stone-800 rounded-2xl p-4 border border-stone-100 dark:border-stone-700 flex flex-col gap-2 shadow-sm">
+                                                <div className="flex justify-between items-center w-full">
+                                                    <div className="flex flex-col">
+                                                        <p className="text-[15px] font-black text-stone-800 dark:text-stone-200">{m.name}</p>
+                                                        <p className="text-[10px] text-stone-500 font-bold">{m.position} · {m.jobTitle}</p>
+                                                    </div>
+                                                    {ext && (
+                                                        <button 
+                                                            onClick={(e) => callExtension(fullNumber, m.name, e)} 
+                                                            className="text-white bg-teal-500 p-2.5 rounded-full btn-press shadow-md"
+                                                        >
+                                                            <Icon name="phoneCall" size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                <div className="mt-1">
+                                                    <span className={`px-3 py-1 rounded-lg text-[9px] font-black shadow-sm ${STATUS_THEME[m.status] || 'bg-stone-200 text-stone-500'}`}>
+                                                        {m.status}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
+                        </div>
+                    );
+                }
+
+                // 2. 공지사항 위젯 (유저님 디자인 & 모달/아코디언 로직 100% 원본 유지)
+                if (app.actionType === 'widget_notices') {
+                    return (
+                        <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in">
+                            <div className="flex items-center justify-between">
+                                <h3
+                                    className={`text-xs font-black flex items-center gap-2 ${app.color} cursor-pointer`}
+                                    onClick={() => setWidgetNoticesExpanded(v => !v)}
+                                ><Icon name={app.icon} size={16}/> {app.name}</h3>
+                                <div className="flex gap-2">
+                                    {canWrite(app) && <button onClick={() => { setEditingNoticeId(null); setNoticeForm({content:'', photos:[], isPinned:false}); setIsNoticeModalOpen(true); }} className="text-[10px] font-black text-rose-500 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg transition-colors">공지 등록</button>}
+                                    {isAdminAuth && <button onClick={() => handleEditDynamicApp(app)} className="text-stone-400 hover:text-teal-500"><Icon name="edit" size={14}/></button>}
+                                    {isAdminAuth && <button onClick={() => handleDeleteDynamicApp(app.id)} className="text-stone-400 hover:text-rose-500"><Icon name="trash" size={14}/></button>}
+                                </div>
+                            </div>
+                            <div className="space-y-3 overflow-y-auto scrollbar-hide pr-1" style={{ maxHeight: widgetNoticesExpanded ? '480px' : '220px' }}>
+                                {(notices || []).length === 0 ? <p className="text-center py-10 text-stone-300 font-bold text-[11px]">공지사항이 없습니다.</p> : notices.slice(0, 5).map(n => { 
+                                    const images = n.photos || (n.photo ? [n.photo] : []); 
+                                    const isUnread = !readNoticeIds.includes(n.id); 
+                                    return (
+                                        <div key={n.id} className={`p-3 md:p-5 rounded-2xl md:rounded-3xl border space-y-2 md:space-y-4 shadow-sm relative ${n.isPinned ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800' : 'bg-stone-50 dark:bg-stone-800 border-stone-100 dark:border-stone-700'}`} onClick={() => { setSelectedNotice(n); if(isUnread) { const next = [...readNoticeIds, n.id]; setReadNoticeIds(next); localStorage.setItem('hmood_read_notices', JSON.stringify(next)); } }}>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-2">{n.isPinned && <div className="text-[10px] font-black text-rose-500 flex items-center gap-1"><Icon name="pin" size={14}/> <span>중요 공지</span></div>}{isUnread && <div className="w-2 h-2 bg-rose-500 rounded-full"/>}</div>
+                                            </div>
+                                            <div className="flex items-start gap-2">
+                                                <p className="text-[12px] md:text-[13px] font-bold leading-relaxed whitespace-pre-wrap text-stone-800 dark:text-stone-200 line-clamp-1 md:line-clamp-2 flex-1 min-w-0">{n.content}</p>
+                                                {images.length > 0 && (
+                                                    <div className="flex gap-1 shrink-0">
+                                                        {images.slice(0, 3).map((imgSrc, idx) => (
+                                                            <div key={idx} className="relative w-10 h-10 shrink-0 rounded-lg border border-stone-200 dark:border-stone-700 shadow-sm">
+                                                                <img src={imgSrc} className="w-full h-full object-cover rounded-lg" />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex justify-between text-[9px] text-stone-400 font-black mt-2"><span>{n.author}</span><span>{formatLocalTime(n.createdAt)}</span></div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     );
                 }
