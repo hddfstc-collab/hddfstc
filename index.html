@@ -1922,6 +1922,45 @@
                 );
             };
 
+            const renderWidgetBoard = (app) => {
+                const allPosts = (dynamicPosts || []).filter(p => p.appId === app.id);
+                // ✅ 픽스: 3개까지만 자르기
+                const posts = allPosts.slice(0, 3);
+                const hasMore = allPosts.length > 3;
+
+                return (
+                    <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in">
+                        <div className="flex items-center justify-between">
+                            <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}><Icon name={app.icon} size={16} /> {app.name}</h3>
+                            <div className="flex items-center gap-2">
+                                {/* ✅ 픽스: 권한 있을 경우 수정(관리) 버튼 표시 */}
+                                {(canWrite(app) || appUser?.jobTitle === '영업관리자') && (
+                                    <button onClick={() => { setOpenedDynamicApp(app); setBoardSearch(''); }} className="text-[10px] font-black text-indigo-500 bg-indigo-50 px-2 py-1 rounded-lg">관리</button>
+                                )}
+                                <button onClick={() => { setOpenedDynamicApp(app); posts.forEach(p => markPostAsRead(p.id)); }} className="text-stone-400 hover:text-teal-500"><Icon name="externalLink" size={14}/></button>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            {posts.map(p => {
+                                const isUnread = !readPostIds.includes(p.id);
+                                return (
+                                    <div key={p.id} className="flex justify-between items-center bg-stone-50 dark:bg-stone-800/60 p-3 rounded-xl border border-stone-100 dark:border-stone-700 cursor-pointer hover:border-teal-200 transition-colors" onClick={() => { setOpenedDynamicApp(app); markPostAsRead(p.id); }}>
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            {isUnread && <div className="w-1.5 h-1.5 bg-rose-500 rounded-full shrink-0"></div>}
+                                            <p className="text-[11px] font-black text-stone-700 dark:text-stone-300 truncate">{p.title || p.content}</p>
+                                        </div>
+                                        <span className="text-[9px] text-stone-400 shrink-0">{formatLocalTime(p.createdAt).slice(5, 10)}</span>
+                                    </div>
+                                )
+                            })}
+                            {posts.length === 0 && <p className="text-[11px] text-center text-stone-400 py-4">게시글이 없습니다.</p>}
+                            {/* ✅ 픽스: 3개 이상일 경우 ...더보기 암시 */}
+                            {hasMore && <div className="text-center pt-1"><span className="text-[10px] font-bold text-stone-400">... 더보기</span></div>}
+                        </div>
+                    </div>
+                );
+            };
+
             const renderWidget = (app) => {
                 if (app.actionType === 'widget_notices') {
                     const allNotices = notices || [];
@@ -2012,117 +2051,6 @@
                                     </div>
                                 ))}
                                 {activeManagers.length === 0 && <p className="text-[11px] font-bold text-stone-400 col-span-full py-2">현재 출근한 영업관리자가 없습니다.</p>}
-                            </div>
-                        </div>
-                    );
-                }
-            };
-
-            const renderWidget = (app) => {
-                // 1. 공지사항 위젯
-                if (app.actionType === 'widget_notices') {
-                    return (
-                        <div
-                            key={app.id}
-                            className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in"
-                        >
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}>
-                                        <Icon name={app.icon} size={16} /> {app.name}
-                                    </h3>
-                                    <button
-                                        onClick={() => {
-                                            setOpenedDynamicApp(app);
-                                            setShowWidgetNoticesPopup(true);
-                                        }}
-                                        className="text-stone-400 hover:text-rose-500"
-                                        title="전체 보기"
-                                    >
-                                        <Icon name="externalLink" size={14} />
-                                    </button>
-                                </div>
-                                {canWrite(app) && (
-                                    <button
-                                        onClick={() => setIsNoticeModalOpen(true)}
-                                        className="text-[10px] font-black text-rose-500 bg-rose-50 px-3 py-1.5 rounded-lg"
-                                    >
-                                        공지 등록
-                                    </button>
-                                )}
-                            </div>
-
-                            <div className="space-y-3">
-                                {/* ✅ 픽스: 3개까지만 노출하도록 slice(0, 3)으로 변경 */}
-                                {(notices || []).slice(0, 3).map(notice => {
-                                    const isRead = readNoticeIds.includes(notice.id);
-                                    const isExpanded = expandedNoticeId === notice.id;
-                                    const images = Array.isArray(notice.photos) ? notice.photos : (notice.photo ? [notice.photo] : []);
-                                    return (
-                                        <div
-                                            key={notice.id}
-                                            className={`rounded-xl border cursor-pointer transition-all ${isExpanded ? 'bg-white dark:bg-stone-800 ring-2 ring-rose-100 dark:ring-rose-900 shadow-md' : 'bg-stone-50 dark:bg-stone-800/60 border-stone-100 dark:border-stone-700 hover:border-rose-200'}`}
-                                            onClick={() => {
-                                                if (!isRead) markAsRead(notice.id);
-                                                setExpandedNoticeId(isExpanded ? null : notice.id);
-                                            }}
-                                        >
-                                            <div className="p-3 flex items-start justify-between gap-2">
-                                                <div className="flex items-center gap-2 min-w-0 flex-1">
-                                                    {!isRead && <div className="w-1.5 h-1.5 bg-rose-500 rounded-full shrink-0 mt-0.5" />}
-                                                    <p className={`text-[11px] font-black ${isRead ? 'text-stone-400' : 'text-stone-700 dark:text-stone-300'} ${isExpanded ? '' : 'truncate'}`}>
-                                                        {notice.content}
-                                                    </p>
-                                                </div>
-                                                {/* ✅ 픽스: 썸네일 배치 (글자 옆에 예쁘게 붙도록 레이아웃 수정) */}
-                                                <div className="flex items-center gap-2 shrink-0">
-                                                    {!isExpanded && images.length > 0 && (
-                                                        <img src={images[0]} className="w-7 h-7 rounded-md object-cover border border-stone-200 dark:border-stone-700 shadow-sm" alt="썸네일" />
-                                                    )}
-                                                    <Icon name={isExpanded ? "chevronUp" : "chevronDown"} size={13} className="text-stone-300" />
-                                                </div>
-                                            </div>
-                                            {isExpanded && (
-                                                <div className="px-3 pb-3 space-y-2 fade-in">
-                                                    <p className="text-[10px] text-stone-400 font-bold">{notice.author} · {formatLocalTime(notice.createdAt)}</p>
-                                                    {images.length > 0 && (
-                                                        <div className="space-y-1.5 mt-1">
-                                                            {images.map((img, i) => (
-                                                                <img key={i} src={img} className="w-full rounded-xl border object-cover cursor-pointer" onClick={(e) => { e.stopPropagation(); setExpandedImage(img); }} />
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                                {(notices || []).length === 0 && (
-                                    <div className="py-8 text-center text-stone-400 text-[11px] font-bold bg-white dark:bg-stone-900 rounded-xl border border-stone-100 dark:border-stone-800">
-                                        등록된 공지사항이 없습니다.
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    );
-                }
-
-                // 2. ✅ 영업관리자 위젯 (사라졌던 코드 복구!)
-                if (app.actionType === 'widget_managers') {
-                    return (
-                        <div key={app.id} className="bg-gradient-to-r from-teal-500 to-emerald-500 rounded-[2rem] p-6 shadow-md text-white mt-4 fade-in">
-                            <h3 className="text-xs font-black flex items-center gap-2 mb-4 opacity-90"><Icon name={app.icon} size={16} /> {app.name}</h3>
-                            <div className="flex flex-wrap gap-2">
-                                {activeManagers.map(m => (
-                                    <div key={m.empId} className="bg-white/20 backdrop-blur-sm px-3 py-2 rounded-xl flex items-center gap-2 border border-white/10">
-                                        <span className="text-[11px] font-black">{m.user?.name}</span>
-                                        <span className="text-[9px] opacity-80">{m.user?.part}</span>
-                                        {m.user?.extNumber && (
-                                            <button onClick={(e) => callExtension(m.user.extNumber, m.user.name, e)} className="ml-1 bg-white text-teal-600 p-1 rounded-full btn-press"><Icon name="phoneCall" size={10} /></button>
-                                        )}
-                                    </div>
-                                ))}
-                                {activeManagers.length === 0 && <p className="text-[11px] font-bold opacity-80 py-2">현재 출근한 영업관리자가 없습니다.</p>}
                             </div>
                         </div>
                     );
