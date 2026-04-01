@@ -1897,14 +1897,13 @@
                     setTimeout(() => { tableScrollRef.current?.focus(); }, 100);
                 }
             }, [viewMode]);
-
             const handlePhotoSingle = async (e, setter) => {
                 const files = Array.from(e.target.files || []);
                 if (!files.length) return;
                 const resized = await Promise.all(files.map(f => resizeImage(f)));
                 setter(prev => ({
                     ...prev,
-                    photos: [...(prev.photos || []), ...resized].slice(0, 3) 
+                    photos: [...(prev.photos || []), ...resized].slice(0, 3)
                 }));
                 e.target.value = '';
             };
@@ -1917,12 +1916,16 @@
                 return (
                     <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in">
                         <div className="flex items-center justify-between">
-                            <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}><Icon name={app.icon} size={16} /> {app.name}</h3>
+                            <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}>
+                                <Icon name={app.icon} size={16} /> {app.name}
+                            </h3>
                             <div className="flex items-center gap-2">
                                 {(canWrite(app) || appUser?.jobTitle === '영업관리자') && (
                                     <button onClick={() => { setOpenedDynamicApp(app); setBoardSearch(''); }} className="text-[10px] font-black text-indigo-500 bg-indigo-50 px-2 py-1 rounded-lg">관리</button>
                                 )}
-                                <button onClick={() => { setOpenedDynamicApp(app); posts.forEach(p => markPostAsRead(p.id)); }} className="text-stone-400 hover:text-teal-500"><Icon name="externalLink" size={14}/></button>
+                                <button onClick={() => { setOpenedDynamicApp(app); posts.forEach(p => markPostAsRead(p.id)); }} className="text-stone-400 hover:text-teal-500">
+                                    <Icon name="externalLink" size={14}/>
+                                </button>
                             </div>
                         </div>
                         <div className="space-y-2">
@@ -1936,7 +1939,7 @@
                                         </div>
                                         <span className="text-[9px] text-stone-400 shrink-0">{formatLocalTime(p.createdAt).slice(5, 10)}</span>
                                     </div>
-                                )
+                                );
                             })}
                             {posts.length === 0 && <p className="text-[11px] text-center text-stone-400 py-4">게시글이 없습니다.</p>}
                             {hasMore && <div className="text-center pt-1"><span className="text-[10px] font-bold text-stone-400">... 더보기</span></div>}
@@ -1972,7 +1975,6 @@
                         </div>
                     );
                 }
-
 
                 // 2. 영업관리자 위젯 ('출근' 상태 필터링 + 02-2142 내선 복구)
                 if (app.actionType === 'widget_managers') {
@@ -2065,7 +2067,7 @@
                     </div>
                 );
 
-            );
+            }
             return (
             <>
                 <div className="flex flex-col h-screen min-h-screen bg-[#EBE9E4] dark:bg-stone-950 text-stone-700 dark:text-stone-300 fade-in">
@@ -4454,7 +4456,6 @@
                 />
             );
         }
-
         // 2. 파트너스 채널 (Shared 모드일 때 보여줄 전용 화면)
         if (mode === 'shared') {
             return (
@@ -4499,9 +4500,8 @@
         );
     } // function App 끝 (이 중괄호가 닫혀야 합니다)
 
-    const root = ReactDOM.createRoot(document.getElementById('root')); 
+    const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
 </script>
 </body>
-
 </html>
