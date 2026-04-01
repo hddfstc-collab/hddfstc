@@ -399,7 +399,15 @@
         const deleteFromIDB = (storeName, id) => { if (!window.localDB) return; try { window.localDB.transaction(storeName, 'readwrite').objectStore(storeName).delete(id); } catch (e) { } };
 
         function App() {
-
+            // [추가] 비로그인 상태(shared 모드)에서도 DB 접근 권한을 얻기 위한 익명 로그인 로직
+            useEffect(() => {
+                const firebaseAuth = firebase.auth();
+                if (firebaseAuth) {
+                    firebaseAuth.signInAnonymously()
+                        .then(() => console.log("익명 로그인 성공 (Shared 모드 대비)"))
+                        .catch(err => console.error("익명 로그인 실패:", err));
+                }
+            }, []);
             const [expandedNoticeId, setExpandedNoticeId] = useState(null);
             // ---------------------------------------------------------
             // 1. 모든 상태(State) 및 Ref 선언 (맨 위로 모음)
@@ -783,18 +791,10 @@
                 if (isAdminAuth) return true;
                 if (!permRaw) return false;
 
-                if (!appUser) {
-                    if (appItem && (appItem.actionType === 'form' || appItem.actionType === 'reservation')) {
-                        if (permRaw === 'all' || (Array.isArray(permRaw) && permRaw.includes('all'))) {
-                            return true;
-                        }
-                    }
-                    return false;
-                }
-
                 const checkPerm = (p) => {
                     if (p === 'all') return true;
                     if (p === 'admin_only') return isAdminAuth;
+                    if (!appUser) return false; // 로그인 안됐으면 이후 권한체크 불가
                     if (p === 'manager') return appUser.jobTitle === '영업관리자';
                     if (p.startsWith('PART_')) return appUser.part === p.replace('PART_', '');
                     if (p.startsWith('USER_')) return appUser.empId === p.replace('USER_', '');
@@ -4465,9 +4465,34 @@
                     </ModalWrapper>
                 )}
             </>
+            ); // 이 ); 는 ModalWrapper 등이 포함된 기존의 return문 끝일 것입니다.
+            // ---------------------------------------------------------
+            // ✅ [여기서부터 수정] function App { ... } 의 가장 마지막 부분입니다.
+            // ---------------------------------------------------------
+
+            // 1. 로그인 여부 및 파트너스 모드 예외 처리
+            if (!appUser && mode !== 'shared') {
+                return (
+                    <LoginView 
+                        onLogin={(user) => {
+                            setAppUser(user);
+                            saveToIDB('currentUser', user);
+                        }} 
+                    />
+                );
+            }
+
+            // 2. 실제 메인 화면 렌더링 (기존 return문을 이 아래에 유지하세요)
+            return (
+                // 유저님의 코드 시작 부분 (예: <div className=... 또는 <>)
+                <> 
+                   {/* 기존에 있던 메인 JSX 코드들... */}
+                </>
             );
-        }
-        const root = ReactDOM.createRoot(document.getElementById('root')); root.render(<App />);
+        } // function App 끝
+
+        const root = ReactDOM.createRoot(document.getElementById('root')); 
+        root.render(<App />);
     </script>
 </body>
 
