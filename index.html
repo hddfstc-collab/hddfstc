@@ -1946,6 +1946,7 @@
             };
 
             const renderWidget = (app) => {
+                // 1. 공지사항 위젯
                 if (app.actionType === 'widget_notices') {
                     const allNotices = notices || [];
                     const displayNotices = allNotices.slice(0, 3);
@@ -1960,12 +1961,8 @@
                                     </h3>
                                     <button onClick={() => { setOpenedDynamicApp(app); setShowWidgetNoticesPopup(true); }} className="text-stone-400 hover:text-rose-500" title="전체 보기"><Icon name="externalLink" size={14} /></button>
                                 </div>
-                                {/* 공지사항 위젯 상단 버튼 부분 */}
                                 {canWrite(app) && (
-                                    <button 
-                                        onClick={() => setIsNoticeModalOpen(true)} 
-                                        className="text-[10px] font-black text-rose-500 bg-rose-50 px-3 py-1.5 rounded-lg btn-press"
-                                    >
+                                    <button onClick={() => setIsNoticeModalOpen(true)} className="text-[10px] font-black text-rose-500 bg-rose-50 px-3 py-1.5 rounded-lg btn-press">
                                         공지 등록/관리
                                     </button>
                                 )}
@@ -2010,23 +2007,27 @@
                     );
                 }
 
+                // 2. 영업관리자 위젯 (여기서부터 에러 수정 및 정렬 적용)
                 if (app.actionType === 'widget_managers') {
-                    const todayStr = new Date().toISOString().split('T')[0];
-                    const todaysManagers = users.filter(u => {
-                        if (u.jobTitle !== '영업관리자') return false;
-                        const duty = duties[u.empId]?.[todayStr];
-                        return duty && duty !== '휴무' && duty !== 'OFF';
-                    });
+                    // ✅ ISO 대신 로컬 날짜 문자열 사용 (안전함)
+                    const todayStr = new Date().toLocaleDateString('sv-SE'); 
+                    
+                    const todaysManagers = (users || [])
+                        .filter(u => {
+                            // ✅ 'duties' 대신 이미 정의된 'scheduleMap'을 사용합니다!
+                            const duty = scheduleMap[u.empId]?.[todayStr];
+                            // 'A' 상태이거나 출근인 경우만 필터링 (필요시 'A' 외 다른 상태 추가 가능)
+                            return duty && duty.status === 'A';
+                        })
+                        // ✅ 마스터 정렬 함수 적용 (점장 -> 파트 -> 파트장 -> 직급 순)
+                        .sort((a, b) => getMemberPriority(a) - getMemberPriority(b));
 
                     return (
                         <div className="space-y-3">
-                            {/* 2열 그리드 레이아웃 */}
                             <div className="grid grid-cols-2 gap-2.5">
                                 {todaysManagers.length > 0 ? (
                                     todaysManagers.map(m => {
-                                        // 내선번호 찾기: 내선관리 탭 데이터(extensions)에서 이름 매칭 우선, 없으면 사원정보 내선
                                         const managerExt = extensions.find(ex => ex.user.includes(m.name))?.number || m.ext || '';
-                                        
                                         return (
                                             <a 
                                                 key={m.empId} 
@@ -2036,10 +2037,11 @@
                                             >
                                                 <div className="min-w-0 w-full mb-2">
                                                     <p className="text-[14px] font-black text-stone-800 dark:text-stone-200 truncate">{m.name}</p>
-                                                    <p className="text-[10px] font-bold text-stone-400 mt-0.5">{m.position || '영업관리자'}</p>
+                                                    <p className="text-[10px] font-bold text-stone-400 mt-0.5">
+                                                        {/* 직책이 일반이 아니면 직책(파트장 등) 표시, 아니면 직급 표시 */}
+                                                        {m.jobTitle !== '일반' ? m.jobTitle : m.position}
+                                                    </p>
                                                 </div>
-
-                                                {/* 내선번호 표시 및 통화 유도 영역 */}
                                                 <div className="w-full pt-2 border-t border-stone-50 dark:border-stone-800 flex flex-col items-center gap-1">
                                                     <div className="flex items-center gap-1">
                                                         <Icon name="phoneCall" size={11} className="text-teal-500" />
@@ -2062,7 +2064,6 @@
                     );
                 }
             };
-
            
 
 
