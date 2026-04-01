@@ -1953,95 +1953,79 @@
                 if (app.actionType === 'widget_notices') {
                     const allNotices = notices || [];
                     const displayNotices = allNotices.slice(0, 3);
-                    const hasMore = allNotices.length > 3;
-
                     return (
-                        <div key={app.id || 'notices'} className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <h3 className={`text-xs font-black flex items-center gap-2 ${app.color || 'text-rose-500'}`}>
-                                        <Icon name={app.icon || 'bell'} size={16} /> {app.name || '공지사항'}
-                                    </h3>
-                                </div>
-                            </div>
+                        <div key="notices_widget" className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4">
+                            <h3 className="text-xs font-black flex items-center gap-2 text-rose-500"><Icon name="bell" size={16} /> 공지사항</h3>
                             <div className="space-y-3">
-                                {displayNotices.map(notice => (
-                                    <div key={notice.id} className="p-3 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-100 dark:border-stone-700">
-                                        <p className="text-[11px] font-black text-stone-700 dark:text-stone-300 truncate">{notice.content}</p>
+                                {displayNotices.map(n => (
+                                    <div key={n.id} className="p-3 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-100 dark:border-stone-700">
+                                        <p className="text-[11px] font-black text-stone-700 dark:text-stone-300 truncate">{n.content}</p>
                                     </div>
                                 ))}
-                                {displayNotices.length === 0 && <div className="py-8 text-center text-stone-400 text-[11px] font-bold">등록된 공지사항이 없습니다.</div>}
+                                {displayNotices.length === 0 && <p className="text-[11px] text-center text-stone-400 py-6 font-bold">등록된 공지가 없습니다.</p>}
                             </div>
                         </div>
                     );
                 }
 
-                // 2. 영업관리자 위젯 (근무조 'isWork' 설정 기반 필터링 + 02-2142 내선 복구)
+                // 2. 영업관리자 위젯 (디버깅 로그 추가)
                 if (app.actionType === 'widget_managers') {
-                    const todayStr = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD
+                    const todayStr = new Date().toLocaleDateString('sv-SE'); // 2026-04-01
 
-                    // ✅ 근무조 설정(statusOptions)에서 '출근(isWork)'으로 설정된 모든 라벨들 추출
+                    // ✅ 1. 출근으로 설정된 라벨이 뭔지 확인
                     const workingLabels = (statusOptions || [])
-                        .filter(opt => opt.isWork === 'true' || opt.isWork === true)
+                        .filter(opt => String(opt.isWork) === 'true')
                         .map(opt => opt.label);
+                    
+                    console.log("🛠️ 현재 '출근' 설정된 근무조 리스트:", workingLabels);
 
                     const todaysManagers = (users || [])
                         .filter((u) => {
-                            // scheduleMap에서 오늘 데이터 확인
                             const dutyObj = scheduleMap[u.empId]?.[todayStr];
-                            const statusLabel = dutyObj?.status || dutyObj; // 객체 혹은 문자열 대응
+                            const statusLabel = dutyObj?.status || dutyObj; 
 
-                            // 1. 직책 확인 (영업관리자 또는 점장 포함)
-                            const isManagerRole = (u.jobTitle === '영업관리자') || ((u.jobTitle || '').includes('점장')) || (u.position === '점장');
-
-                            // 2. ✅ 근무조 선택 시 '출근(isWork: true)' 계열을 선택했는지 확인
-                            // workingLabels에 포함되어 있다면 '출근'으로 간주합니다.
+                            const isManager = (u.jobTitle === '영업관리자') || ((u.jobTitle || '').includes('점장')) || (u.position === '점장');
                             const isWorking = statusLabel && workingLabels.includes(statusLabel);
 
-                            return isManagerRole && isWorking;
+                            // ✅ 2. 관리자인데 왜 안 나오는지 체크 (필터링 통과 못할 때만 로그)
+                            if (isManager && !isWorking) {
+                                console.log(`❓ ${u.name}님은 관리자지만 오늘 근무라벨 [${statusLabel}]이 출근 명단에 없음.`);
+                            }
+
+                            return isManager && isWorking;
                         })
-                        // ✅ 점장님 최상단 정렬
                         .sort((a, b) => getMemberPriority(a) - getMemberPriority(b));
 
+                    console.log("✅ 최종 표시될 인원 수:", todaysManagers.length);
+
                     return (
-                        <div key="mgr_widget" className="grid grid-cols-2 gap-3 mt-4">
+                        <div key="mgr_widget_final" className="grid grid-cols-2 gap-3 mt-4">
                             {todaysManagers.length > 0 ? (
                                 todaysManagers.map((m) => {
                                     const ext4 = (extensions || []).find((ex) => ex.user.includes(m.name))?.number || m.ext || '';
-
-                                    // ✅ 전화 연결 시 접두사 02-2142 추가
                                     const fullTel = ext4 ? `02-2142-${ext4}` : '';
 
                                     return (
                                         <a
                                             key={m.empId}
                                             href={fullTel ? `tel:${fullTel}` : '#'}
-                                            onClick={(e) => {
-                                                if (!fullTel) {
-                                                    e.preventDefault();
-                                                    showToast('등록된 번호가 없습니다.', true);
-                                                }
-                                            }}
                                             className="bg-white dark:bg-stone-900 p-4 rounded-[1.8rem] border border-stone-100 dark:border-stone-800 shadow-sm flex flex-col items-center text-center active:scale-95 transition-all hover:border-teal-200"
                                         >
                                             <div className="w-full mb-2">
                                                 <p className="text-[14px] font-black text-stone-800 dark:text-stone-200 truncate">{m.name}</p>
-                                                <p className="text-[10px] font-bold text-stone-400 mt-0.5">
-                                                    {m.jobTitle !== '일반' ? m.jobTitle : m.position}
-                                                </p>
+                                                <p className="text-[10px] font-bold text-stone-400 mt-0.5">{m.jobTitle !== '일반' ? m.jobTitle : m.position}</p>
                                             </div>
                                             <div className="w-full pt-2 border-t border-stone-50 dark:border-stone-800 flex items-center justify-center gap-1.5">
                                                 <Icon name="phoneCall" size={12} className="text-teal-500" />
-                                                <span className="text-[13px] font-black text-teal-600 dark:text-teal-400 font-mono">
-                                                    {ext4 || '번호없음'}
-                                                </span>
+                                                <span className="text-[13px] font-black text-teal-600 dark:text-teal-400 font-mono">{ext4 || '번호없음'}</span>
                                             </div>
                                         </a>
                                     );
                                 })
                             ) : (
                                 <div className="col-span-2 py-10 text-center bg-white dark:bg-stone-900 rounded-[2rem] border border-dashed border-stone-200">
-                                    <p className="text-[11px] text-stone-400 font-bold">오늘 출근한 관리자가 없습니다.</p>
+                                    <p className="text-[11px] text-stone-400 font-bold">오늘 근무 중인 관리자가 없습니다.</p>
+                                    <p className="text-[9px] text-stone-300 mt-1">({todayStr} / 출근라벨: {workingLabels.join(',') || '없음'})</p>
                                 </div>
                             )}
                         </div>
