@@ -1976,36 +1976,40 @@
                     );
                 }
 
-                // 2. 영업관리자 위젯 ('출근' 상태 필터링 + 02-2142 내선 복구)
+                // 2. 영업관리자 위젯 (근무조 'isWork' 설정 기반 필터링 + 02-2142 내선 복구)
                 if (app.actionType === 'widget_managers') {
                     const todayStr = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD
 
+                    // ✅ 근무조 설정(statusOptions)에서 '출근(isWork)'으로 설정된 모든 라벨들 추출
+                    const workingLabels = (statusOptions || [])
+                        .filter(opt => opt.isWork === 'true' || opt.isWork === true)
+                        .map(opt => opt.label);
+
                     const todaysManagers = (users || [])
                         .filter((u) => {
-                            // 유저님 코드의 scheduleMap에서 오늘 데이터 확인
-                            const duty = scheduleMap[u.empId]?.[todayStr];
+                            // scheduleMap에서 오늘 데이터 확인
+                            const dutyObj = scheduleMap[u.empId]?.[todayStr];
+                            const statusLabel = dutyObj?.status || dutyObj; // 객체 혹은 문자열 대응
 
                             // 1. 직책 확인 (영업관리자 또는 점장 포함)
                             const isManagerRole = (u.jobTitle === '영업관리자') || ((u.jobTitle || '').includes('점장')) || (u.position === '점장');
 
-                            // 2. ✅ 근무 상태 확인 ('A'가 아니라 '출근'인 경우만!)
-                            // 객체 형태(duty.status)와 문자열 형태(duty) 모두 대응
-                            const isWorking = duty && ((duty.status === '출근') || (duty === '출근'));
+                            // 2. ✅ 근무조 선택 시 '출근(isWork: true)' 계열을 선택했는지 확인
+                            // workingLabels에 포함되어 있다면 '출근'으로 간주합니다.
+                            const isWorking = statusLabel && workingLabels.includes(statusLabel);
 
                             return isManagerRole && isWorking;
                         })
-                        // ✅ 점장님 최상단 정렬 (getMemberPriority 사용)
+                        // ✅ 점장님 최상단 정렬
                         .sort((a, b) => getMemberPriority(a) - getMemberPriority(b));
 
                     return (
                         <div key="mgr_widget" className="grid grid-cols-2 gap-3 mt-4">
                             {todaysManagers.length > 0 ? (
                                 todaysManagers.map((m) => {
-                                    // 내선 4자리 찾기
-                                    const ext4 =
-                                        (extensions || []).find((ex) => ex.user.includes(m.name))?.number || m.ext || '';
+                                    const ext4 = (extensions || []).find((ex) => ex.user.includes(m.name))?.number || m.ext || '';
 
-                                    // ✅ 02-2142 접두사 포함된 호출용 번호
+                                    // ✅ 전화 연결 시 접두사 02-2142 추가
                                     const fullTel = ext4 ? `02-2142-${ext4}` : '';
 
                                     return (
@@ -2043,31 +2047,30 @@
                         </div>
                     );
                 }
+            };
 
-                const renderMemberItem = (u) => (
-                    <div key={u.empId} className="grid grid-cols-[1.2fr_0.8fr_1fr_0.8fr_auto] gap-2 items-center bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-100 shadow-sm mb-2">
-                        <div className="min-w-0">
-                            <span className="text-[11px] font-black text-stone-700 dark:text-stone-300 truncate block">{u.part}</span>
-                            <span className="text-[9px] text-stone-400 font-bold uppercase">Part</span>
-                        </div>
-                        <div className="text-center">
-                            <span className="text-[10px] font-black text-teal-600 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100">{u.jobTitle || '일반'}</span>
-                        </div>
-                        <div className="text-center">
-                            <span className="text-[11px] font-mono font-bold text-stone-500">{u.empId}</span>
-                        </div>
-                        <div className="text-right">
-                            <span className="text-[13px] font-black text-stone-800 dark:text-stone-200">{u.name}</span>
-                            <p className="text-[9px] text-stone-400">{u.position}</p>
-                        </div>
-                        <div className="flex gap-1 ml-2 pl-2 border-l">
-                            <button onClick={() => handleEditMember(u)} className="p-1 text-teal-500"><Icon name="edit" size={14} /></button>
-                            <button onClick={() => handleDeleteMember(u.empId)} className="p-1 text-rose-400"><Icon name="trash" size={14} /></button>
-                        </div>
+            const renderMemberItem = (u) => (
+                <div key={u.empId} className="grid grid-cols-[1.2fr_0.8fr_1fr_0.8fr_auto] gap-2 items-center bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-100 shadow-sm mb-2">
+                    <div className="min-w-0">
+                        <span className="text-[11px] font-black text-stone-700 dark:text-stone-300 truncate block">{u.part}</span>
+                        <span className="text-[9px] text-stone-400 font-bold uppercase">Part</span>
                     </div>
-                );
-
-            }
+                    <div className="text-center">
+                        <span className="text-[10px] font-black text-teal-600 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100">{u.jobTitle || '일반'}</span>
+                    </div>
+                    <div className="text-center">
+                        <span className="text-[11px] font-mono font-bold text-stone-500">{u.empId}</span>
+                    </div>
+                    <div className="text-right">
+                        <span className="text-[13px] font-black text-stone-800 dark:text-stone-200">{u.name}</span>
+                        <p className="text-[9px] text-stone-400">{u.position}</p>
+                    </div>
+                    <div className="flex gap-1 ml-2 pl-2 border-l">
+                        <button onClick={() => handleEditMember(u)} className="p-1 text-teal-500"><Icon name="edit" size={14} /></button>
+                        <button onClick={() => handleDeleteMember(u.empId)} className="p-1 text-rose-400"><Icon name="trash" size={14} /></button>
+                    </div>
+                </div>
+            );
             return (
             <>
                 <div className="flex flex-col h-screen min-h-screen bg-[#EBE9E4] dark:bg-stone-950 text-stone-700 dark:text-stone-300 fade-in">
