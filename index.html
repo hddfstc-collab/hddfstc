@@ -1949,13 +1949,10 @@
             };
 
             const renderWidget = (app) => {
-                // 1. 영업관리자 위젯 (글자 줄바꿈 방지 레이아웃 최적화)
+                // 1. 영업관리자 위젯 (카테고리 클릭 시 전체보기 추가)
                 if (app.actionType === 'widget_managers') {
                     const todayStr = new Date().toLocaleDateString('sv-SE');
-                    
-                    const workingLabels = (statusOptions || [])
-                        .filter(opt => opt.isWork === true || opt.isWork === 'true')
-                        .map(opt => opt.label);
+                    const workingLabels = (statusOptions || []).filter(opt => opt.isWork === true || opt.isWork === 'true').map(opt => opt.label);
 
                     const activeManagers = (users || [])
                         .filter(u => {
@@ -1978,8 +1975,8 @@
                                 </h3>
                                 {isAdminAuth && (
                                     <div className="flex gap-2">
-                                        <button onClick={() => handleEditDynamicApp(app)} className="text-stone-400 hover:text-teal-500"><Icon name="edit" size={14}/></button>
-                                        <button onClick={() => handleDeleteDynamicApp(app.id)} className="text-stone-400 hover:text-rose-500"><Icon name="trash" size={14}/></button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleEditDynamicApp(app); }} className="text-stone-400 hover:text-teal-500 p-1"><Icon name="edit" size={14}/></button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteDynamicApp(app.id); }} className="text-stone-400 hover:text-rose-500 p-1"><Icon name="trash" size={14}/></button>
                                     </div>
                                 )}
                             </div>
@@ -1993,14 +1990,19 @@
                                         const fullNumber = ext ? `02-2142-${ext.number}` : '';
 
                                         return (
-                                            <div key={m.empId} className="bg-stone-50 dark:bg-stone-800 rounded-2xl p-4 border border-stone-100 dark:border-stone-700 flex flex-col gap-3 shadow-sm">
-                                                {/* 상단: 이름 및 직책 (공간 확보) */}
-                                                <div className="min-w-0">
-                                                    <p className="text-[15px] font-black text-stone-800 dark:text-stone-200 truncate">{m.name}</p>
-                                                    <p className="text-[10px] text-stone-500 font-bold truncate">{m.position} · {m.jobTitle}</p>
+                                            <div key={m.empId} className="bg-stone-50 dark:bg-stone-800 rounded-2xl p-4 border border-stone-100 dark:border-stone-700 flex flex-col gap-3 shadow-sm min-w-0">
+                                                <div className="flex items-baseline gap-1.5 min-w-0">
+                                                    <span className="text-[15px] font-black text-stone-800 dark:text-stone-200 truncate shrink-0">{m.name}</span>
+                                                    {/* ✅ 카테고리 클릭 시 전체 직책 토스트 노출 */}
+                                                    <span 
+                                                        onClick={(e) => { e.stopPropagation(); showToast(`${m.name} : ${m.position}`); }}
+                                                        className="text-[10px] text-stone-400 font-bold truncate opacity-80 cursor-pointer hover:text-teal-500 active:scale-95 transition-all"
+                                                        title="클릭해서 전체보기"
+                                                    >
+                                                        [{m.position}]
+                                                    </span>
                                                 </div>
 
-                                                {/* 하단: 근무조 배지 + 전화 아이콘 (배치 수정) */}
                                                 <div className="flex items-center gap-2">
                                                     <span className={`px-3 py-1 rounded-lg text-[9px] font-black shadow-sm ${STATUS_THEME[m.status] || 'bg-stone-200 text-stone-500'}`}>
                                                         {m.status}
@@ -2009,7 +2011,6 @@
                                                         <button 
                                                             onClick={(e) => { e.stopPropagation(); callExtension(fullNumber, m.name, e); }} 
                                                             className="text-white bg-teal-500 p-1.5 rounded-full btn-press shadow-md shrink-0"
-                                                            title="전화걸기"
                                                         >
                                                             <Icon name="phoneCall" size={12} />
                                                         </button>
@@ -2024,38 +2025,56 @@
                     );
                 }
 
-                // 2. 공지사항 위젯 (수정 없이 모달/아코디언 로직 100% 유지)
+                // 2. 공지사항 위젯 (수정 없이 기능 완전 유지)
                 if (app.actionType === 'widget_notices') {
                     return (
                         <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in">
                             <div className="flex items-center justify-between">
                                 <h3
-                                    className={`text-xs font-black flex items-center gap-2 ${app.color} cursor-pointer`}
-                                    onClick={() => setWidgetNoticesExpanded(v => !v)}
+                                    className={`text-xs font-black flex items-center gap-2 ${app.color} cursor-pointer p-1`}
+                                    onClick={(e) => { e.stopPropagation(); setWidgetNoticesExpanded(!widgetNoticesExpanded); }}
                                 ><Icon name={app.icon} size={16}/> {app.name}</h3>
                                 <div className="flex gap-2">
-                                    {canWrite(app) && <button onClick={() => { setEditingNoticeId(null); setNoticeForm({content:'', photos:[], isPinned:false}); setIsNoticeModalOpen(true); }} className="text-[10px] font-black text-rose-500 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg">공지 등록</button>}
-                                    {isAdminAuth && <button onClick={() => handleEditDynamicApp(app)} className="text-stone-400 hover:text-teal-500"><Icon name="edit" size={14}/></button>}
+                                    {canWrite(app) && <button onClick={(e) => { e.stopPropagation(); setEditingNoticeId(null); setNoticeForm({content:'', photos:[], isPinned:false}); setIsNoticeModalOpen(true); }} className="text-[10px] font-black text-rose-500 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg">공지 등록</button>}
+                                    {isAdminAuth && <button onClick={(e) => { e.stopPropagation(); handleEditDynamicApp(app); }} className="text-stone-400 hover:text-teal-500 p-1"><Icon name="edit" size={14}/></button>}
+                                    {isAdminAuth && <button onClick={(e) => { e.stopPropagation(); handleDeleteDynamicApp(app.id); }} className="text-stone-400 hover:text-rose-500 p-1"><Icon name="trash" size={14}/></button>}
                                 </div>
                             </div>
-                            <div className="space-y-3 overflow-y-auto scrollbar-hide pr-1" style={{ maxHeight: widgetNoticesExpanded ? '480px' : '220px' }}>
+
+                            <div className="space-y-3 overflow-y-auto scrollbar-hide pr-1 transition-all duration-300" style={{ maxHeight: widgetNoticesExpanded ? '600px' : '220px' }}>
                                 {(notices || []).length === 0 ? <p className="text-center py-10 text-stone-300 font-bold text-[11px]">공지사항이 없습니다.</p> : notices.slice(0, 5).map(n => { 
                                     const images = n.photos || (n.photo ? [n.photo] : []); 
                                     const isUnread = !readNoticeIds.includes(n.id); 
                                     return (
-                                        <div key={n.id} className={`p-3 md:p-5 rounded-2xl md:rounded-3xl border space-y-2 md:space-y-4 shadow-sm relative cursor-pointer ${n.isPinned ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800' : 'bg-stone-50 dark:bg-stone-800 border-stone-100 dark:border-stone-700'}`} onClick={() => { setNoticeForm({ content: n.content, photos: n.photos || [], isPinned: !!n.isPinned }); setEditingNoticeId(n.id); setIsNoticeModalOpen(true); if(isUnread) { const next = [...readNoticeIds, n.id]; setReadNoticeIds(next); localStorage.setItem('hmood_read_notices', JSON.stringify(next)); } }}>
-                                            <div className="flex items-center justify-between mb-2">
-                                                <div className="flex items-center gap-2">{n.isPinned && <div className="text-[10px] font-black text-rose-500 flex items-center gap-1"><Icon name="pin" size={14}/> <span>중요 공지</span></div>}{isUnread && <div className="w-2 h-2 bg-rose-500 rounded-full"/>}</div>
-                                            </div>
-                                            <div className="flex items-start gap-2">
-                                                <p className="text-[12px] md:text-[13px] font-bold leading-relaxed whitespace-pre-wrap text-stone-800 dark:text-stone-200 line-clamp-1 md:line-clamp-2 flex-1 min-w-0">{n.content}</p>
-                                                {images.length > 0 && (
-                                                    <div className="flex gap-1 shrink-0">
-                                                        {images.slice(0, 3).map((imgSrc, idx) => (
-                                                            <div key={idx} className="relative w-10 h-10 shrink-0 rounded-lg border border-stone-200 dark:border-stone-700 shadow-sm"><img src={imgSrc} className="w-full h-full object-cover rounded-lg" /></div>
-                                                        ))}
+                                        <div 
+                                            key={n.id} 
+                                            className={`p-3 md:p-5 rounded-2xl md:rounded-3xl border space-y-2 md:space-y-4 shadow-sm relative cursor-pointer active:scale-[0.99] transition-transform ${n.isPinned ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200' : 'bg-stone-50 dark:bg-stone-800 border-stone-100'}`} 
+                                            onClick={() => { 
+                                                setNoticeForm({ content: n.content, photos: n.photos || [], isPinned: !!n.isPinned }); 
+                                                setEditingNoticeId(n.id); 
+                                                setIsNoticeModalOpen(true); 
+                                                if(isUnread) { 
+                                                    const next = [...readNoticeIds, n.id]; 
+                                                    setReadNoticeIds(next); 
+                                                    localStorage.setItem('hmood_read_notices', JSON.stringify(next)); 
+                                                } 
+                                            }}
+                                        >
+                                            <div className="flex items-center justify-between mb-1">
+                                                <div className="flex items-center gap-2">
+                                                    {n.isPinned && <div className="text-[10px] font-black text-rose-500 flex items-center gap-1"><Icon name="pin" size={14}/> <span>중요</span></div>}
+                                                    {isUnread && <div className="w-2 h-2 bg-rose-500 rounded-full"/>}
+                                                </div>
+                                                {(isAdminAuth || canEdit(app)) && (
+                                                    <div className="flex gap-2">
+                                                        <button onClick={(e) => { e.stopPropagation(); setNoticeForm({ content: n.content, photos: n.photos || [], isPinned: !!n.isPinned }); setEditingNoticeId(n.id); setIsNoticeModalOpen(true); }} className="text-stone-400 hover:text-teal-500 p-1"><Icon name="edit" size={12}/></button>
+                                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteNotice(n.id); }} className="text-stone-400 hover:text-rose-500 p-1"><Icon name="trash" size={12}/></button>
                                                     </div>
                                                 )}
+                                            </div>
+                                            <div className="flex items-start gap-2">
+                                                <p className="text-[12px] md:text-[13px] font-bold leading-relaxed whitespace-pre-wrap text-stone-800 dark:text-stone-200 line-clamp-2 flex-1 min-w-0">{n.content}</p>
+                                                {images.length > 0 && <img src={images[0]} className="w-10 h-10 object-cover rounded-lg shrink-0 border border-stone-200" />}
                                             </div>
                                             <div className="flex justify-between text-[9px] text-stone-400 font-black mt-2"><span>{n.author}</span><span>{formatLocalTime(n.createdAt)}</span></div>
                                         </div>
