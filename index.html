@@ -1336,7 +1336,9 @@
                     (dynamicPosts || []).filter(p => p.appId === app.id).forEach(p => markAsRead(p.id));
                     return;
                 }
-                if (type === 'board' || type === 'custom_board') {
+                
+                // ✨ 수정 1: 일반 위젯(widget_board) 클릭 시 팝업 열기 지원
+                if (type === 'board' || type === 'custom_board' || type === 'widget_board') {
                     setBoardSearch('');
                     setSubmitFormState({ content: '', photos: [], authorName: '' });
                     setOpenedDynamicApp(app);
@@ -1344,9 +1346,16 @@
                     return;
                 }
 
-                if (type === 'notice' || type === 'admin_board') {
-                    setOpenedAdminBoard(app);
-                    setSelectedAdminPost(null);
+                // ✨ 수정 2: 실시간 공지 위젯(widget_notices) 클릭 시 팝업 열기 지원
+                if (type === 'notice' || type === 'admin_board' || type === 'widget_notices') {
+                    // 위젯 공지사항은 전용 팝업(ShowWidgetNoticesPopup)을 열도록 분기 처리
+                    if (type === 'widget_notices') {
+                        setOpenedDynamicApp(app);
+                        setShowWidgetNoticesPopup(true);
+                    } else {
+                        setOpenedAdminBoard(app);
+                        setSelectedAdminPost(null);
+                    }
 
                     (dynamicPosts || [])
                         .filter(p => p.appId === app.id)
@@ -1391,9 +1400,9 @@
                     // 2. 브라우저 저장소(IDB)에서 제거
                     await deleteFromIDB('dynamicApps', id);
 
-                    // 3. 파이어베이스 서버에서 실제 데이터 삭제
+                    // 3. 파이어베이스 서버에서 실제 데이터 삭제 (✨ 오타 수정 완료: dynamic_apps)
                     if (db && fbUser) {
-                        await db.collection(`artifacts/${appId}/public/data/dynamicApps`).doc(id).delete();
+                        await db.collection(`artifacts/${appId}/public/data/dynamic_apps`).doc(id).delete();
                     }
                     showToast('성공적으로 삭제되었습니다.');
                 } catch (err) {
@@ -4516,7 +4525,16 @@
                                                     setSubmitFormState({ ...submitFormState, content: e.target.value })
                                                 }
                                             />
-
+                                            <label className={`flex items-center gap-2 text-[11px] font-black cursor-pointer px-1 py-1 mt-1 w-fit ${openedDynamicApp.color || 'text-stone-600'}`}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={submitFormState.isPinned || false} 
+                                                    onChange={e => setSubmitFormState({ ...submitFormState, isPinned: e.target.checked })} 
+                                                    className="w-3.5 h-3.5 rounded border-stone-300"
+                                                /> 
+                                                중요글 상단 고정
+                                            </label>
+                                          
                                             <div className="flex gap-2">
                                                 <label className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer btn-press text-[11px]">
                                                     <Icon name="camera" size={14} />{' '}
