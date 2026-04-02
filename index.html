@@ -727,7 +727,7 @@
             const [openedSubmitForm, setOpenedSubmitForm] = useState(null);
             const [openedGuide, setOpenedGuide] = useState(null);
             const [isGuideEditMode, setIsGuideEditMode] = useState(false);
-            const [guideEditForm, setGuideEditForm] = useState({ content: '', image: '' });
+            const [guideEditForm, setGuideEditForm] = useState({ content: '', images: [] });
             const [openedAdminBoard, setOpenedAdminBoard] = useState(null);
             const [selectedAdminPost, setSelectedAdminPost] = useState(null);
 
@@ -1336,7 +1336,7 @@
                     (dynamicPosts || []).filter(p => p.appId === app.id).forEach(p => markAsRead(p.id));
                     return;
                 }
-                
+
                 // ✨ 수정 1: 일반 위젯(widget_board) 클릭 시 팝업 열기 지원
                 if (type === 'board' || type === 'custom_board' || type === 'widget_board') {
                     setBoardSearch('');
@@ -2006,7 +2006,7 @@
                 const resized = await Promise.all(files.map(f => resizeImage(f)));
                 setter(prev => ({
                     ...prev,
-                    photos: [...(prev.photos || []), ...resized].slice(0, 3)
+                    photos: [...(prev.photos || []), ...resized].slice(0, 5)
                 }));
                 e.target.value = '';
             };
@@ -2014,7 +2014,7 @@
             const renderWidgetBoard = (app) => {
                 // ✨ 일반 게시판도 고정글(isPinned) 최상단 노출
                 const allPosts = (dynamicPosts || []).filter(p => p.appId === app.id).sort((a, b) => (a.isPinned === b.isPinned ? 0 : a.isPinned ? -1 : 1));
-                const posts = allPosts.slice(0, 3);
+                const posts = allPosts.slice(0, 5);
                 const hasMore = allPosts.length > 3;
 
                 return (
@@ -2031,20 +2031,19 @@
                                 const isUnread = !readPostIds.includes(p.id);
                                 const isPinned = p.isPinned;
                                 const images = Array.isArray(p.photos) && p.photos.length > 0 ? p.photos : (p.photo ? [p.photo] : (typeof p.photos === 'string' ? [p.photos] : []));
-                                
+
                                 // ✨ 줄바꿈을 원천 차단하여 '첫 줄'만 추출!
                                 const rawText = p.title || p.content || (app.fields && p[app.fields[0]?.id]) || '내용 없음';
                                 const firstLine = rawText.split('\n')[0];
 
                                 return (
-                                    <div 
-                                        key={p.id} 
+                                    <div
+                                        key={p.id}
                                         // 👇✨ 바로 이 부분! 칙칙한 회색을 빼고 앱 고유 배경색(app.bg)으로 완벽 복구했습니다! 👇
-                                        className={`p-4 rounded-3xl border relative group cursor-pointer transition-colors ${
-                                            isPinned 
-                                                ? `${app.bg || 'bg-stone-100'} border-transparent dark:bg-stone-800` 
-                                                : 'bg-stone-50 dark:bg-stone-800/50 border-stone-100 dark:border-stone-700 hover:border-teal-200'
-                                        }`} 
+                                        className={`p-4 rounded-3xl border relative group cursor-pointer transition-colors ${isPinned
+                                            ? `${app.bg || 'bg-stone-100'} border-transparent dark:bg-stone-800`
+                                            : 'bg-stone-50 dark:bg-stone-800/50 border-stone-100 dark:border-stone-700 hover:border-teal-200'
+                                            }`}
                                         onClick={() => { setOpenedDynamicApp(app); markPostAsRead(p.id); }}
                                     >
                                         <div className="flex justify-between items-start gap-2">
@@ -2064,7 +2063,7 @@
                                         {/* 썸네일 노출 */}
                                         {images.length > 0 && (
                                             <div className="flex gap-1.5 mt-3">
-                                                {images.slice(0, 3).map((img, i) => (
+                                                {images.slice(0, 5).map((img, i) => (
                                                     <div key={i} className="w-10 h-10 rounded-lg overflow-hidden border border-white dark:border-stone-700 shadow-sm shrink-0">
                                                         <img src={img} className="w-full h-full object-cover" alt="thumb" />
                                                     </div>
@@ -2166,7 +2165,7 @@
                             </h3>
 
                             <div className="space-y-3">
-                                {(notices || []).slice(0, 3).map(n => {
+                                {(notices || []).slice(0, 5).map(n => {
                                     // ✨ 상단 고정 여부 및 줄바꿈 원천 차단 첫 줄 추출
                                     const isPinned = n.isPinned;
                                     const firstLine = n.content ? n.content.split('\n')[0] : '';
@@ -2175,11 +2174,10 @@
                                         <div
                                             key={n.id}
                                             // ✨ 고정된 글 배경색 처리 추가 (isPinned 조건)
-                                            className={`p-4 rounded-3xl border relative group cursor-pointer transition-colors ${
-                                                isPinned
-                                                    ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 hover:border-rose-300'
-                                                    : 'bg-stone-50 dark:bg-stone-800 border-stone-100 dark:border-stone-700 hover:border-rose-200'
-                                            }`}
+                                            className={`p-4 rounded-3xl border relative group cursor-pointer transition-colors ${isPinned
+                                                ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 hover:border-rose-300'
+                                                : 'bg-stone-50 dark:bg-stone-800 border-stone-100 dark:border-stone-700 hover:border-rose-200'
+                                                }`}
                                             // ✅ 항목 클릭 시 전체 공지사항 모달 팝업 오픈
                                             onClick={() => { setOpenedDynamicApp(app); setShowWidgetNoticesPopup(true); }}
                                         >
@@ -2199,7 +2197,7 @@
                                             {/* ✅ 사진 썸네일 (기능 유지) */}
                                             {n.photos && n.photos.length > 0 && (
                                                 <div className="flex gap-1.5 mt-3">
-                                                    {n.photos.slice(0, 3).map((p, i) => (
+                                                    {n.photos.slice(0, 5).map((p, i) => (
                                                         <div key={i} className="w-10 h-10 rounded-lg overflow-hidden border border-white dark:border-stone-700 shadow-sm shrink-0">
                                                             <img src={p} className="w-full h-full object-cover" alt="thumb" />
                                                         </div>
@@ -2292,12 +2290,12 @@
                                             </button>
 
                                             <button
-                                                onClick={() => { 
-                                                    setAppUser(null); 
+                                                onClick={() => {
+                                                    setAppUser(null);
                                                     setIsAdminAuth(false); // ✨ 핵심: 관리자 권한도 즉시 회수!
-                                                    localStorage.removeItem('hmood_session'); 
-                                                    setViewMode('login'); 
-                                                    showToast('로그아웃 되었습니다.'); 
+                                                    localStorage.removeItem('hmood_session');
+                                                    setViewMode('login');
+                                                    showToast('로그아웃 되었습니다.');
                                                 }}
                                                 className="text-stone-400 hover:text-rose-500 transition-colors flex items-center gap-1 pl-1"
                                             >
@@ -3047,7 +3045,7 @@
                                                                                                     {/* 접혀있을 때 보이는 작은 썸네일 */}
                                                                                                     {!isExpanded && images.length > 0 && (
                                                                                                         <div className="flex gap-1 mt-3">
-                                                                                                            {images.slice(0, 3).map((img, i) => (
+                                                                                                            {images.slice(0, 5).map((img, i) => (
                                                                                                                 <img key={i} src={img} className="w-8 h-8 rounded-lg object-cover border border-stone-200" alt="thumb" />
                                                                                                             ))}
                                                                                                         </div>
@@ -3907,8 +3905,13 @@
                                         <div className="flex items-center justify-between gap-3">
                                             <label className="flex items-center gap-2 cursor-pointer bg-white dark:bg-stone-800 border border-stone-200/70 dark:border-stone-700 rounded-xl px-4 py-2 btn-press text-[11px] font-black text-rose-500 hover:bg-white/70 transition-colors">
                                                 <Icon name="camera" size={14} className="text-stone-500" />
-                                                {noticeForm.photos && noticeForm.photos.length > 0 ? '사진 변경' : '사진 첨부 (선택)'}
-                                                <input type="file" accept="image/*" className="hidden" onChange={handleNoticePhotoSingle} />
+                                                {noticeForm.photos?.length === 0
+                                                    ? '사진 첨부 (선택)'
+                                                    : noticeForm.photos?.length >= 5
+                                                        ? '사진 첨부 완료 (5/5)'
+                                                        : `사진 추가됨 (${noticeForm.photos.length}/5)`
+                                                }
+                                                <input type="file" accept="image/*" className="hidden" multiple onChange={handleNoticePhotoSingle} />
                                             </label>
                                             {noticeForm.photos && noticeForm.photos.length > 0 && (
                                                 <div className="flex items-center gap-2">
@@ -4255,20 +4258,106 @@
                                     <div className="overflow-y-auto scrollbar-hide flex-1 pb-4 space-y-6">
                                         {isGuideEditMode ? (
                                             <div className="space-y-4 fade-in">
-                                                <textarea className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-40 resize-none focus:border-teal-500" placeholder="안내 내용을 입력하세요." value={guideEditForm.content} onChange={e => setGuideEditForm({ ...guideEditForm, content: e.target.value })}></textarea>
+                                                {/* 텍스트 입력창 */}
+                                                <textarea
+                                                    className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-40 resize-none focus:border-teal-500"
+                                                    placeholder="안내 내용을 입력하세요."
+                                                    value={guideEditForm.content}
+                                                    onChange={e => setGuideEditForm({ ...guideEditForm, content: e.target.value })}
+                                                ></textarea>
+
+                                                {/* 사진 첨부 버튼 영역 */}
                                                 <div className="flex items-center gap-2">
                                                     <label className="flex items-center justify-center flex-1 gap-2 cursor-pointer bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 btn-press text-[11px] font-black text-stone-500 hover:bg-stone-50 transition-colors">
-                                                        <Icon name="camera" size={14} /> {guideEditForm.image ? '사진 변경' : '사진 첨부 (선택)'}
-                                                        <input type="file" accept="image/*" className="hidden" onChange={async e => { if (e.target.files[0]) { const b64 = await resizeImage(e.target.files[0]); setGuideEditForm(p => ({ ...p, image: b64 })); e.target.value = ''; } }} />
+                                                        <Icon name="camera" size={14} />
+                                                        {guideEditForm.images?.length > 0 ? `사진 추가 (${guideEditForm.images.length})` : '사진 첨부 (여러 장 가능)'}
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            className="hidden"
+                                                            multiple
+                                                            onChange={async e => {
+                                                                if (e.target.files.length > 0) {
+                                                                    const files = Array.from(e.target.files);
+                                                                    // 여러 장 리사이징 처리
+                                                                    const resized = await Promise.all(files.map(f => resizeImage(f)));
+                                                                    setGuideEditForm(p => ({
+                                                                        ...p,
+                                                                        // 기존 사진 유지하면서 새로운 사진들 추가 (최대 5장 제한)
+                                                                        images: [...(p.images || []), ...resized].slice(0, 5)
+                                                                    }));
+                                                                    e.target.value = '';
+                                                                }
+                                                            }}
+                                                        />
                                                     </label>
-                                                    {guideEditForm.image && <button onClick={() => setGuideEditForm(p => ({ ...p, image: '' }))} className="text-rose-500 font-black text-[11px] px-3 py-3 border border-rose-200 bg-rose-50 rounded-xl btn-press shrink-0">사진 삭제</button>}
+                                                    {/* 사진 전체 삭제 버튼 */}
+                                                    {guideEditForm.images?.length > 0 && (
+                                                        <button
+                                                            onClick={() => setGuideEditForm(p => ({ ...p, images: [] }))}
+                                                            className="text-rose-500 font-black text-[11px] px-3 py-3 border border-rose-200 bg-rose-50 rounded-xl btn-press shrink-0"
+                                                        >
+                                                            전체 삭제
+                                                        </button>
+                                                    )}
                                                 </div>
-                                                {guideEditForm.image && <img src={guideEditForm.image} className="w-full rounded-2xl border border-stone-200 shadow-sm" />}
+
+                                                {/* 수정 모드: 선택한 사진들 미리보기 (바둑판 배열) */}
+                                                {guideEditForm.images?.length > 0 && (
+                                                    <div className="grid grid-cols-3 gap-2 mt-2">
+                                                        {guideEditForm.images.map((img, i) => (
+                                                            <div key={i} className="relative aspect-square">
+                                                                <img src={img} className="w-full h-full object-cover rounded-xl border border-stone-200" />
+                                                                <button
+                                                                    onClick={() => setGuideEditForm(p => ({ ...p, images: p.images.filter((_, idx) => idx !== i) }))}
+                                                                    className="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]"
+                                                                >
+                                                                    ×
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                         ) : (
+                                            /* --- 조회 모드 (View Mode) --- */
                                             <>
-                                                {openedGuide.guideImage && <img src={openedGuide.guideImage} className="w-full h-auto max-h-64 object-contain rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm cursor-pointer" onClick={() => setExpandedImage(openedGuide.guideImage)} />}
-                                                {openedGuide.guideContent ? <p className="text-[14px] font-bold text-stone-700 dark:text-stone-300 leading-relaxed whitespace-pre-wrap">{openedGuide.guideContent}</p> : !openedGuide.guideImage ? <div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700"><p className="text-[11px] font-bold text-stone-400">등록된 안내 내용이 없습니다.</p></div> : null}
+                                                {/* 1. 여러 장의 이미지(guideImages)가 있을 때 출력 */}
+                                                {openedGuide.guideImages && openedGuide.guideImages.length > 0 ? (
+                                                    <div className="space-y-2">
+                                                        {openedGuide.guideImages.map((img, i) => (
+                                                            <img
+                                                                key={i}
+                                                                src={img}
+                                                                className="w-full h-auto rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm cursor-pointer"
+                                                                onClick={() => setExpandedImage(img)}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    /* 2. 구버전 데이터(사진 한 장) 호환용 */
+                                                    openedGuide.guideImage && (
+                                                        <img
+                                                            src={openedGuide.guideImage}
+                                                            className="w-full h-auto max-h-64 object-contain rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm cursor-pointer"
+                                                            onClick={() => setExpandedImage(openedGuide.guideImage)}
+                                                        />
+                                                    )
+                                                )}
+
+                                                {/* 안내 텍스트 출력 */}
+                                                {openedGuide.guideContent ? (
+                                                    <p className="text-[14px] font-bold text-stone-700 dark:text-stone-300 leading-relaxed whitespace-pre-wrap">
+                                                        {openedGuide.guideContent}
+                                                    </p>
+                                                ) : (
+                                                    /* 내용이 아무것도 없을 때 */
+                                                    !openedGuide.guideImage && !openedGuide.guideImages?.length && (
+                                                        <div className="text-center py-10 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-700">
+                                                            <p className="text-[11px] font-bold text-stone-400">등록된 안내 내용이 없습니다.</p>
+                                                        </div>
+                                                    )
+                                                )}
                                             </>
                                         )}
                                     </div>
@@ -4276,13 +4365,13 @@
                                     {/* 작성 권한이 있는 경우 버튼 표시 */}
                                     <div className="pt-2 border-t border-stone-100 dark:border-stone-700 space-y-2 shrink-0">
                                         {canWrite(openedGuide) && !isGuideEditMode && (
-                                            <button onClick={() => { setGuideEditForm({ content: openedGuide.guideContent || '', image: openedGuide.guideImage || '' }); setIsGuideEditMode(true); }} className="w-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-3 rounded-2xl btn-press text-[12px] flex items-center justify-center gap-2"><Icon name="edit" size={16} /> 내용 수정하기</button>
+                                            <button onClick={() => { setGuideEditForm({ content: openedGuide.guideContent || '', images: openedGuide.guideImages || (openedGuide.guideImage ? [openedGuide.guideImage] : []) }); setIsGuideEditMode(true); }} className="w-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-3 rounded-2xl btn-press text-[12px] flex items-center justify-center gap-2"><Icon name="edit" size={16} /> 내용 수정하기</button>
                                         )}
                                         {isGuideEditMode ? (
                                             <div className="flex gap-2">
                                                 <button onClick={() => setIsGuideEditMode(false)} className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 font-black py-4 rounded-2xl btn-press text-[13px]">취소</button>
                                                 <button onClick={async () => {
-                                                    const updatedApp = { ...openedGuide, guideContent: guideEditForm.content, guideImage: guideEditForm.image };
+                                                    const updatedApp = { ...openedGuide, guideContent: guideEditForm.content, guideImage: guideEditForm.images };
                                                     setDynamicApps(prev => prev.map(a => a.id === updatedApp.id ? updatedApp : a));
                                                     saveToIDB('dynamicApps', updatedApp);
                                                     if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_apps`).doc(updatedApp.id).set(updatedApp, { merge: true });
@@ -4371,7 +4460,7 @@
                                                     const isRead = readPostIds.includes(post.id);
                                                     const isPinned = post.isPinned; // ✨ 상단 고정 여부
                                                     const images = Array.isArray(post.photos) && post.photos.length > 0 ? post.photos : (post.photo ? [post.photo] : (typeof post.photos === 'string' ? [post.photos] : []));
-                                                    
+
                                                     // ✅ 권한 처리 (관리자이거나 본인이 쓴 글이거나 작성 권한자)
                                                     const isMyPost = appUser && post.author === appUser?.name;
                                                     const hasManagePerm = canWrite(openedDynamicApp) || isAdminAuth || isMyPost;
@@ -4388,13 +4477,12 @@
                                                                 setExpandedNoticeId(isExpanded ? null : post.id);
                                                             }}
                                                             // ✨ 모달 내부 아코디언도 해당 앱의 테마색(bg)을 따름
-                                                            className={`mb-3 rounded-2xl border transition-all overflow-hidden cursor-pointer ${
-                                                                isExpanded
-                                                                    ? 'bg-white dark:bg-stone-800 border-teal-300 dark:border-teal-800 shadow-md'
-                                                                    : isPinned
-                                                                        ? `${openedDynamicApp.bg || 'bg-stone-100'} border-transparent dark:bg-stone-800`
-                                                                        : 'bg-stone-50 dark:bg-stone-900 border-stone-100 dark:border-stone-800 hover:border-teal-200'
-                                                            }`}
+                                                            className={`mb-3 rounded-2xl border transition-all overflow-hidden cursor-pointer ${isExpanded
+                                                                ? 'bg-white dark:bg-stone-800 border-teal-300 dark:border-teal-800 shadow-md'
+                                                                : isPinned
+                                                                    ? `${openedDynamicApp.bg || 'bg-stone-100'} border-transparent dark:bg-stone-800`
+                                                                    : 'bg-stone-50 dark:bg-stone-900 border-stone-100 dark:border-stone-800 hover:border-teal-200'
+                                                                }`}
                                                         >
                                                             <div className="p-4 relative">
                                                                 <div className="flex items-center gap-1.5 mb-1.5">
@@ -4532,19 +4620,24 @@
                                                 }
                                             />
                                             <label className={`flex items-center gap-2 text-[11px] font-black cursor-pointer px-1 py-1 mt-1 w-fit ${openedDynamicApp.color || 'text-stone-600'}`}>
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={submitFormState.isPinned || false} 
-                                                    onChange={e => setSubmitFormState({ ...submitFormState, isPinned: e.target.checked })} 
+                                                <input
+                                                    type="checkbox"
+                                                    checked={submitFormState.isPinned || false}
+                                                    onChange={e => setSubmitFormState({ ...submitFormState, isPinned: e.target.checked })}
                                                     className="w-3.5 h-3.5 rounded border-stone-300"
-                                                /> 
+                                                />
                                                 중요글 상단 고정
                                             </label>
-                                          
+
                                             <div className="flex gap-2">
                                                 <label className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer btn-press text-[11px]">
                                                     <Icon name="camera" size={14} />{' '}
-                                                    {submitFormState.photos?.length > 0 ? '사진 변경' : '사진 첨부'}
+                                                    {submitFormState.photos?.length === 0
+                                                        ? '사진 첨부 (최대 5장)'
+                                                        : submitFormState.photos?.length >= 5
+                                                            ? `사진 첨부 완료 (5/5)`
+                                                            : `사진 추가됨 (${submitFormState.photos.length}/5)`
+                                                    }
                                                     <input
                                                         type="file"
                                                         className="hidden"
@@ -4609,8 +4702,13 @@
                                                 <div className="flex gap-2 mt-2">
                                                     <label className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-4 rounded-2xl flex items-center justify-center gap-1.5 cursor-pointer btn-press text-[12px]">
                                                         <Icon name="camera" size={16} />
-                                                        {submitFormState.photo ? '사진 변경' : '사진 첨부'}
-                                                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handlePhotoSingle(e, setSubmitFormState)} />
+                                                        {submitFormState.photos?.length === 0
+                                                            ? '사진 첨부 (최대 5장)'
+                                                            : submitFormState.photos?.length >= 5
+                                                                ? `사진 첨부 완료 (5/5)`
+                                                                : `사진 추가됨 (${submitFormState.photos.length}/5)`
+                                                        }
+                                                        <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => handlePhotoSingle(e, setSubmitFormState)} />
                                                     </label>
                                                     <button
                                                         onClick={() => { handleGenericPostSubmit(); setOpenedSubmitForm(null); }}
@@ -4639,8 +4737,13 @@
                                                 <input className="w-full bg-stone-50 dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-indigo-400" placeholder="제목" value={adminBoardForm.title} onChange={e => setAdminBoardForm({ ...adminBoardForm, title: e.target.value })} />
                                                 <textarea className="w-full bg-stone-50 dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-24 resize-none" placeholder="내용" value={adminBoardForm.content} onChange={e => setAdminBoardForm({ ...adminBoardForm, content: e.target.value })} />
                                                 <label className="flex items-center gap-2 cursor-pointer bg-stone-50 dark:bg-stone-900 border border-dashed border-stone-300 dark:border-stone-600 rounded-xl px-4 py-2.5 btn-press hover:bg-stone-100 transition-colors">
-                                                    <Icon name="camera" size={14} className="text-stone-400" /><span className="text-[11px] font-bold text-stone-400">{adminBoardForm.photos && adminBoardForm.photos.length > 0 ? '사진 변경' : '사진 첨부 (선택)'}</span>
-                                                    <input type="file" accept="image/*" className="hidden" onChange={async e => { if (e.target.files[0]) { const b64 = await resizeImage(e.target.files[0]); setAdminBoardForm(prev => ({ ...prev, photos: [b64] })); e.target.value = ''; } }} />
+                                                    <Icon name="camera" size={14} className="text-stone-400" /><span className="text-[11px] font-bold text-stone-400">{adminBoardForm.photos?.length === 0
+                                                        ? '사진 첨부 (선택)'
+                                                        : adminBoardForm.photos?.length >= 5
+                                                            ? '사진 첨부 완료 (5/5)'
+                                                            : `사진 추가됨 (${adminBoardForm.photos.length}/5)`
+                                                    }</span>
+                                                    <input type="file" accept="image/*" className="hidden" multiple onChange={async e => { if (e.target.files[0]) { const b64 = await resizeImage(e.target.files[0]); setAdminBoardForm(prev => ({ ...prev, photos: [b64] })); e.target.value = ''; } }} />
                                                 </label>
                                                 {adminBoardForm.photos && adminBoardForm.photos.length > 0 && <div className="relative w-16 h-16"><img src={adminBoardForm.photos[0]} className="w-full h-full object-cover rounded-xl border" /><button onClick={() => setAdminBoardForm(p => ({ ...p, photos: [] }))} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">×</button></div>}
                                                 <div className="flex gap-2"><button onClick={() => handleAdminBoardPost(openedAdminBoard.id)} className="w-full bg-indigo-600 text-white font-black py-3 rounded-2xl shadow-md btn-press text-[11px]">게시글 등록</button></div>
@@ -4803,7 +4906,7 @@
                                             const images = Array.isArray(notice.photos) && notice.photos.length > 0 ? notice.photos : (notice.photo ? [notice.photo] : []);
                                             const isMyPost = appUser && notice.author === appUser?.name;
                                             const hasManagePerm = canWrite(openedDynamicApp) || isAdminAuth || isMyPost;
-                                            
+
                                             // ✅ 중요 공지 여부 확인 변수 추가
                                             const isPinned = notice.isPinned;
 
@@ -4818,13 +4921,12 @@
                                                         setExpandedNoticeId(isExpanded ? null : notice.id);
                                                     }}
                                                     // ✅ 중요 공지(isPinned)일 경우 배경색을 살짝 붉게(rose-50) 처리하여 눈에 띄게 변경!
-                                                    className={`rounded-2xl border transition-all overflow-hidden cursor-pointer ${
-                                                        isExpanded
-                                                            ? 'bg-white dark:bg-stone-800 border-rose-300 dark:border-rose-800 shadow-md'
-                                                            : isPinned
-                                                                ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 hover:border-rose-300'
-                                                                : 'bg-stone-50 dark:bg-stone-900 border-stone-100 dark:border-stone-800 hover:border-rose-200'
-                                                    }`}
+                                                    className={`rounded-2xl border transition-all overflow-hidden cursor-pointer ${isExpanded
+                                                        ? 'bg-white dark:bg-stone-800 border-rose-300 dark:border-rose-800 shadow-md'
+                                                        : isPinned
+                                                            ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 hover:border-rose-300'
+                                                            : 'bg-stone-50 dark:bg-stone-900 border-stone-100 dark:border-stone-800 hover:border-rose-200'
+                                                        }`}
                                                 >
                                                     <div className="p-4 relative">
                                                         <div className="flex items-center gap-1.5 mb-1.5">
