@@ -2039,10 +2039,10 @@
                                 return (
                                     <div 
                                         key={p.id} 
-                                        // ✨ 고정된 글은 배경색과 테두리를 살짝 진하게 하여 구분
+                                        // 👇✨ 바로 이 부분! 칙칙한 회색을 빼고 앱 고유 배경색(app.bg)으로 완벽 복구했습니다! 👇
                                         className={`p-4 rounded-3xl border relative group cursor-pointer transition-colors ${
                                             isPinned 
-                                                ? 'bg-stone-100 dark:bg-stone-800 border-stone-300 dark:border-stone-600' 
+                                                ? `${app.bg || 'bg-stone-100'} border-transparent dark:bg-stone-800` 
                                                 : 'bg-stone-50 dark:bg-stone-800/50 border-stone-100 dark:border-stone-700 hover:border-teal-200'
                                         }`} 
                                         onClick={() => { setOpenedDynamicApp(app); markPostAsRead(p.id); }}
