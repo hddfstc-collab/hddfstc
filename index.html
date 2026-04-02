@@ -216,8 +216,8 @@
             </svg>
         );
 
-        const ModalWrapper = ({ title, icon, color = "text-stone-800 dark:text-stone-200", onClose, children, hideHeader = false }) => (
-            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-stone-900/80 backdrop-blur-sm fade-in cursor-pointer" onClick={onClose}>
+        const ModalWrapper = ({ title, icon, color = "text-stone-800 dark:text-stone-200", onClose, children, hideHeader = false, zIndex = 120 }) => (
+            <div className="fixed inset-0 flex items-center justify-center p-4 bg-stone-900/80 backdrop-blur-sm fade-in cursor-pointer" style={{ zIndex }} onClick={onClose}>
                 <div className="bg-[#F9F8F6] dark:bg-stone-900 w-full max-w-md rounded-[3rem] p-8 shadow-2xl relative max-h-[90vh] flex flex-col cursor-auto" onClick={e => e.stopPropagation()}>
                     {!hideHeader && (
                         <div className="flex items-center justify-between mb-6 shrink-0 border-b border-stone-200 dark:border-stone-700 pb-4">
@@ -848,21 +848,26 @@
             }, [isAdminAuth, appUser]);
 
             const canWrite = (app) => {
+                if (!app) return false;
                 // 1. 마스터 관리자(PIN 인증자)는 무조건 모든 권한 허용 (최우선)
                 if (isAdminAuth) return true;
 
-                // 2. 앱 설정이 '모두 허용(all)'인 경우 (비로그인자 포함 작성 가능 앱 등)
-                if (Array.isArray(app.writePermission) && app.writePermission.includes('all')) return true;
+                // 2. 제출형·예약형은 비로그인자도 항상 작성 가능
+                if (app.actionType === 'form' || app.actionType === 'reservation') return true;
 
-                // 3. 마스터 관리자가 아니고 로그인도 안 되어 있다면 권한 없음
+                // 3. 앱 설정이 '모두 허용(all)'인 경우 (비로그인자 포함)
+                if (Array.isArray(app.writePermission) && app.writePermission.includes('all')) return true;
+                if (app.writePermission === 'all') return true;
+
+                // 4. 마스터 관리자가 아니고 로그인도 안 되어 있다면 권한 없음
                 if (!appUser) return false;
 
-                // 4. 일반 로그인 사용자의 경우: 부여된 권한(파트/개인) 확인
+                // 5. 일반 로그인 사용자의 경우: 부여된 권한(파트/개인) 확인
                 const perms = Array.isArray(app.writePermission) ? app.writePermission : [];
                 const hasPartPerm = perms.includes(`PART_${appUser.part}`);
                 const hasUserPerm = perms.includes(`USER_${appUser.empId}`);
 
-                // 5. 영업관리자 직책은 기본적으로 관리 권한 부여 (선택 사항)
+                // 6. 영업관리자 직책은 기본적으로 관리 권한 부여 (선택 사항)
                 const isManager = appUser.jobTitle === '영업관리자';
 
                 return hasPartPerm || hasUserPerm || isManager;
@@ -896,8 +901,10 @@
             }, [isAdminAuth, appUser]);
             const writeBlockedMsg = useCallback((appItem) => {
                 if (!appItem) return '권한이 없습니다.';
-                if (!appUser) return '로그인이 필요합니다.';
-                return '권한이 없습니다.';
+                // form/reservation은 canWrite에서 항상 true를 반환하므로 이 메시지는 표시되지 않음
+                if (appItem.actionType === 'form' || appItem.actionType === 'reservation') return '작성 가능합니다.';
+                if (!appUser) return '로그인 후 이용 가능합니다.';
+                return '작성 권한이 없습니다. 관리자에게 문의하세요.';
             }, [appUser]);
 
             const checkNewBadge = useCallback((targetAppId) => {
@@ -1320,12 +1327,15 @@
                 const type = app.actionType;
                 if (type === 'popup_ext' || type === 'link_ext' || app.name.includes('내선')) { setShowExtModal(true); return; }
                 if (type === 'form' || type === 'custom_form') {
+                    setSubmitFormState({ content: '', photos: [], authorName: '' });
                     setOpenedSubmitForm(app);
                     (dynamicPosts || []).filter(p => p.appId === app.id).forEach(p => markAsRead(p.id));
                     return;
                 }
                 if (type === 'board' || type === 'custom_board') {
-                    setBoardSearch(''); setOpenedDynamicApp(app);
+                    setBoardSearch('');
+                    setSubmitFormState({ content: '', photos: [], authorName: '' });
+                    setOpenedDynamicApp(app);
                     (dynamicPosts || []).filter(p => p.appId === app.id).forEach(p => markAsRead(p.id));
                     return;
                 }
@@ -1532,7 +1542,8 @@
 
                     saveToIDB('dynamicPosts', newPost);
 
-                    setSubmitFormState({});
+                    // ✅ 명시적 초기화 — {} 대신 빈 값으로 완전 리셋
+                    setSubmitFormState({ content: '', photos: [], authorName: '' });
 
                     if (openedSubmitForm) setOpenedSubmitForm(null);
 
@@ -1650,10 +1661,10 @@
                 setExtForm({ number: '', floor: '', user: '' });
             };
 
-            const handleNoticeSubmit = () => {
-                // 1. 유효성 검사 (내용이 없으면 중단)
+            const handleNoticeSubmit = async () => {
+                // 1. 유효성 검사
                 if (!noticeForm.content.trim()) {
-                    showToast("공지 내용을 입력해주세요.");
+                    showToast("공지 내용을 입력해주세요.", true);
                     return;
                 }
 
@@ -1668,19 +1679,30 @@
                         : new Date().toISOString(),
                 };
 
-                // 2. 리스트 업데이트 (수정 또는 신규 등록)
-                if (editingNoticeId) {
-                    setNotices(prev => prev.map(n => n.id === editingNoticeId ? newNotice : n));
-                    showToast("공지사항이 수정되었습니다.");
-                } else {
-                    setNotices(prev => [newNotice, ...prev]);
-                    showToast("새 공지사항이 등록되었습니다.");
-                }
-
-                // 📍 핵심: 작업 완료 후 상태 초기화 (잔상 제거)
+                // 2. 먼저 모달 닫고 로컬 상태 초기화 (UI 응답성 확보)
                 setNoticeForm({ content: '', photos: [], isPinned: false });
                 setEditingNoticeId(null);
-                setIsNoticeModalOpen(false); // 작성 모달 닫기
+                setIsNoticeModalOpen(false);
+
+                // 3. 로컬 상태 업데이트
+                if (editingNoticeId) {
+                    setNotices(prev => prev.map(n => n.id === newNotice.id ? newNotice : n));
+                } else {
+                    setNotices(prev => [newNotice, ...prev]);
+                }
+
+                // 4. IDB 저장 (오프라인 캐시)
+                saveToIDB('notices', newNotice);
+
+                // 5. Firebase 저장 (서버 동기화) — 누락되어 있던 핵심 수정
+                try {
+                    if (db && fbUser) {
+                        await db.collection(`artifacts/${appId}/public/data/notices`).doc(newNotice.id).set(newNotice);
+                    }
+                    showToast(editingNoticeId ? "공지사항이 수정되었습니다." : "새 공지사항이 등록되었습니다.");
+                } catch (e) {
+                    showToast('저장 실패: 네트워크를 확인해주세요.', true);
+                }
             };
 
             const handleEditMember = (u) => {
@@ -2099,37 +2121,9 @@
                                                 </div>
                                             )}
 
-                                            {/* 하단 정보 및 관리 버튼 (기능 유지) */}
-                                            <div className="flex justify-between items-center mt-3 text-[9px] font-black text-stone-400 pt-2 border-t border-stone-100 dark:border-stone-700/50">
+                                            {/* 하단 정보 (작성자·날짜만 표시 — 수정/삭제는 모달 팝업에서) */}
+                                            <div className="mt-3 text-[9px] font-black text-stone-400 pt-2 border-t border-stone-100 dark:border-stone-700/50">
                                                 <span>{n.author} | {formatLocalTime(n.createdAt)}</span>
-                                                <div className="flex gap-2">
-                                                    {(isAdminAuth || n.author === appUser?.name) && (
-                                                        <>
-                                                            {/* 수정 버튼: 클릭 시 이벤트 전파 막고 모달 오픈 */}
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setEditingNoticeId(n.id);
-                                                                    setNoticeForm({ content: n.content, photos: n.photos || [], isPinned: n.isPinned });
-                                                                    setIsNoticeModalOpen(true);
-                                                                }}
-                                                                className="hover:text-teal-500"
-                                                            >
-                                                                <Icon name="edit" size={13} />
-                                                            </button>
-                                                            {/* 삭제 버튼 */}
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleDeleteNotice(n.id);
-                                                                }}
-                                                                className="hover:text-rose-500"
-                                                            >
-                                                                <Icon name="trash" size={13} />
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                </div>
                                             </div>
                                         </div>
                                     );
@@ -3814,7 +3808,7 @@
                         {/* 💡 새로운 공지사항 전용 작성/수정 모달 */}
                         {
                             isNoticeModalOpen && (
-                                <ModalWrapper title="공지사항 작성" icon="edit" color="text-rose-500" onClose={() => { setIsNoticeModalOpen(false); setEditingNoticeId(null); setNoticeForm({ content: '', photos: [], isPinned: false }); }}>
+                                <ModalWrapper title="공지사항 작성" icon="edit" color="text-rose-500" zIndex={160} onClose={() => { setIsNoticeModalOpen(false); setEditingNoticeId(null); setNoticeForm({ content: '', photos: [], isPinned: false }); }}>
                                     <div className="space-y-4">
                                         <div className="bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-800 p-4 rounded-2xl mb-4"><p className="text-[10px] font-bold text-rose-600 dark:text-rose-300 leading-relaxed text-center">현장 근무자와 파트너스 전체에 노출되는 공지사항입니다.</p></div>
                                         <textarea className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-5 text-xs font-bold shadow-inner outline-none h-32 resize-none focus:border-rose-400" placeholder="공지할 내용을 입력하세요." value={noticeForm.content} onChange={e => setNoticeForm({ ...noticeForm, content: e.target.value })}></textarea>
@@ -4349,7 +4343,7 @@
                                             <textarea
                                                 className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-20 resize-none focus:border-indigo-300"
                                                 placeholder="자유롭게 글을 남겨주세요."
-                                                value={submitFormState.content}
+                                                value={submitFormState.content || ''}
                                                 onChange={(e) =>
                                                     setSubmitFormState({
                                                         ...submitFormState,
