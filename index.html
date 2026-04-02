@@ -1539,12 +1539,14 @@
                         ...original,
                         content: submitFormState.content,
                         photos: submitFormState.photos || original.photos || [],
+                        isPinned: submitFormState.isPinned || false, // ✨ 상단 고정 여부 추가
                         updatedAt: new Date().toISOString()
                     };
                     try {
                         setDynamicPosts(prev => prev.map(p => p.id === editingPostId ? updatedPost : p));
                         saveToIDB('dynamicPosts', updatedPost);
-                        setSubmitFormState({ content: '', photos: [], authorName: '' });
+                        // ✨ 폼 초기화 시 isPinned도 초기화
+                        setSubmitFormState({ content: '', photos: [], authorName: '', isPinned: false });
                         setEditingPostId(null);
                         if (db && fbUser) {
                             await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(editingPostId).set(updatedPost, { merge: true });
@@ -1565,6 +1567,7 @@
 
                     author,
                     photos: submitFormState.photos || [],
+                    isPinned: submitFormState.isPinned || false, // ✨ 상단 고정 여부 추가
                     createdAt: new Date().toISOString()
                 };
 
@@ -1573,8 +1576,8 @@
 
                     saveToIDB('dynamicPosts', newPost);
 
-                    // ✅ 명시적 초기화 — {} 대신 빈 값으로 완전 리셋
-                    setSubmitFormState({ content: '', photos: [], authorName: '' });
+                    // ✅ 명시적 초기화 — {} 대신 빈 값으로 완전 리셋 (✨ isPinned 초기화 추가)
+                    setSubmitFormState({ content: '', photos: [], authorName: '', isPinned: false });
 
                     if (openedSubmitForm) setOpenedSubmitForm(null);
 
@@ -2000,7 +2003,8 @@
             };
 
             const renderWidgetBoard = (app) => {
-                const allPosts = (dynamicPosts || []).filter(p => p.appId === app.id);
+                // ✨ 일반 게시판도 고정글(isPinned) 최상단 노출
+                const allPosts = (dynamicPosts || []).filter(p => p.appId === app.id).sort((a, b) => (a.isPinned === b.isPinned ? 0 : a.isPinned ? -1 : 1));
                 const posts = allPosts.slice(0, 3);
                 const hasMore = allPosts.length > 3;
 
@@ -2016,25 +2020,39 @@
                         <div className="space-y-3">
                             {posts.map(p => {
                                 const isUnread = !readPostIds.includes(p.id);
-                                // ✅ 썸네일 안전 추출
+                                const isPinned = p.isPinned;
                                 const images = Array.isArray(p.photos) && p.photos.length > 0 ? p.photos : (p.photo ? [p.photo] : (typeof p.photos === 'string' ? [p.photos] : []));
+                                
+                                // ✨ 줄바꿈을 원천 차단하여 '첫 줄'만 추출!
+                                const rawText = p.title || p.content || (app.fields && p[app.fields[0]?.id]) || '내용 없음';
+                                const firstLine = rawText.split('\n')[0];
 
                                 return (
-                                    <div key={p.id} className="p-4 bg-stone-50 dark:bg-stone-800 rounded-3xl border border-stone-100 dark:border-stone-700 relative group cursor-pointer hover:border-teal-200 transition-colors" onClick={() => { setOpenedDynamicApp(app); markPostAsRead(p.id); }}>
+                                    <div 
+                                        key={p.id} 
+                                        // ✨ 고정된 글은 배경색과 테두리를 살짝 진하게 하여 구분
+                                        className={`p-4 rounded-3xl border relative group cursor-pointer transition-colors ${
+                                            isPinned 
+                                                ? 'bg-stone-100 dark:bg-stone-800 border-stone-300 dark:border-stone-600' 
+                                                : 'bg-stone-50 dark:bg-stone-800/50 border-stone-100 dark:border-stone-700 hover:border-teal-200'
+                                        }`} 
+                                        onClick={() => { setOpenedDynamicApp(app); markPostAsRead(p.id); }}
+                                    >
                                         <div className="flex justify-between items-start gap-2">
                                             <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                                {isUnread && <div className="w-1.5 h-1.5 bg-teal-500 rounded-full shrink-0"></div>}
-                                                {/* ✅ 1줄 제한 적용 */}
-                                                <p className="text-[12px] font-bold text-stone-800 dark:text-stone-200 line-clamp-1 leading-snug flex-1">
-                                                    {p.title || p.content || (app.fields && p[app.fields[0]?.id]) || '내용 없음'}
+                                                {isUnread && <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${app.color.replace('text-', 'bg-')}`}></div>}
+                                                <p className="text-[12px] font-bold text-stone-800 dark:text-stone-200 truncate flex-1">
+                                                    {/* ✨ 핀 아이콘 추가 및 앱 테마 색상 연동 */}
+                                                    {isPinned && <Icon name="pin" size={10} className={`inline mr-1 mb-0.5 ${app.color}`} />}
+                                                    {firstLine}
                                                 </p>
                                             </div>
-                                            <div className="shrink-0 mt-0.5 text-stone-300 group-hover:text-teal-500 transition-colors">
+                                            <div className={`shrink-0 mt-0.5 transition-colors ${isPinned ? app.color : 'text-stone-300 group-hover:text-teal-500'}`}>
                                                 <Icon name="chevronRight" size={14} />
                                             </div>
                                         </div>
 
-                                        {/* ✅ 썸네일 노출 */}
+                                        {/* 썸네일 노출 */}
                                         {images.length > 0 && (
                                             <div className="flex gap-1.5 mt-3">
                                                 {images.slice(0, 3).map((img, i) => (
@@ -2140,21 +2158,31 @@
 
                             <div className="space-y-3">
                                 {(notices || []).slice(0, 3).map(n => {
+                                    // ✨ 상단 고정 여부 및 줄바꿈 원천 차단 첫 줄 추출
+                                    const isPinned = n.isPinned;
+                                    const firstLine = n.content ? n.content.split('\n')[0] : '';
+
                                     return (
                                         <div
                                             key={n.id}
-                                            className="p-4 bg-stone-50 dark:bg-stone-800 rounded-3xl border border-stone-100 dark:border-stone-700 relative group cursor-pointer hover:border-rose-200 transition-colors"
+                                            // ✨ 고정된 글 배경색 처리 추가 (isPinned 조건)
+                                            className={`p-4 rounded-3xl border relative group cursor-pointer transition-colors ${
+                                                isPinned
+                                                    ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 hover:border-rose-300'
+                                                    : 'bg-stone-50 dark:bg-stone-800 border-stone-100 dark:border-stone-700 hover:border-rose-200'
+                                            }`}
                                             // ✅ 항목 클릭 시 전체 공지사항 모달 팝업 오픈
                                             onClick={() => { setOpenedDynamicApp(app); setShowWidgetNoticesPopup(true); }}
                                         >
                                             <div className="flex justify-between items-start gap-2">
-                                                {/* 텍스트 내용 (이미지처럼 2줄 제한) */}
-                                                <p className="text-[12px] font-bold text-stone-800 dark:text-stone-200 line-clamp-1 leading-snug flex-1">
-                                                    {n.content}
+                                                {/* 텍스트 내용 (✨ 기존 line-clamp 대신 truncate로 1줄 강제 고정 및 핀 아이콘 추가) */}
+                                                <p className="text-[12px] font-bold text-stone-800 dark:text-stone-200 truncate leading-snug flex-1">
+                                                    {isPinned && <Icon name="pin" size={10} className="inline text-rose-500 mr-1 mb-0.5" />}
+                                                    {firstLine}
                                                 </p>
 
                                                 {/* ✅ 이미지에서 본 바로 그 '확장 아이콘' (모달 팝업 트리거) */}
-                                                <div className="shrink-0 mt-0.5 text-stone-300 group-hover:text-rose-500 transition-colors">
+                                                <div className={`shrink-0 mt-0.5 transition-colors ${isPinned ? 'text-rose-500' : 'text-stone-300 group-hover:text-rose-500'}`}>
                                                     <Icon name="chevronRight" size={14} />
                                                 </div>
                                             </div>
@@ -2162,7 +2190,7 @@
                                             {/* ✅ 사진 썸네일 (기능 유지) */}
                                             {n.photos && n.photos.length > 0 && (
                                                 <div className="flex gap-1.5 mt-3">
-                                                    {n.photos.map((p, i) => (
+                                                    {n.photos.slice(0, 3).map((p, i) => (
                                                         <div key={i} className="w-10 h-10 rounded-lg overflow-hidden border border-white dark:border-stone-700 shadow-sm shrink-0">
                                                             <img src={p} className="w-full h-full object-cover" alt="thumb" />
                                                         </div>
@@ -4319,15 +4347,23 @@
                                                         </div>
                                                     );
 
-                                                    return filtered.map((post) => {
+                                                // ✨ 일반 게시판도 고정된 게시글(isPinned) 상단 우선 노출 정렬
+                                                const finalPosts = [...filtered].sort((a, b) => (a.isPinned === b.isPinned ? 0 : a.isPinned ? -1 : 1));
+
+                                                return finalPosts.map((post) => {
                                                     // 기존 공지사항과 동일하게 아코디언 상태 활용
                                                     const isExpanded = expandedNoticeId === post.id;
                                                     const isRead = readPostIds.includes(post.id);
+                                                    const isPinned = post.isPinned; // ✨ 상단 고정 여부
                                                     const images = Array.isArray(post.photos) && post.photos.length > 0 ? post.photos : (post.photo ? [post.photo] : (typeof post.photos === 'string' ? [post.photos] : []));
                                                     
                                                     // ✅ 권한 처리 (관리자이거나 본인이 쓴 글이거나 작성 권한자)
                                                     const isMyPost = appUser && post.author === appUser?.name;
                                                     const hasManagePerm = canWrite(openedDynamicApp) || isAdminAuth || isMyPost;
+
+                                                    // ✨ 줄바꿈 원천 차단: 첫 줄만 깨끗하게 자르기
+                                                    const rawText = openedDynamicApp.fields && openedDynamicApp.fields.length > 0 ? (post[openedDynamicApp.fields[0].id] || post.content || '내용 없음') : (post.title || post.content || '내용 없음');
+                                                    const firstLine = rawText.split('\n')[0];
 
                                                     return (
                                                         <div
@@ -4336,31 +4372,30 @@
                                                                 if (!isRead) markPostAsRead(post.id);
                                                                 setExpandedNoticeId(isExpanded ? null : post.id);
                                                             }}
+                                                            // ✨ 모달 내부 아코디언도 해당 앱의 테마색(bg)을 따름
                                                             className={`mb-3 rounded-2xl border transition-all overflow-hidden cursor-pointer ${
                                                                 isExpanded
                                                                     ? 'bg-white dark:bg-stone-800 border-teal-300 dark:border-teal-800 shadow-md'
-                                                                    : 'bg-stone-50 dark:bg-stone-900 border-stone-100 dark:border-stone-800 hover:border-teal-200'
+                                                                    : isPinned
+                                                                        ? `${openedDynamicApp.bg || 'bg-stone-100'} border-transparent dark:bg-stone-800`
+                                                                        : 'bg-stone-50 dark:bg-stone-900 border-stone-100 dark:border-stone-800 hover:border-teal-200'
                                                             }`}
                                                         >
                                                             <div className="p-4 relative">
                                                                 <div className="flex items-center gap-1.5 mb-1.5">
                                                                     {!isRead && <div className="w-1.5 h-1.5 bg-teal-500 rounded-full shrink-0 animate-pulse" />}
+                                                                    {/* ✨ 핀 아이콘 색상도 앱 컬러 동기화 */}
+                                                                    {isPinned && !isExpanded && <Icon name="pin" size={10} className={`${openedDynamicApp.color || 'text-stone-500'}`} />}
                                                                     <span className="text-[10px] font-bold text-stone-400">
                                                                         {post.author} · {formatLocalTime(post.createdAt).slice(5, 10)}
                                                                     </span>
                                                                 </div>
 
-                                                                {/* ✅ 1줄 요약 처리 */}
-                                                                <div className={`pr-8 ${isExpanded ? 'block' : 'line-clamp-1'}`}>
-                                                                    {openedDynamicApp.fields && openedDynamicApp.fields.length > 0 ? (
-                                                                        <p className="text-[13px] font-bold text-stone-800 dark:text-stone-200 leading-snug">
-                                                                            {post[openedDynamicApp.fields[0].id] || post.content || '내용 없음'}
-                                                                        </p>
-                                                                    ) : (
-                                                                        <p className="text-[13px] font-bold text-stone-800 dark:text-stone-200 leading-snug whitespace-pre-wrap">
-                                                                            {post.title || post.content}
-                                                                        </p>
-                                                                    )}
+                                                                {/* ✨ 1줄 요약 처리 (줄바꿈이 절대 합쳐지지 않게 truncate 적용) */}
+                                                                <div className={`pr-8 ${isExpanded ? 'block' : 'truncate'}`}>
+                                                                    <p className={`text-[13px] font-bold text-stone-800 dark:text-stone-200 leading-snug ${isExpanded ? 'whitespace-pre-wrap block' : 'truncate'}`}>
+                                                                        {isExpanded ? rawText : firstLine}
+                                                                    </p>
                                                                 </div>
 
                                                                 {/* ✅ 썸네일 상시 노출 */}
@@ -4374,7 +4409,7 @@
                                                                     </div>
                                                                 )}
 
-                                                                <div className={`absolute top-4 right-4 transition-transform ${isExpanded ? 'rotate-180 text-teal-500' : 'text-stone-300'}`}>
+                                                                <div className={`absolute top-4 right-4 transition-transform ${isExpanded ? `rotate-180 ${openedDynamicApp.color || 'text-teal-500'}` : 'text-stone-300'}`}>
                                                                     <Icon name="chevronDown" size={16} />
                                                                 </div>
                                                             </div>
@@ -4420,7 +4455,8 @@
                                                                             <button
                                                                                 onClick={() => {
                                                                                     setEditingPostId(post.id);
-                                                                                    setSubmitFormState({ content: post.content || '', photos: images, authorName: post.author || '' });
+                                                                                    // ✨ 수정 시 isPinned 불러오기
+                                                                                    setSubmitFormState({ content: post.content || '', photos: images, authorName: post.author || '', isPinned: post.isPinned || false });
                                                                                 }}
                                                                                 className="text-[11px] font-black text-teal-500 hover:underline px-2 py-1"
                                                                             >
@@ -4747,6 +4783,9 @@
                                             // ✅ 중요 공지 여부 확인 변수 추가
                                             const isPinned = notice.isPinned;
 
+                                            // ✨ 줄바꿈 완벽 분리: 첫 줄만 추출
+                                            const firstLine = notice.content ? notice.content.split('\n')[0] : '';
+
                                             return (
                                                 <div
                                                     key={notice.id}
@@ -4766,17 +4805,19 @@
                                                     <div className="p-4 relative">
                                                         <div className="flex items-center gap-1.5 mb-1.5">
                                                             {!isRead && <div className="w-1.5 h-1.5 bg-rose-500 rounded-full shrink-0 animate-pulse" />}
-                                                            {/* ✅ 중요 공지 아이콘 추가 */}
-                                                            {isPinned && <Icon name="pin" size={10} className="text-rose-500" />}
+                                                            {/* ✅ 중요 공지 아이콘 추가 (펼쳐졌을 땐 숨김 처리) */}
+                                                            {isPinned && !isExpanded && <Icon name="pin" size={10} className="text-rose-500" />}
                                                             <span className={`text-[10px] font-bold ${isPinned ? 'text-rose-500' : 'text-stone-400'}`}>
                                                                 {notice.author} · {formatLocalTime(notice.createdAt).slice(5, 10)}
                                                             </span>
                                                         </div>
 
-                                                        {/* ✅ 무조건 1줄(line-clamp-1)로 보이게 수정! */}
-                                                        <p className={`text-[13px] font-bold text-stone-800 dark:text-stone-200 leading-snug pr-8 ${isExpanded ? 'whitespace-pre-wrap block line-clamp-none' : 'line-clamp-1'}`}>
-                                                            {notice.content}
-                                                        </p>
+                                                        {/* ✨ 무조건 1줄로 보이게 수정! (CSS truncate + JS 첫 줄 추출 연동) */}
+                                                        <div className={`pr-8 ${isExpanded ? 'block' : 'truncate'}`}>
+                                                            <p className={`text-[13px] font-bold text-stone-800 dark:text-stone-200 leading-snug ${isExpanded ? 'whitespace-pre-wrap block' : 'truncate'}`}>
+                                                                {isExpanded ? notice.content : firstLine}
+                                                            </p>
+                                                        </div>
 
                                                         {/* 썸네일 상시 노출 */}
                                                         {!isExpanded && images.length > 0 && (
