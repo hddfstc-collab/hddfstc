@@ -1616,28 +1616,52 @@
             };
 
             const handleGenericPostSubmit = async () => {
+                // 1️⃣ 작성자 결정 (로그인 유저 우선, 아니면 입력한 이름)
                 const author = appUser ? appUser.name : submitFormState.authorName;
 
-                if (!author) return showToast('작성자 성함을 입력해주세요.', true);
-                if (!submitFormState.content?.trim()) return showToast('내용을 입력해주세요.', true);
+                // 2️⃣ [추가] 폼 제출형일 경우 질문 답변들을 content로 합쳐주기
+                let finalContent = submitFormState.content;
 
-                // ✅ 수정 모드
+                if (openedApp?.actionType === 'form') {
+                    // 모든 필수 질문이 채워졌는지 확인 (formValues는 질문 답변이 담긴 상태값)
+                    const isAnyEmpty = openedApp.fields?.some(f => !formValues[f.id]?.trim());
+
+                    if (isAnyEmpty) {
+                        return showToast('모든 질문 항목을 입력해주세요.', true);
+                    }
+
+                    // 답변 객체를 문자열로 변환하여 content에 할당
+                    finalContent = JSON.stringify(formValues);
+                }
+
+                // 3️⃣ 유효성 검사
+                if (!author) return showToast('작성자 성함을 입력해주세요.', true);
+                if (!finalContent?.trim()) return showToast('내용을 입력해주세요.', true);
+
+                // ✅ 수정 모드 로직 시작
                 if (editingPostId) {
                     const original = (dynamicPosts || []).find(p => p.id === editingPostId);
                     if (!original) return showToast('게시글을 찾을 수 없습니다.', true);
+
                     const updatedPost = {
                         ...original,
-                        content: submitFormState.content,
+                        author: author, // 작성자 이름 업데이트
+                        content: finalContent, // 👈 가공된 finalContent 사용
                         photos: submitFormState.photos || original.photos || [],
-                        isPinned: submitFormState.isPinned || false, // ✨ 상단 고정 여부 추가
+                        isPinned: submitFormState.isPinned || false,
                         updatedAt: new Date().toISOString()
                     };
+
                     try {
                         setDynamicPosts(prev => prev.map(p => p.id === editingPostId ? updatedPost : p));
                         saveToIDB('dynamicPosts', updatedPost);
-                        // ✨ 폼 초기화 시 isPinned도 초기화
+
+                        // 폼 초기화 (formValues도 함께 초기화해야 합니다)
                         setSubmitFormState({ content: '', photos: [], authorName: '', isPinned: false });
+                        if (typeof setFormValues === 'function') setFormValues({});
+
                         setEditingPostId(null);
+
                         if (db && fbUser) {
                             await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(editingPostId).set(updatedPost, { merge: true });
                         }
