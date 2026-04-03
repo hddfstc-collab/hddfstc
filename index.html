@@ -3639,25 +3639,43 @@
                                                                         const isManager = (u.jobTitle || '').includes('점장') || (u.part || '').includes('점장') || (u.jobTitle || '').includes('영업관리자');
                                                                         return (
                                                                             <div key={u.empId} className="flex flex-col sm:flex-row sm:items-center gap-3 bg-stone-50 dark:bg-stone-800 p-4 rounded-[1.5rem] border border-stone-100 dark:border-stone-700 shadow-sm hover:border-teal-200 transition-all">
+                                                                                /* --- 수정할 위치 (약 2150라인 구성원 목록 렌더링 영역 내부) --- */
                                                                                 <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2 items-center">
+                                                                                    {/* 1. 소속 파트 (Col 1) - 기존 동일 */}
                                                                                     <div className="min-w-0">
                                                                                         <span className="text-[10px] font-bold text-stone-400 block mb-0.5">소속 파트</span>
                                                                                         <span className="text-[12px] font-black text-stone-700 dark:text-stone-300 break-all leading-tight">{u.part}</span>
                                                                                     </div>
+
+                                                                                    {/* 2. 사번 (Col 2) - 기존 동일 */}
                                                                                     <div className="text-center sm:text-left">
                                                                                         <span className="text-[10px] font-bold text-stone-400 block mb-0.5">사번</span>
                                                                                         <span className="font-mono font-bold text-stone-500 text-[11px]">{u.empId}</span>
                                                                                     </div>
-                                                                                    <div className="min-w-0">
-                                                                                        <span className="text-[10px] font-bold text-stone-400 block mb-0.5">성명</span>
-                                                                                        <span className="text-[14px] font-black text-stone-800 dark:text-stone-200 break-all">{u.name}</span>
+
+                                                                                    {/* 3. ✨ 수정된 영역: 성명 및 직책 통합 배치 (Col 3 & 4 영역 통합) */}
+                                                                                    {/* smBreak 이상에서 2칸을 차지하도록 col-span-2 부여 */}
+                                                                                    <div className="min-w-0 sm:col-span-2 flex flex-col justify-center">
+                                                                                        <span className="text-[10px] font-bold text-stone-400 block mb-0.5">성명 및 직책</span>
+
+                                                                                        {/* 이름: 직급 없이 이름만 표시하고, 너무 길면 한 줄로 자름 (truncate) */}
+                                                                                        <span className="text-[14px] font-black text-stone-800 dark:text-stone-200 block truncate" title={u.name}>{u.name}</span>
+
+                                                                                        {/* 직급 및 직책: 이름 밑으로 내리고 개별 뱃지로 분리 */}
+                                                                                        <div className="flex flex-wrap gap-1 mt-1">
+                                                                                            {/* 직급 뱃지 (예: 과장, 대리) */}
+                                                                                            <span className={`inline-block text-[10px] font-black px-2.5 py-1 rounded-full border ${isManager ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-stone-50 text-stone-600 border-stone-100'}`}>
+                                                                                                {u.position}
+                                                                                            </span>
+                                                                                            {/* 직책 뱃지 (예: 파트장, 점장 - 일반 아닐 때만 표시) */}
+                                                                                            {u.jobTitle && u.jobTitle !== '일반' && (
+                                                                                                <span className="inline-block text-[10px] font-bold px-2.5 py-1 rounded-full bg-teal-50 text-teal-600 border border-teal-100">
+                                                                                                    {u.jobTitle}
+                                                                                                </span>
+                                                                                            )}
+                                                                                        </div>
                                                                                     </div>
-                                                                                    <div className="flex justify-start sm:justify-end">
-                                                                                        {/* ✅ 직급과 직책을 동시에 표기 (예: 과장 / 영업관리자) */}
-                                                                                        <span className={`inline-block text-[10px] font-black px-2.5 py-1 rounded-lg border ${isManager ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-teal-50 text-teal-600 border-teal-100'}`}>
-                                                                                            {u.position}{u.jobTitle !== '일반' ? ` / ${u.jobTitle}` : ''}
-                                                                                        </span>
-                                                                                    </div>
+                                                                                    {/* ⚠️ 기존에 존재하던 4번째 Col div는 위 영역에 통합되었으므로 삭제해야 합니다. */}
                                                                                 </div>
                                                                                 <div className="flex justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 sm:border-l border-stone-200 dark:border-stone-600 pl-2">
                                                                                     <button onClick={() => handleResetPassword(u.empId)} className="text-white bg-amber-500 hover:bg-amber-600 p-2.5 rounded-xl btn-press shadow-sm"><Icon name="wrench" size={16} /></button>
