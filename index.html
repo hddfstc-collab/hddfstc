@@ -4903,67 +4903,106 @@
                             )
                         }
 
-                        {
-                            openedSubmitForm && (
-                                <ModalWrapper title={openedSubmitForm.name} icon={openedSubmitForm.icon} color={openedSubmitForm.color} onClose={() => setOpenedSubmitForm(null)}>
-                                    <div className="space-y-4">
-                                        <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 p-4 rounded-2xl mb-4"><p className="text-[10px] font-bold text-indigo-600 dark:text-indigo-300 leading-relaxed text-center">이곳에서 제출하신 내용은 <b>본인과 관리자</b>만 열람 가능합니다.<br />안심하고 양식을 작성해 주세요.</p></div>
-                                        {canWrite(openedSubmitForm) ? (
-                                            <>
-                                                {/* 1. 커스텀 질문들을 순서대로 생성 (기존 성명/상세내용 칸 대체) */}
-                                                {openedSubmitForm.fields && openedSubmitForm.fields.map((field) => (
-                                                    <div key={field.id} className="space-y-1.5">
-                                                        <label className="text-[11px] font-bold text-stone-500 dark:text-stone-400 ml-1">
-                                                            {field.label}
-                                                        </label>
-
-                                                        {field.type === 'textarea' ? (
-                                                            <textarea
-                                                                className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-28 resize-none focus:border-indigo-400"
-                                                                placeholder={`${field.label} 내용을 입력하세요.`}
-                                                                value={submitFormState[field.id] || ''}
-                                                                onChange={e => setSubmitFormState({ ...submitFormState, [field.id]: e.target.value })}
-                                                            />
-                                                        ) : (
-                                                            <input
-                                                                type={field.type}
-                                                                className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none focus:border-indigo-400"
-                                                                placeholder={`${field.label} 입력`}
-                                                                value={submitFormState[field.id] || ''}
-                                                                onChange={e => setSubmitFormState({ ...submitFormState, [field.id]: e.target.value })}
-                                                            />
-                                                        )}
-                                                    </div>
-                                                ))}
-
-                                                {/* 2. 하단 버튼 및 사진 첨부 (이 부분은 유지) */}
-                                                <div className="flex gap-2 mt-2">
-                                                    <label className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-4 rounded-2xl flex items-center justify-center gap-1.5 cursor-pointer btn-press text-[12px]">
-                                                        <Icon name="camera" size={16} />
-                                                        {submitFormState.photos?.length === 0
-                                                            ? '사진 첨부 (최대 5장)'
-                                                            : submitFormState.photos?.length >= 5
-                                                                ? `사진 첨부 완료 (5/5)`
-                                                                : `사진 추가됨 (${submitFormState.photos.length}/5)`
-                                                        }
-                                                        <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => handlePhotoSingle(e, setSubmitFormState)} />
-                                                    </label>
-                                                    <button
-                                                        onClick={() => { handleGenericPostSubmit(); setOpenedSubmitForm(null); }}
-                                                        className="w-24 bg-stone-800 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[12px]"
-                                                    >
-                                                        접수
-                                                    </button>
-                                                </div>
-
-                                                {/* 사진 미리보기 */}
-                                                {submitFormState.photo && <img src={submitFormState.photo} className="w-full h-32 rounded-2xl object-cover border border-stone-200 dark:border-stone-700 mt-2 shadow-sm" />}
-                                            </>
-                                        ) : (<div className="text-center"><p className="text-[11px] font-bold text-stone-400 bg-stone-50 dark:bg-stone-800 py-4 rounded-xl border border-stone-100 dark:border-stone-700">{writeBlockedMsg(openedSubmitForm)}</p></div>)}
+                        {openedSubmitForm && (
+                            <ModalWrapper
+                                title={openedSubmitForm.name}
+                                icon={openedSubmitForm.icon}
+                                color={openedSubmitForm.color}
+                                onClose={() => {
+                                    setOpenedSubmitForm(null);
+                                    setSubmitFormState({ content: '', photos: [], authorName: '', isPinned: false });
+                                }}
+                            >
+                                <div className="space-y-4">
+                                    {/* 상단 안내 문구 */}
+                                    <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 p-4 rounded-2xl mb-4">
+                                        <p className="text-[10px] font-bold text-indigo-600 dark:text-indigo-300 leading-relaxed text-center">
+                                            이곳에서 제출하신 내용은 <b>본인과 관리자</b>만 열람 가능합니다.<br />
+                                            안심하고 양식을 작성해 주세요.
+                                        </p>
                                     </div>
-                                </ModalWrapper>
-                            )
-                        }
+
+                                    {canWrite(openedSubmitForm) ? (
+                                        <>
+                                            {/* 1. 작성자 성함 입력칸 (비로그인 시에만 노출) */}
+                                            {!appUser && (
+                                                <div className="space-y-1.5 mb-6">
+                                                    <label className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 ml-1 flex items-center gap-1">
+                                                        <Icon name="user" size={14} /> 작성자 성함 (필수)
+                                                    </label>
+                                                    <input
+                                                        className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none focus:border-indigo-400"
+                                                        placeholder="제출하시는 분의 성함을 입력하세요"
+                                                        value={submitFormState.authorName || ''}
+                                                        onChange={e => setSubmitFormState({ ...submitFormState, authorName: e.target.value })}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* 2. 커스텀 질문 리스트 (한 번만 매핑) */}
+                                            {openedSubmitForm.fields && openedSubmitForm.fields.map((field) => (
+                                                <div key={field.id} className="space-y-1.5">
+                                                    <label className="text-[11px] font-bold text-stone-500 dark:text-stone-400 ml-1">
+                                                        {field.label}
+                                                    </label>
+
+                                                    {field.type === 'textarea' ? (
+                                                        <textarea
+                                                            className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-28 resize-none focus:border-indigo-400"
+                                                            placeholder={`${field.label} 내용을 입력하세요.`}
+                                                            value={submitFormState[field.id] || ''}
+                                                            onChange={e => setSubmitFormState({ ...submitFormState, [field.id]: e.target.value })}
+                                                        />
+                                                    ) : (
+                                                        <input
+                                                            type={field.type}
+                                                            className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none focus:border-indigo-400"
+                                                            placeholder={`${field.label} 입력`}
+                                                            value={submitFormState[field.id] || ''}
+                                                            onChange={e => setSubmitFormState({ ...submitFormState, [field.id]: e.target.value })}
+                                                        />
+                                                    )}
+                                                </div>
+                                            ))}
+
+                                            {/* 3. 사진 첨부 및 접수 버튼 */}
+                                            <div className="flex gap-2 mt-4">
+                                                <label className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-4 rounded-2xl flex items-center justify-center gap-1.5 cursor-pointer btn-press text-[12px]">
+                                                    <Icon name="camera" size={16} />
+                                                    {(submitFormState.photos || []).length === 0
+                                                        ? '사진 첨부 (최대 5장)'
+                                                        : `사진 추가됨 (${submitFormState.photos.length}/5)`
+                                                    }
+                                                    <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => handlePhotoSingle(e, setSubmitFormState)} />
+                                                </label>
+
+                                                <button
+                                                    onClick={() => handleGenericPostSubmit()}
+                                                    className="w-24 bg-stone-800 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[12px]"
+                                                >
+                                                    접수
+                                                </button>
+                                            </div>
+
+                                            {/* 사진 미리보기 영역 */}
+                                            {submitFormState.photos && submitFormState.photos.length > 0 && (
+                                                <div className="flex gap-2 mt-2 overflow-x-auto pb-2">
+                                                    {submitFormState.photos.map((p, idx) => (
+                                                        <img key={idx} src={p} className="w-16 h-16 rounded-xl object-cover border border-stone-200 dark:border-stone-700" />
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <div className="text-center py-10">
+                                            <p className="text-[11px] font-bold text-stone-400 bg-stone-50 dark:bg-stone-800 py-4 rounded-xl border border-stone-100 dark:border-stone-700">
+                                                {writeBlockedMsg(openedSubmitForm)}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </ModalWrapper>
+                        )}
 
                         {
                             openedAdminBoard && (
@@ -5093,185 +5132,187 @@
                         }
                     </div >
                     {/* ✅ "우이야" 스타일 실시간 공지사항 전용 팝업 (전체 클릭 & 문법 수정본) */}
-                    {showWidgetNoticesPopup && openedDynamicApp && (
-                        <ModalWrapper
-                            title={openedDynamicApp.name}
-                            icon={openedDynamicApp.icon}
-                            color={openedDynamicApp.color}
-                            onClose={() => {
-                                setShowWidgetNoticesPopup(false);
-                                setOpenedDynamicApp(null);
-                                setBoardSearch('');
-                                setExpandedNoticeId(null);
-                            }}
-                        >
-                            {/* 전체 컨테이너 시작 */}
-                            <div className="flex flex-col h-full max-h-[70vh]">
+                    {
+                        showWidgetNoticesPopup && openedDynamicApp && (
+                            <ModalWrapper
+                                title={openedDynamicApp.name}
+                                icon={openedDynamicApp.icon}
+                                color={openedDynamicApp.color}
+                                onClose={() => {
+                                    setShowWidgetNoticesPopup(false);
+                                    setOpenedDynamicApp(null);
+                                    setBoardSearch('');
+                                    setExpandedNoticeId(null);
+                                }}
+                            >
+                                {/* 전체 컨테이너 시작 */}
+                                <div className="flex flex-col h-full max-h-[70vh]">
 
-                                {/* 1. 상단 검색창 */}
-                                <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-2xl flex items-center gap-2 px-4 py-3 mb-4 shrink-0 shadow-sm focus-within:border-rose-400 transition-colors">
-                                    <Icon name="search" size={16} className="text-stone-400 shrink-0" />
-                                    <input
-                                        type="text"
-                                        placeholder="게시글 검색..."
-                                        value={boardSearch}
-                                        onChange={(e) => setBoardSearch(e.target.value)}
-                                        className="w-full bg-transparent outline-none text-[13px] font-bold text-stone-700 dark:text-stone-300 placeholder-stone-400"
-                                    />
-                                </div>
+                                    {/* 1. 상단 검색창 */}
+                                    <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-2xl flex items-center gap-2 px-4 py-3 mb-4 shrink-0 shadow-sm focus-within:border-rose-400 transition-colors">
+                                        <Icon name="search" size={16} className="text-stone-400 shrink-0" />
+                                        <input
+                                            type="text"
+                                            placeholder="게시글 검색..."
+                                            value={boardSearch}
+                                            onChange={(e) => setBoardSearch(e.target.value)}
+                                            className="w-full bg-transparent outline-none text-[13px] font-bold text-stone-700 dark:text-stone-300 placeholder-stone-400"
+                                        />
+                                    </div>
 
-                                {/* 2. 게시글 리스트 영역 */}
-                                <div className="overflow-y-auto scrollbar-hide flex-1 space-y-3 pb-2">
-                                    {(() => {
-                                        const filteredNotices = (notices || []).filter(n => {
-                                            if (!boardSearch) return true;
-                                            return (n.content || '').toLowerCase().includes(boardSearch.toLowerCase()) ||
-                                                (n.author || '').toLowerCase().includes(boardSearch.toLowerCase());
-                                        });
+                                    {/* 2. 게시글 리스트 영역 */}
+                                    <div className="overflow-y-auto scrollbar-hide flex-1 space-y-3 pb-2">
+                                        {(() => {
+                                            const filteredNotices = (notices || []).filter(n => {
+                                                if (!boardSearch) return true;
+                                                return (n.content || '').toLowerCase().includes(boardSearch.toLowerCase()) ||
+                                                    (n.author || '').toLowerCase().includes(boardSearch.toLowerCase());
+                                            });
 
-                                        if (filteredNotices.length === 0) {
-                                            return (
-                                                <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-stone-100 dark:border-stone-800 rounded-3xl">
-                                                    <p className="text-[12px] font-bold text-stone-400">게시글이 없습니다.</p>
-                                                </div>
-                                            );
-                                        }
-
-                                        return filteredNotices.map(notice => {
-                                            const isRead = readNoticeIds.includes(notice.id);
-                                            const isExpanded = expandedNoticeId === notice.id;
-                                            // ✅ 이미지 배열 안전 추출
-                                            const images = Array.isArray(notice.photos) && notice.photos.length > 0 ? notice.photos : (notice.photo ? [notice.photo] : []);
-                                            const isMyPost = appUser && notice.author === appUser?.name;
-                                            const hasManagePerm = canWrite(openedDynamicApp) || isAdminAuth || isMyPost;
-
-                                            // ✅ 중요 공지 여부 확인 변수 추가
-                                            const isPinned = notice.isPinned;
-
-                                            // ✨ 줄바꿈 완벽 분리: 첫 줄만 추출
-                                            const firstLine = notice.content ? notice.content.split('\n')[0] : '';
-
-                                            return (
-                                                <div
-                                                    key={notice.id}
-                                                    onClick={() => {
-                                                        if (!isRead) markAsRead(notice.id);
-                                                        setExpandedNoticeId(isExpanded ? null : notice.id);
-                                                    }}
-                                                    // ✅ 중요 공지(isPinned)일 경우 배경색을 살짝 붉게(rose-50) 처리하여 눈에 띄게 변경!
-                                                    className={`rounded-2xl border transition-all overflow-hidden cursor-pointer ${isExpanded
-                                                        ? 'bg-white dark:bg-stone-800 border-rose-300 dark:border-rose-800 shadow-md'
-                                                        : isPinned
-                                                            ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 hover:border-rose-300'
-                                                            : 'bg-stone-50 dark:bg-stone-900 border-stone-100 dark:border-stone-800 hover:border-rose-200'
-                                                        }`}
-                                                >
-                                                    <div className="p-4 relative">
-                                                        <div className="flex items-center gap-1.5 mb-1.5">
-                                                            {!isRead && <div className="w-1.5 h-1.5 bg-rose-500 rounded-full shrink-0 animate-pulse" />}
-                                                            {/* ✅ 중요 공지 아이콘 추가 (펼쳐졌을 땐 숨김 처리) */}
-                                                            {isPinned && !isExpanded && <Icon name="pin" size={10} className="text-rose-500" />}
-                                                            <span className={`text-[10px] font-bold ${isPinned ? 'text-rose-500' : 'text-stone-400'}`}>
-                                                                {notice.author} · {formatLocalTime(notice.createdAt).slice(5, 10)}
-                                                            </span>
-                                                        </div>
-
-                                                        {/* ✨ 무조건 1줄로 보이게 수정! (CSS truncate + JS 첫 줄 추출 연동) */}
-                                                        <div className={`pr-8 ${isExpanded ? 'block' : 'truncate'}`}>
-                                                            <p className={`text-[13px] font-bold text-stone-800 dark:text-stone-200 leading-snug ${isExpanded ? 'whitespace-pre-wrap block' : 'truncate'}`}>
-                                                                {isExpanded ? notice.content : firstLine}
-                                                            </p>
-                                                        </div>
-
-                                                        {/* 썸네일 상시 노출 */}
-                                                        {!isExpanded && images.length > 0 && (
-                                                            <div className="flex gap-1.5 mt-3">
-                                                                {images.slice(0, 4).map((img, i) => (
-                                                                    <div key={i} className="w-10 h-10 rounded-lg overflow-hidden border border-stone-100 dark:border-stone-700 shadow-sm shrink-0">
-                                                                        <img src={img} className="w-full h-full object-cover" alt="thumb" />
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-
-                                                        <div className={`absolute top-4 right-4 transition-transform ${isExpanded ? 'rotate-180 text-rose-500' : 'text-stone-300'}`}>
-                                                            <Icon name="chevronDown" size={16} />
-                                                        </div>
+                                            if (filteredNotices.length === 0) {
+                                                return (
+                                                    <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-stone-100 dark:border-stone-800 rounded-3xl">
+                                                        <p className="text-[12px] font-bold text-stone-400">게시글이 없습니다.</p>
                                                     </div>
+                                                );
+                                            }
 
-                                                    {/* 확장 시 상세 영역 (이하 동일) */}
-                                                    {isExpanded && (
-                                                        <div className="px-4 pb-4 bg-white dark:bg-stone-800 fade-in border-t border-stone-50 dark:border-stone-700/50 mt-1 pt-3">
-                                                            {images.length > 0 && (
-                                                                <div className="space-y-2 mb-4">
-                                                                    {images.map((img, i) => (
-                                                                        <img
-                                                                            key={i}
-                                                                            src={img}
-                                                                            className="w-full rounded-xl border border-stone-100 dark:border-stone-700 object-cover cursor-pointer"
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                setExpandedImage(img);
-                                                                            }}
-                                                                        />
+                                            return filteredNotices.map(notice => {
+                                                const isRead = readNoticeIds.includes(notice.id);
+                                                const isExpanded = expandedNoticeId === notice.id;
+                                                // ✅ 이미지 배열 안전 추출
+                                                const images = Array.isArray(notice.photos) && notice.photos.length > 0 ? notice.photos : (notice.photo ? [notice.photo] : []);
+                                                const isMyPost = appUser && notice.author === appUser?.name;
+                                                const hasManagePerm = canWrite(openedDynamicApp) || isAdminAuth || isMyPost;
+
+                                                // ✅ 중요 공지 여부 확인 변수 추가
+                                                const isPinned = notice.isPinned;
+
+                                                // ✨ 줄바꿈 완벽 분리: 첫 줄만 추출
+                                                const firstLine = notice.content ? notice.content.split('\n')[0] : '';
+
+                                                return (
+                                                    <div
+                                                        key={notice.id}
+                                                        onClick={() => {
+                                                            if (!isRead) markAsRead(notice.id);
+                                                            setExpandedNoticeId(isExpanded ? null : notice.id);
+                                                        }}
+                                                        // ✅ 중요 공지(isPinned)일 경우 배경색을 살짝 붉게(rose-50) 처리하여 눈에 띄게 변경!
+                                                        className={`rounded-2xl border transition-all overflow-hidden cursor-pointer ${isExpanded
+                                                            ? 'bg-white dark:bg-stone-800 border-rose-300 dark:border-rose-800 shadow-md'
+                                                            : isPinned
+                                                                ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 hover:border-rose-300'
+                                                                : 'bg-stone-50 dark:bg-stone-900 border-stone-100 dark:border-stone-800 hover:border-rose-200'
+                                                            }`}
+                                                    >
+                                                        <div className="p-4 relative">
+                                                            <div className="flex items-center gap-1.5 mb-1.5">
+                                                                {!isRead && <div className="w-1.5 h-1.5 bg-rose-500 rounded-full shrink-0 animate-pulse" />}
+                                                                {/* ✅ 중요 공지 아이콘 추가 (펼쳐졌을 땐 숨김 처리) */}
+                                                                {isPinned && !isExpanded && <Icon name="pin" size={10} className="text-rose-500" />}
+                                                                <span className={`text-[10px] font-bold ${isPinned ? 'text-rose-500' : 'text-stone-400'}`}>
+                                                                    {notice.author} · {formatLocalTime(notice.createdAt).slice(5, 10)}
+                                                                </span>
+                                                            </div>
+
+                                                            {/* ✨ 무조건 1줄로 보이게 수정! (CSS truncate + JS 첫 줄 추출 연동) */}
+                                                            <div className={`pr-8 ${isExpanded ? 'block' : 'truncate'}`}>
+                                                                <p className={`text-[13px] font-bold text-stone-800 dark:text-stone-200 leading-snug ${isExpanded ? 'whitespace-pre-wrap block' : 'truncate'}`}>
+                                                                    {isExpanded ? notice.content : firstLine}
+                                                                </p>
+                                                            </div>
+
+                                                            {/* 썸네일 상시 노출 */}
+                                                            {!isExpanded && images.length > 0 && (
+                                                                <div className="flex gap-1.5 mt-3">
+                                                                    {images.slice(0, 4).map((img, i) => (
+                                                                        <div key={i} className="w-10 h-10 rounded-lg overflow-hidden border border-stone-100 dark:border-stone-700 shadow-sm shrink-0">
+                                                                            <img src={img} className="w-full h-full object-cover" alt="thumb" />
+                                                                        </div>
                                                                     ))}
                                                                 </div>
                                                             )}
 
-                                                            {(hasManagePerm) && (
-                                                                <div className="flex justify-end gap-3 pt-3 border-t border-stone-50 dark:border-stone-800">
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setEditingNoticeId(notice.id);
-                                                                            setNoticeForm({ content: notice.content, photos: images, isPinned: notice.isPinned });
-                                                                            setIsNoticeModalOpen(true);
-                                                                        }}
-                                                                        className="text-[11px] font-black text-teal-500 hover:underline px-2 py-1"
-                                                                    >
-                                                                        수정
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            handleDeleteNotice(notice.id);
-                                                                        }}
-                                                                        className="text-[11px] font-black text-rose-500 hover:underline px-2 py-1"
-                                                                    >
-                                                                        삭제
-                                                                    </button>
-                                                                </div>
-                                                            )}
+                                                            <div className={`absolute top-4 right-4 transition-transform ${isExpanded ? 'rotate-180 text-rose-500' : 'text-stone-300'}`}>
+                                                                <Icon name="chevronDown" size={16} />
+                                                            </div>
                                                         </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        });
-                                    })()}
-                                </div>
 
-                                {/* 3. 하단 글쓰기 버튼 */}
-                                <div className="shrink-0 pt-4 mt-2">
-                                    {canWrite(openedDynamicApp) ? (
-                                        <button
-                                            onClick={() => {
-                                                setEditingNoticeId(null);
-                                                setNoticeForm({ content: '', photos: [], isPinned: false });
-                                                setIsNoticeModalOpen(true);
-                                            }}
-                                            className="w-full bg-rose-500 hover:bg-rose-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[13px] flex items-center justify-center gap-2"
-                                        >
-                                            <Icon name="edit" size={16} /> 새 공지사항 작성
-                                        </button>
-                                    ) : (
-                                        <div className="w-full bg-stone-100 dark:bg-stone-800 text-stone-400 font-bold py-4 rounded-2xl text-[12px] text-center border border-stone-200 dark:border-stone-700">
-                                            작성 권한이 없습니다.
-                                        </div>
-                                    )}
-                                </div>
-                            </div> {/* 전체 컨테이너 끝 */}
-                        </ModalWrapper>
-                    )}
+                                                        {/* 확장 시 상세 영역 (이하 동일) */}
+                                                        {isExpanded && (
+                                                            <div className="px-4 pb-4 bg-white dark:bg-stone-800 fade-in border-t border-stone-50 dark:border-stone-700/50 mt-1 pt-3">
+                                                                {images.length > 0 && (
+                                                                    <div className="space-y-2 mb-4">
+                                                                        {images.map((img, i) => (
+                                                                            <img
+                                                                                key={i}
+                                                                                src={img}
+                                                                                className="w-full rounded-xl border border-stone-100 dark:border-stone-700 object-cover cursor-pointer"
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setExpandedImage(img);
+                                                                                }}
+                                                                            />
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+
+                                                                {(hasManagePerm) && (
+                                                                    <div className="flex justify-end gap-3 pt-3 border-t border-stone-50 dark:border-stone-800">
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setEditingNoticeId(notice.id);
+                                                                                setNoticeForm({ content: notice.content, photos: images, isPinned: notice.isPinned });
+                                                                                setIsNoticeModalOpen(true);
+                                                                            }}
+                                                                            className="text-[11px] font-black text-teal-500 hover:underline px-2 py-1"
+                                                                        >
+                                                                            수정
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleDeleteNotice(notice.id);
+                                                                            }}
+                                                                            className="text-[11px] font-black text-rose-500 hover:underline px-2 py-1"
+                                                                        >
+                                                                            삭제
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            });
+                                        })()}
+                                    </div>
+
+                                    {/* 3. 하단 글쓰기 버튼 */}
+                                    <div className="shrink-0 pt-4 mt-2">
+                                        {canWrite(openedDynamicApp) ? (
+                                            <button
+                                                onClick={() => {
+                                                    setEditingNoticeId(null);
+                                                    setNoticeForm({ content: '', photos: [], isPinned: false });
+                                                    setIsNoticeModalOpen(true);
+                                                }}
+                                                className="w-full bg-rose-500 hover:bg-rose-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[13px] flex items-center justify-center gap-2"
+                                            >
+                                                <Icon name="edit" size={16} /> 새 공지사항 작성
+                                            </button>
+                                        ) : (
+                                            <div className="w-full bg-stone-100 dark:bg-stone-800 text-stone-400 font-bold py-4 rounded-2xl text-[12px] text-center border border-stone-200 dark:border-stone-700">
+                                                작성 권한이 없습니다.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div> {/* 전체 컨테이너 끝 */}
+                            </ModalWrapper>
+                        )
+                    }
                 </>
             ); // <--- return 문이 끝나는 곳
         }; // 👈 ✨ 짜잔! 바로 여기에 추가해 주시면 됩니다!
