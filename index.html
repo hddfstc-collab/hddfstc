@@ -501,6 +501,8 @@
                     ]
                 }
             ]);
+            // 폼 양식 답변들을 임시로 저장할 바구니입니다.
+            const [formValues, setFormValues] = useState({});
             const [dynamicPosts, setDynamicPosts] = useState([]);
 
             const [notices, setNotices] = useState([]);
@@ -1617,28 +1619,29 @@
 
             const handleGenericPostSubmit = async () => {
                 try {
-                    // 1️⃣ 작성자 결정 (로그인 유저 우선, 아니면 입력한 이름)
+                    // 1️⃣ 작성자 결정
                     const author = appUser ? appUser.name : submitFormState.authorName;
 
-                    // 2️⃣ 현재 열린 앱 정보 (형님 코드에 실제 있는 변수만 사용)
+                    // 2️⃣ 현재 열린 앱 정보 (변수명 정리)
                     const currentApp = openedDynamicApp || openedSubmitForm;
 
-                    if (!currentApp) {
-                        return showToast('앱 정보를 찾을 수 없습니다.', true);
-                    }
+                    if (!currentApp) return showToast('앱 정보를 찾을 수 없습니다.', true);
 
-                    // 3️⃣ 폼 데이터 가공 (질문 답변들을 content에 담기)
+                    // 3️⃣ 폼 데이터 가공 (중요: formValues 대신 submitFormState 사용!)
                     let finalContent = submitFormState.content;
 
-                    // 양식 제출형일 때만 실행
-                    if (currentApp.actionType === 'form') {
-                        if (currentApp.fields && currentApp.fields.length > 0) {
-                            // formValues가 질문 답변들을 들고 있는 바구니가 맞는지 확인!
-                            const isAnyEmpty = currentApp.fields.some(f => !formValues[f.id]?.trim());
-                            if (isAnyEmpty) return showToast('모든 질문 항목을 입력해주세요.', true);
+                    if (currentApp.actionType === 'form' && currentApp.fields) {
+                        const answers = {};
+                        // 형님 UI에서 쓰는 [field.id] 값을 answers 바구니에 담습니다.
+                        const isAnyEmpty = currentApp.fields.some(f => {
+                            const val = submitFormState[f.id];
+                            if (!val || !val.trim()) return true;
+                            answers[f.id] = val;
+                            return false;
+                        });
 
-                            finalContent = JSON.stringify(formValues);
-                        }
+                        if (isAnyEmpty) return showToast('모든 질문 항목을 입력해주세요.', true);
+                        finalContent = JSON.stringify(answers); // 답변들을 문자열로 변환
                     }
 
                     // 4️⃣ 유효성 검사
@@ -1646,7 +1649,7 @@
                     if (!finalContent?.trim()) return showToast('내용을 입력해주세요.', true);
 
                     // ---------------------------------------------------------
-                    // ✅ [Case 1] 수정 모드 (editingPostId가 있을 때)
+                    // ✅ [Case 1] 수정 모드
                     // ---------------------------------------------------------
                     if (editingPostId) {
                         const original = (dynamicPosts || []).find(p => p.id === editingPostId);
@@ -1654,7 +1657,7 @@
 
                         const updatedPost = {
                             ...original,
-                            author: author,
+                            author,
                             content: finalContent,
                             photos: submitFormState.photos || original.photos || [],
                             isPinned: submitFormState.isPinned || false,
@@ -1663,23 +1666,18 @@
 
                         setDynamicPosts(prev => prev.map(p => p.id === editingPostId ? updatedPost : p));
                         saveToIDB('dynamicPosts', updatedPost);
-
-                        if (db) {
-                            await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(editingPostId).set(updatedPost, { merge: true });
-                        }
-
+                        if (db) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(editingPostId).set(updatedPost, { merge: true });
                         showToast('수정되었습니다.');
-                        setEditingPostId(null);
                     }
                     // ---------------------------------------------------------
-                    // ✅ [Case 2] 새로 만들기 (데이터 신규 저장)
+                    // ✅ [Case 2] 새로 만들기
                     // ---------------------------------------------------------
                     else {
                         const newPost = {
                             id: 'post_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
                             appId: currentApp.id,
                             type: currentApp.actionType === 'form' ? 'form_submit' : 'post',
-                            author: author,
+                            author,
                             authorId: appUser ? appUser.empId : 'guest',
                             content: finalContent,
                             photos: submitFormState.photos || [],
@@ -1688,21 +1686,15 @@
                             readUsers: [appUser ? appUser.empId : 'guest']
                         };
 
-                        // 화면에 즉시 반영
                         setDynamicPosts(prev => [newPost, ...(prev || [])]);
-
-                        // 저장 로직
                         saveToIDB('dynamicPosts', newPost);
-                        if (db) {
-                            await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newPost.id).set(newPost);
-                        }
-
+                        if (db) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newPost.id).set(newPost);
                         showToast('성공적으로 등록되었습니다!');
                     }
 
-                    // 5️⃣ 공통 마무리 (초기화)
+                    // 5️⃣ 공통 마무리 (깔끔하게 비우기)
                     setSubmitFormState({ content: '', photos: [], authorName: '', isPinned: false });
-                    if (typeof setFormValues === 'function') setFormValues({});
+                    setEditingPostId(null);
                     if (openedSubmitForm) setOpenedSubmitForm(null);
 
                 } catch (err) {
@@ -3164,11 +3156,17 @@
                                                                     {/* 폼 제출형 */}
                                                                     {app.actionType === 'form' && (
                                                                         <button onClick={() => {
-                                                                            setOpenedSubmitForm(app);
-                                                                            (dynamicPosts || []).filter(p => p.appId === app.id).forEach(p => markAsRead(p.id));
-                                                                        }} className="w-full bg-teal-50 dark:bg-teal-900/20 text-teal-600 font-black py-3 rounded-xl btn-press text-xs border border-teal-200 dark:border-teal-800">폼 열기 / 제출</button>
-                                                                    )}
+                                                                            // 1. 바구니(formValues)를 빈 상태로 초기화 (✨ 추가!)
+                                                                            if (typeof setFormValues === 'function') setFormValues({});
 
+                                                                            // 2. 폼 열기
+                                                                            setOpenedSubmitForm(app);
+
+                                                                            // 3. 읽음 처리 로직 (기존 코드)
+                                                                            (dynamicPosts || []).filter(p => p.id === app.id).forEach(p => markAsRead(p.id));
+
+                                                                        }} className="...">폼 열기 / 제출</button>
+                                                                    )}
                                                                     {/* 일반 게시판형 */}
                                                                     {app.actionType === 'board' && (
                                                                         <button onClick={() => {
