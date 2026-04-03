@@ -1616,91 +1616,98 @@
             };
 
             const handleGenericPostSubmit = async () => {
-                // 1️⃣ 작성자 결정
-                const author = appUser ? appUser.name : submitFormState.authorName;
+                try {
+                    // 1️⃣ 작성자 결정 (로그인 유저 우선, 아니면 입력한 이름)
+                    const author = appUser ? appUser.name : submitFormState.authorName;
 
-                // 2️⃣ 폼 데이터 가공 (질문 답변들을 content에 담기)
-                let finalContent = submitFormState.content;
-                const currentApp = openedApp || openedDynamicApp || openedSubmitForm;
+                    // 2️⃣ 현재 열린 앱 정보 (형님 코드에 실제 있는 변수만 사용)
+                    const currentApp = openedDynamicApp || openedSubmitForm;
 
-                if (currentApp?.actionType === 'form') {
-                    const isAnyEmpty = currentApp.fields?.some(f => !formValues[f.id]?.trim());
-                    if (isAnyEmpty) return showToast('모든 질문 항목을 입력해주세요.', true);
-                    finalContent = JSON.stringify(formValues); // 답변들을 JSON 문자열로 변환
-                }
+                    if (!currentApp) {
+                        return showToast('앱 정보를 찾을 수 없습니다.', true);
+                    }
 
-                // 3️⃣ 유효성 검사
-                if (!author) return showToast('작성자 성함을 입력해주세요.', true);
-                if (!finalContent?.trim()) return showToast('내용을 입력해주세요.', true);
+                    // 3️⃣ 폼 데이터 가공 (질문 답변들을 content에 담기)
+                    let finalContent = submitFormState.content;
 
-                // ---------------------------------------------------------
-                // ✅ [Case 1] 수정 모드 (기존 데이터 업데이트)
-                // ---------------------------------------------------------
-                if (editingPostId) {
-                    const original = (dynamicPosts || []).find(p => p.id === editingPostId);
-                    if (!original) return showToast('게시글을 찾을 수 없습니다.', true);
+                    // 양식 제출형일 때만 실행
+                    if (currentApp.actionType === 'form') {
+                        if (currentApp.fields && currentApp.fields.length > 0) {
+                            // formValues가 질문 답변들을 들고 있는 바구니가 맞는지 확인!
+                            const isAnyEmpty = currentApp.fields.some(f => !formValues[f.id]?.trim());
+                            if (isAnyEmpty) return showToast('모든 질문 항목을 입력해주세요.', true);
 
-                    const updatedPost = {
-                        ...original,
-                        author: author,
-                        content: finalContent,
-                        photos: submitFormState.photos || original.photos || [],
-                        isPinned: submitFormState.isPinned || false,
-                        updatedAt: new Date().toISOString()
-                    };
+                            finalContent = JSON.stringify(formValues);
+                        }
+                    }
 
-                    try {
+                    // 4️⃣ 유효성 검사
+                    if (!author) return showToast('작성자 성함을 입력해주세요.', true);
+                    if (!finalContent?.trim()) return showToast('내용을 입력해주세요.', true);
+
+                    // ---------------------------------------------------------
+                    // ✅ [Case 1] 수정 모드 (editingPostId가 있을 때)
+                    // ---------------------------------------------------------
+                    if (editingPostId) {
+                        const original = (dynamicPosts || []).find(p => p.id === editingPostId);
+                        if (!original) return showToast('게시글을 찾을 수 없습니다.', true);
+
+                        const updatedPost = {
+                            ...original,
+                            author: author,
+                            content: finalContent,
+                            photos: submitFormState.photos || original.photos || [],
+                            isPinned: submitFormState.isPinned || false,
+                            updatedAt: new Date().toISOString()
+                        };
+
                         setDynamicPosts(prev => prev.map(p => p.id === editingPostId ? updatedPost : p));
                         saveToIDB('dynamicPosts', updatedPost);
-                        if (db) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(editingPostId).set(updatedPost, { merge: true });
+
+                        if (db) {
+                            await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(editingPostId).set(updatedPost, { merge: true });
+                        }
 
                         showToast('수정되었습니다.');
                         setEditingPostId(null);
-                        setSubmitFormState({ content: '', photos: [], authorName: '', isPinned: false });
-                        if (typeof setFormValues === 'function') setFormValues({});
-                    } catch (e) { showToast('수정 실패', true); }
-                    return;
-                }
+                    }
+                    // ---------------------------------------------------------
+                    // ✅ [Case 2] 새로 만들기 (데이터 신규 저장)
+                    // ---------------------------------------------------------
+                    else {
+                        const newPost = {
+                            id: 'post_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                            appId: currentApp.id,
+                            type: currentApp.actionType === 'form' ? 'form_submit' : 'post',
+                            author: author,
+                            authorId: appUser ? appUser.empId : 'guest',
+                            content: finalContent,
+                            photos: submitFormState.photos || [],
+                            isPinned: submitFormState.isPinned || false,
+                            createdAt: new Date().toISOString(),
+                            readUsers: [appUser ? appUser.empId : 'guest']
+                        };
 
-                // ---------------------------------------------------------
-                // ✅ [Case 2] 새로 만들기 (데이터 신규 저장)
-                // ---------------------------------------------------------
-                const newPost = {
-                    id: 'post_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-                    appId: currentApp?.id,
-                    type: currentApp?.actionType === 'form' ? 'form_submit' : 'post',
-                    author: author,
-                    authorId: appUser ? appUser.empId : 'guest',
-                    content: finalContent, // 👈 여기서 가공된 JSON 답변이 들어감
-                    photos: submitFormState.photos || [],
-                    isPinned: submitFormState.isPinned || false,
-                    createdAt: new Date().toISOString(),
-                    readUsers: [appUser ? appUser.empId : 'guest']
-                };
+                        // 화면에 즉시 반영
+                        setDynamicPosts(prev => [newPost, ...(prev || [])]);
 
-                try {
-                    // 1. 화면에 즉시 반영
-                    setDynamicPosts(prev => [newPost, ...(prev || [])]);
+                        // 저장 로직
+                        saveToIDB('dynamicPosts', newPost);
+                        if (db) {
+                            await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newPost.id).set(newPost);
+                        }
 
-                    // 2. 로컬 DB(IDB) 저장
-                    saveToIDB('dynamicPosts', newPost);
-
-                    // 3. 서버(Firebase) 저장
-                    if (db) {
-                        const path = `artifacts/${appId}/public/data/dynamic_posts`;
-                        await db.collection(path).doc(newPost.id).set(newPost);
+                        showToast('성공적으로 등록되었습니다!');
                     }
 
-                    showToast('성공적으로 등록되었습니다!');
-
-                    // 4. 입력창 및 상태 초기화
+                    // 5️⃣ 공통 마무리 (초기화)
                     setSubmitFormState({ content: '', photos: [], authorName: '', isPinned: false });
                     if (typeof setFormValues === 'function') setFormValues({});
                     if (openedSubmitForm) setOpenedSubmitForm(null);
 
-                } catch (e) {
-                    console.error("제출 에러:", e);
-                    showToast('등록 실패', true);
+                } catch (err) {
+                    console.error("제출 에러 상세:", err);
+                    showToast('등록 중 오류가 발생했습니다.', true);
                 }
             };
 
