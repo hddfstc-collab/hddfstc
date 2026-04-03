@@ -2159,20 +2159,36 @@
                             </h3>
                         </div>
 
-                        <div className="space-y-3">
+                        /* 1. 뚜껑에 스크롤을 뚫어줍니다 (max-h와 overflow-y-auto 추가) */
+                        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
                             {posts.map(p => {
                                 const isUnread = !readPostIds.includes(p.id);
                                 const isPinned = p.isPinned;
                                 const images = Array.isArray(p.photos) && p.photos.length > 0 ? p.photos : (p.photo ? [p.photo] : (typeof p.photos === 'string' ? [p.photos] : []));
 
-                                // ✨ 줄바꿈을 원천 차단하여 '첫 줄'만 추출!
-                                const rawText = p.title || p.content || (app.fields && p[app.fields[0]?.id]) || '내용 없음';
-                                const firstLine = rawText.split('\n')[0];
+                                // 🟢 2. [암호 해독기] JSON 덩어리를 예쁜 글자로 변환
+                                const getCleanText = () => {
+                                    if (p.title) return p.title; // 제목이 있으면 제목 사용
+
+                                    try {
+                                        // 내용이 {"q_1...":"값"} 형태인지 확인
+                                        const parsed = JSON.parse(p.content);
+                                        if (typeof parsed === 'object' && parsed !== null) {
+                                            // 해독 성공! 값들만 뽑아서 "사번 / 브랜드 / 인원" 형태로 합침
+                                            return Object.values(parsed).filter(v => v).join(' / ');
+                                        }
+                                    } catch (e) {
+                                        // 일반 글이면 에러 나니까 그냥 원래 내용 반환
+                                    }
+                                    return p.content || '내용 없음';
+                                };
+
+                                const rawText = getCleanText();
+                                const firstLine = rawText.split('\n')[0]; // 첫 줄만 추출
 
                                 return (
                                     <div
                                         key={p.id}
-                                        // 👇✨ 바로 이 부분! 칙칙한 회색을 빼고 앱 고유 배경색(app.bg)으로 완벽 복구했습니다! 👇
                                         className={`p-4 rounded-3xl border relative group cursor-pointer transition-colors ${isPinned
                                             ? `${app.bg || 'bg-stone-100'} border-transparent dark:bg-stone-800`
                                             : 'bg-stone-50 dark:bg-stone-800/50 border-stone-100 dark:border-stone-700 hover:border-teal-200'
@@ -2183,8 +2199,8 @@
                                             <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                                 {isUnread && <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${app.color.replace('text-', 'bg-')}`}></div>}
                                                 <p className="text-[12px] font-bold text-stone-800 dark:text-stone-200 truncate flex-1">
-                                                    {/* ✨ 핀 아이콘 추가 및 앱 테마 색상 연동 */}
                                                     {isPinned && <Icon name="pin" size={10} className={`inline mr-1 mb-0.5 ${app.color}`} />}
+                                                    {/* 🔴 해독된 예쁜 글자(firstLine)가 나옵니다! */}
                                                     {firstLine}
                                                 </p>
                                             </div>
@@ -2193,7 +2209,7 @@
                                             </div>
                                         </div>
 
-                                        {/* 썸네일 노출 */}
+                                        {/* 썸네일 영역 */}
                                         {images.length > 0 && (
                                             <div className="flex gap-1.5 mt-3">
                                                 {images.slice(0, 5).map((img, i) => (
