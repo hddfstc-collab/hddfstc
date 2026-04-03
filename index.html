@@ -502,23 +502,7 @@
                 }
             ]);
             const [dynamicPosts, setDynamicPosts] = useState([]);
-            /* --- 이 함수를 적당한 곳에 새로 추가하세요 --- */
-            const handleReservationCancel = async (resId) => {
-                try {
-                    // 1. 서버(Firebase)에서 삭제
-                    if (db && fbUser) {
-                        await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(resId).delete();
-                    }
 
-                    // 2. 🔥 핵심: 화면에서 즉시 지우기 (이게 없으면 데이터가 남음)
-                    setDynamicPosts(prev => (prev || []).filter(p => p.id !== resId));
-
-                    showToast('예약이 정상적으로 취소되었습니다.');
-                } catch (e) {
-                    console.error("취소 실패:", e);
-                    showToast('취소 중 오류가 발생했습니다.', true);
-                }
-            };
             const [notices, setNotices] = useState([]);
 
             const [expandedDailyCards, setExpandedDailyCards] = useState({});
@@ -1747,7 +1731,39 @@
             const handleDeleteNotice = (id) => { setConfirmDialog({ isOpen: true, message: "이 공지사항을 삭제하시겠습니까?", onConfirm: async () => { setConfirmDialog({ isOpen: false }); try { setNotices(prev => prev.filter(x => x.id !== id)); deleteFromIDB('notices', id); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/notices`).doc(id).delete(); showToast('삭제 완료'); setOpenedAdminBoard(null); } catch (e) { showToast('삭제 실패', true); } }, onCancel: () => setConfirmDialog({ isOpen: false }) }); };
             const handleDeleteExt = (id) => { setConfirmDialog({ isOpen: true, message: "이 내선번호를 삭제하시겠습니까?", onConfirm: async () => { setConfirmDialog({ isOpen: false }); try { setExtensions(prev => prev.filter(x => x.id !== id)); deleteFromIDB('extensions', id); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/extensions`).doc(id).delete(); showToast('삭제 완료'); } catch (e) { showToast('삭제 실패', true); } }, onCancel: () => setConfirmDialog({ isOpen: false }) }); };
             const handleDeleteMember = (id) => { setConfirmDialog({ isOpen: true, message: "이 구성원을 삭제하시겠습니까?", onConfirm: async () => { setConfirmDialog({ isOpen: false }); try { setUsers(prev => prev.filter(x => x.empId !== id)); deleteFromIDB('users', id); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/users`).doc(id).delete(); showToast('삭제 완료'); } catch (e) { showToast('삭제 실패', true); } }, onCancel: () => setConfirmDialog({ isOpen: false }) }); };
-            const handleReservationCancel = (postId) => { setConfirmDialog({ isOpen: true, message: "예약을 취소하시겠습니까?", onConfirm: async () => { setConfirmDialog({ isOpen: false }); try { setDynamicPosts(prev => prev.filter(p => p.id !== postId)); deleteFromIDB('dynamicPosts', postId); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(postId).delete(); showToast('예약이 취소되었습니다.'); } catch (e) { showToast('취소 실패', true); } }, onCancel: () => setConfirmDialog({ isOpen: false }) }); };
+            /* ✅ 1609라인 근처의 기존 handleReservationCancel를 이걸로 교체하세요 */
+            const handleReservationCancel = (postId) => {
+                const targetPost = dynamicPosts.find(p => p.id === postId);
+                if (!targetPost) return;
+
+                // 1. 관리자이거나 로그인한 본인인 경우 -> 바로 확인 창
+                const isOwner = fbUser && targetPost.userId === fbUser.uid;
+                const isResAdmin = isAdminAuth || (appUser && appUser.empId === openedReservationApp?.resOperatorId);
+
+                if (isSystemAdmin || isResAdmin || isOwner) {
+                    setConfirmDialog({
+                        isOpen: true,
+                        message: "예약을 취소하시겠습니까?",
+                        onConfirm: async () => {
+                            setConfirmDialog({ isOpen: false });
+                            try {
+                                setDynamicPosts(prev => prev.filter(p => p.id !== postId));
+                                deleteFromIDB('dynamicPosts', postId);
+                                if (db) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(postId).delete();
+                                showToast('예약이 취소되었습니다.');
+                            } catch (e) {
+                                showToast('취소 실패', true);
+                            }
+                        },
+                        onCancel: () => setConfirmDialog({ isOpen: false })
+                    });
+                } else {
+                    // 2. 비회원인 경우 -> 우리가 만든 '비밀번호 입력 모달' 띄우기
+                    // (이 부분은 이미 다른 버튼에서 setCancelGuestInfo를 호출하고 있으므로 
+                    // 여기서는 권한 없음을 알려주거나 비번 모달로 연결합니다.)
+                    setCancelGuestInfo({ posts: [targetPost] });
+                }
+            };
             const handleDeleteDynamicPost = (e, postId) => { e.stopPropagation(); setConfirmDialog({ isOpen: true, message: "이 데이터를 삭제하시겠습니까?", onConfirm: async () => { setConfirmDialog({ isOpen: false }); try { setDynamicPosts(prev => prev.filter(p => p.id !== postId)); deleteFromIDB('dynamicPosts', postId); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(postId).delete(); showToast('삭제되었습니다.'); } catch (err) { showToast('삭제 실패', true); } }, onCancel: () => setConfirmDialog({ isOpen: false }) }); };
 
             const handleResetPassword = (empId) => {
