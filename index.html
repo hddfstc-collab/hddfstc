@@ -4152,9 +4152,9 @@
                                         </div>
 
                                         <div><label className="text-[10px] font-black text-stone-500 ml-2">브랜드명 (필수)</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="예: 샤넬" value={resInput.brand} onChange={e => setResInput({ ...resInput, brand: e.target.value })} /></div>
-                                        <div><label className="text-[10px] font-black text-stone-500 ml-2">성명/직급 (필수)</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="예: 홍길동 사원" value={resInput.name} onChange={e => setResInput({ ...resInput, name: e.target.value })} /></div>
+                                        <div><label className="text-[10px] font-black text-stone-500 ml-2">성명 (필수)</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="예: 홍길동 사원" value={resInput.name} onChange={e => setResInput({ ...resInput, name: e.target.value })} /></div>
                                         <div><label className="text-[10px] font-black text-stone-500 ml-2">내선번호</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="예: 6011" value={resInput.ext} onChange={e => setResInput({ ...resInput, ext: e.target.value })} /></div>
-
+                                        <div><label className="text-[10px] font-black text-stone-500 ml-2">기타 </label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="전달사항을 남겨주세요." value={resInput.note} onChange={e => setResInput({ ...resInput, note: e.target.value })} /></div>
                                         {/* ✨ 추가: 비회원 전용 비밀번호 필드 */}
                                         {!isLoggedIn && (
                                             <div className="bg-rose-50/50 dark:bg-rose-900/10 p-3 rounded-2xl border border-rose-100 dark:border-rose-800">
@@ -4171,7 +4171,7 @@
                                             </div>
                                         )}
 
-                                        <div><label className="text-[10px] font-black text-stone-500 ml-2">기타 (하고 싶은 말)</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="전달사항을 남겨주세요." value={resInput.note} onChange={e => setResInput({ ...resInput, note: e.target.value })} /></div>
+                                        
 
                                         <div className="flex gap-2 mt-4">
                                             <button onClick={() => { setResPrompt(null); setResInput({ brand: '', name: '', ext: '', note: '', password: '' }); }} className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-4 rounded-2xl btn-press text-[12px]">취소</button>
