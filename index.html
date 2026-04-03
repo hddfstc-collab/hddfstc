@@ -622,6 +622,7 @@
             const [blacklists, setBlacklists] = useState([]);
             const [cancelGuestInfo, setCancelGuestInfo] = useState(null);
             const [cancelGuestName, setCancelGuestName] = useState('');
+            const [cancelGuestPassword, setCancelGuestPassword] = useState('');
             const [eventForm, setEventForm] = useState({ title: '', prize: '', target: 'daily', type: 'random', winnerCount: 1, quizQuestion: '', quizAnswer: '', teamCount: 2 });
             const [quizAnswer, setQuizAnswer] = useState('');
             const [spinDisplay, setSpinDisplay] = useState('');
@@ -735,7 +736,7 @@
 
             const [openedReservationApp, setOpenedReservationApp] = useState(null);
             const [resSelectedDate, setResSelectedDate] = useState(todayStr);
-            const [resForm, setResForm] = useState({ operatorId: '', slots: '', max: 1, lDays: 0, lHours: 0 });
+            const [resForm, setResForm] = useState({ operatorId: '', slots: '', max: 1, lDays: 0, lHours: 0, password: '' });
             const [resPrompt, setResPrompt] = useState(null);
             const [resInput, setResInput] = useState({ brand: '', name: '', ext: '', note: '' });
             const [blacklistInput, setBlacklistInput] = useState({ brand: '', name: '' });
@@ -1494,12 +1495,21 @@
             };
 
             const submitCustomRes = async () => {
+                // 1. 기본 입력값 체크
                 if (!resInput.brand || !resInput.name) return showToast('브랜드명과 이름을 입력해주세요.', true);
+
+                // 2. 비회원(로그아웃 상태)일 경우 비밀번호 4자리 필수 체크
+                if (!appUser && (!resInput.password || resInput.password.length < 4)) {
+                    return showToast('취소 시 필요한 비밀번호 4자리를 입력해주세요.', true);
+                }
+
+                // 3. 블랙리스트 체크
                 const isBlacklisted = blacklists.some(b => b.name === resInput.name && b.brand === resInput.brand);
                 if (isBlacklisted) return showToast('해당 정보로는 예약할 수 없습니다. 관리자에게 문의하세요.', true);
 
                 const isResAdmin = isAdminAuth || (appUser && appUser.empId === openedReservationApp?.resOperatorId);
 
+                // 4. 예약 가능 여부 및 시간 체크 (관리자 아닐 때만)
                 if (!isResAdmin) {
                     const maxPerSlot = openedReservationApp?.resMaxPerSlot || 1;
                     try {
@@ -1529,9 +1539,35 @@
                     if (slotTime.getTime() - leadTimeMs <= Date.now()) return showToast('예약 마감 시간이 지났습니다.', true);
                 }
 
+                // 5. 새 예약 객체 생성 (비회원일 경우만 cancelPassword 포함)
                 const authorName = `${resInput.brand} ${resInput.name}`;
-                const newRes = { id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5), appId: openedReservationApp.id, type: 'reservation', resDate: resSelectedDate, resTime: resPrompt, author: authorName, ext: resInput.ext, content: resInput.note, authorId: appUser ? appUser.empId : `guest_${Date.now()}`, createdAt: new Date().toISOString() };
-                try { setDynamicPosts([newRes, ...(dynamicPosts || [])]); saveToIDB('dynamicPosts', newRes); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newRes.id).set(newRes); showToast(`[${resSelectedDate} ${resPrompt}] 예약이 완료되었습니다!`); setResPrompt(null); setResInput({ brand: '', name: '', ext: '', note: '' }); } catch (e) { showToast('예약 실패', true); }
+                const newRes = {
+                    id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5),
+                    appId: openedReservationApp.id,
+                    type: 'reservation',
+                    resDate: resSelectedDate,
+                    resTime: resPrompt,
+                    author: authorName,
+                    ext: resInput.ext,
+                    content: resInput.note,
+                    authorId: appUser ? appUser.empId : `guest_${Date.now()}`,
+                    cancelPassword: appUser ? null : resInput.password, // ✨ 비회원만 비번 저장
+                    createdAt: new Date().toISOString()
+                };
+
+                // 6. 데이터 저장 및 상태 업데이트
+                try {
+                    setDynamicPosts([newRes, ...(dynamicPosts || [])]);
+                    saveToIDB('dynamicPosts', newRes);
+                    if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newRes.id).set(newRes);
+
+                    showToast(`[${resSelectedDate} ${resPrompt}] 예약이 완료되었습니다!`);
+                    setResPrompt(null);
+                    // 성공 시 입력창 싹 비우기 (비밀번호 포함)
+                    setResInput({ brand: '', name: '', ext: '', note: '', password: '' });
+                } catch (e) {
+                    showToast('예약 실패', true);
+                }
             };
 
             const handleGenericPostSubmit = async () => {
@@ -3646,7 +3682,23 @@
                                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="사번 (필수)" value={memberForm.empId} onChange={e => setMemberForm({ ...memberForm, empId: e.target.value })} /><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="성명 (필수)" value={memberForm.name} onChange={e => setMemberForm({ ...memberForm, name: e.target.value })} /><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="소속 파트" value={memberForm.part} onChange={e => setMemberForm({ ...memberForm, part: e.target.value })} /><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="직급 (사원, 대리...)" value={memberForm.position} onChange={e => setMemberForm({ ...memberForm, position: e.target.value })} /><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="담당 카테고리 (예: C&P, LTSF)" value={memberForm.category} onChange={e => setMemberForm({ ...memberForm, category: e.target.value })} /><select className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-4 text-xs font-bold outline-none focus:border-indigo-400" value={memberForm.jobTitle} onChange={e => setMemberForm({ ...memberForm, jobTitle: e.target.value })}><option value="일반">일반 사원</option><option value="영업관리자">영업관리자</option><option value="파트장">파트장</option><option value="점장">점장</option></select><input className="col-span-1 sm:col-span-2 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="담당 브랜드 (예: 샤넬, 디올, 에스티로더)" value={memberForm.brands || ''} onChange={e => setMemberForm({ ...memberForm, brands: e.target.value })} /><input className="col-span-1 sm:col-span-2 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="비밀번호 재설정 (비워둘 시 기존 유지 또는 사번)" value={memberForm.password || ''} onChange={e => setMemberForm({ ...memberForm, password: e.target.value })} /></div>
                                                             <button onClick={handleMemberSubmit} className="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-xs">저장</button>
                                                         </div>
-
+                                                        <div className="pt-10 pb-2 flex flex-col items-center">
+                                                            <p className="text-[10px] font-bold text-stone-400 mb-2">입력한 내용을 모두 지우고 싶으신가요?</p>
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (confirm('입력 중인 모든 내용을 지우고 초기화할까요?')) {
+                                                                        setMemberForm({
+                                                                            empId: '', name: '', part: '', position: '',
+                                                                            category: '', jobTitle: '일반', brands: '', password: ''
+                                                                        });
+                                                                        showToast('입력창이 깨끗하게 비워졌습니다.');
+                                                                    }
+                                                                }}
+                                                                className="text-[11px] font-black text-stone-400 underline underline-offset-4 hover:text-rose-400 transition-colors btn-press"
+                                                            >
+                                                                입력 폼 데이터 초기화하기
+                                                            </button>
+                                                        </div>
                                                         <div className="bg-white dark:bg-stone-900 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-800">
                                                             <div className="space-y-4 mb-4">
                                                                 {/* ✨ 넓고 편리해진 검색창 */}
@@ -3713,7 +3765,18 @@
                                                                                 <div className="flex justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 sm:border-l border-stone-200 dark:border-stone-600 pl-2">
                                                                                     <button onClick={() => handleResetPassword(u.empId)} className="text-white bg-amber-500 hover:bg-amber-600 p-2.5 rounded-xl btn-press shadow-sm"><Icon name="wrench" size={16} /></button>
                                                                                     <button onClick={() => { setMemberForm({ ...u, password: '' }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="text-white bg-teal-500 hover:bg-teal-600 p-2.5 rounded-xl btn-press shadow-sm"><Icon name="edit" size={16} /></button>
-                                                                                    <button onClick={() => handleDeleteMember(u.empId)} className="text-white bg-rose-400 hover:bg-rose-500 p-2.5 rounded-xl btn-press shadow-sm"><Icon name="trash" size={16} /></button>
+                                                                                    /* --- 수정된 삭제 버튼 코드 --- */
+                                                                                    <button
+                                                                                        type="button" // 👈 1. 폼 전송(새로고침)을 방지하는 핵심 설정입니다!
+                                                                                        onClick={(e) => {
+                                                                                            e.preventDefault();  // 👈 2. 브라우저의 기본 동작을 막습니다.
+                                                                                            e.stopPropagation(); // 👈 3. 부모 요소의 클릭 이벤트가 실행되지 않게 막습니다.
+                                                                                            handleDeleteMember(u.empId);
+                                                                                        }}
+                                                                                        className="text-white bg-rose-400 hover:bg-rose-500 p-2.5 rounded-xl btn-press shadow-sm"
+                                                                                    >
+                                                                                        <Icon name="trash" size={16} />
+                                                                                    </button>
                                                                                 </div>
                                                                             </div>
                                                                         );
@@ -4081,15 +4144,37 @@
 
                         {
                             resPrompt && (
-                                <ModalWrapper title="예약 정보 입력" icon="calendar" onClose={() => { setResPrompt(null); setResInput({ brand: '', name: '', ext: '', note: '' }); }}>
+                                <ModalWrapper title="예약 정보 입력" icon="calendar" onClose={() => { setResPrompt(null); setResInput({ brand: '', name: '', ext: '', note: '', password: '' }); }}>
                                     <div className="space-y-4">
-                                        <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 p-4 rounded-2xl mb-2 text-center"><p className="text-[12px] font-black text-indigo-700 dark:text-indigo-300">[{resSelectedDate} / {resPrompt}]</p><p className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1 font-bold">예약에 필요한 정보를 입력해 주세요.</p></div>
+                                        <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 p-4 rounded-2xl mb-2 text-center">
+                                            <p className="text-[12px] font-black text-indigo-700 dark:text-indigo-300">[{resSelectedDate} / {resPrompt}]</p>
+                                            <p className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1 font-bold">예약에 필요한 정보를 입력해 주세요.</p>
+                                        </div>
+
                                         <div><label className="text-[10px] font-black text-stone-500 ml-2">브랜드명 (필수)</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="예: 샤넬" value={resInput.brand} onChange={e => setResInput({ ...resInput, brand: e.target.value })} /></div>
                                         <div><label className="text-[10px] font-black text-stone-500 ml-2">성명/직급 (필수)</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="예: 홍길동 사원" value={resInput.name} onChange={e => setResInput({ ...resInput, name: e.target.value })} /></div>
                                         <div><label className="text-[10px] font-black text-stone-500 ml-2">내선번호</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="예: 6011" value={resInput.ext} onChange={e => setResInput({ ...resInput, ext: e.target.value })} /></div>
+
+                                        {/* ✨ 추가: 비회원 전용 비밀번호 필드 */}
+                                        {!isLoggedIn && (
+                                            <div className="bg-rose-50/50 dark:bg-rose-900/10 p-3 rounded-2xl border border-rose-100 dark:border-rose-800">
+                                                <label className="text-[10px] font-black text-rose-500 ml-2">🔒 취소 비밀번호 (숫자 4자리)</label>
+                                                <input
+                                                    type="password"
+                                                    inputMode="numeric"
+                                                    maxLength="4"
+                                                    className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-5 py-3 text-xs font-bold outline-none focus:border-rose-400"
+                                                    placeholder="본인 확인용 숫자 4자리"
+                                                    value={resInput.password || ''}
+                                                    onChange={e => setResInput({ ...resInput, password: e.target.value.replace(/[^0-9]/g, '') })}
+                                                />
+                                            </div>
+                                        )}
+
                                         <div><label className="text-[10px] font-black text-stone-500 ml-2">기타 (하고 싶은 말)</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="전달사항을 남겨주세요." value={resInput.note} onChange={e => setResInput({ ...resInput, note: e.target.value })} /></div>
+
                                         <div className="flex gap-2 mt-4">
-                                            <button onClick={() => { setResPrompt(null); setResInput({ brand: '', name: '', ext: '', note: '' }); }} className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-4 rounded-2xl btn-press text-[12px]">취소</button>
+                                            <button onClick={() => { setResPrompt(null); setResInput({ brand: '', name: '', ext: '', note: '', password: '' }); }} className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-4 rounded-2xl btn-press text-[12px]">취소</button>
                                             <button onClick={submitCustomRes} className="flex-1 bg-teal-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[12px]">예약 확정</button>
                                         </div>
                                     </div>
@@ -4099,19 +4184,31 @@
                         {
                             cancelGuestInfo && (
                                 <ModalWrapper
-                                    title="예약 취소 확인"
-                                    icon="alertCircle"
-                                    onClose={() => setCancelGuestInfo(null)}
+                                    title="본인 확인"
+                                    icon="lock"
+                                    onClose={() => { setCancelGuestInfo(null); setCancelGuestPassword(''); }}
                                 >
                                     <div className="space-y-4">
-                                        <p className="text-center text-[12px] font-black text-stone-700 dark:text-stone-200">
-                                            본인 예약을 취소하시겠습니까?
-                                        </p>
+                                        <div className="text-center">
+                                            <p className="text-[13px] font-black text-stone-700 dark:text-stone-200">비밀번호 확인</p>
+                                            <p className="text-[10px] text-stone-500 mt-1">예약 시 설정한 비밀번호 4자리를 입력하세요.</p>
+                                        </div>
+
+                                        {/* 🔑 비밀번호 입력 칸 */}
+                                        <input
+                                            type="password"
+                                            inputMode="numeric"
+                                            maxLength="4"
+                                            className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-center text-xl font-black tracking-widest outline-none focus:border-rose-500"
+                                            placeholder="****"
+                                            value={cancelGuestPassword || ''}
+                                            onChange={e => setCancelGuestPassword(e.target.value.replace(/[^0-9]/g, ''))}
+                                        />
 
                                         <div className="flex gap-2">
                                             <button
-                                                onClick={() => setCancelGuestInfo(null)}
-                                                className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-3 rounded-xl btn-press"
+                                                onClick={() => { setCancelGuestInfo(null); setCancelGuestPassword(''); }}
+                                                className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-3 rounded-xl btn-press text-xs"
                                             >
                                                 닫기
                                             </button>
@@ -4120,14 +4217,25 @@
                                                 onClick={(e) => {
                                                     e.preventDefault();
                                                     e.stopPropagation();
-                                                    cancelGuestInfo.posts.forEach(p => {
-                                                        handleReservationCancel(p.id);
-                                                    });
-                                                    setCancelGuestInfo(null);
+
+                                                    // 🧐 비밀번호 검증 로직
+                                                    // 비회원 예약 데이터(posts[0])에 저장된 cancelPassword와 입력한 비번 대조
+                                                    const targetPost = cancelGuestInfo.posts[0];
+
+                                                    if (targetPost && targetPost.cancelPassword === cancelGuestPassword) {
+                                                        cancelGuestInfo.posts.forEach(p => {
+                                                            handleReservationCancel(p.id);
+                                                        });
+                                                        showToast('본인 확인 완료! 예약이 취소되었습니다.');
+                                                        setCancelGuestInfo(null);
+                                                        setCancelGuestPassword('');
+                                                    } else {
+                                                        showToast('비밀번호가 일치하지 않습니다.', true);
+                                                    }
                                                 }}
-                                                className="flex-1 bg-rose-600 text-white font-black py-3 rounded-xl btn-press"
+                                                className="flex-1 bg-rose-600 text-white font-black py-3 rounded-xl btn-press text-xs"
                                             >
-                                                예약 취소 확정
+                                                확인 및 취소
                                             </button>
                                         </div>
                                     </div>
