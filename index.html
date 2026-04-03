@@ -4145,7 +4145,8 @@
                         {
                             resPrompt && (
                                 <ModalWrapper title="예약 정보 입력" icon="calendar" onClose={() => { setResPrompt(null); setResInput({ brand: '', name: '', ext: '', note: '', password: '' }); }}>
-                                    <div className="space-y-4">
+                                    {/* 📜 1. 입력 필드 영역: 최대 높이를 제한하고 스크롤 적용 */}
+                                    <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scroll">
                                         <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 p-4 rounded-2xl mb-2 text-center">
                                             <p className="text-[12px] font-black text-indigo-700 dark:text-indigo-300">[{resSelectedDate} / {resPrompt}]</p>
                                             <p className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1 font-bold">예약에 필요한 정보를 입력해 주세요.</p>
@@ -4155,7 +4156,8 @@
                                         <div><label className="text-[10px] font-black text-stone-500 ml-2">성명 (필수)</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="예: 홍길동 사원" value={resInput.name} onChange={e => setResInput({ ...resInput, name: e.target.value })} /></div>
                                         <div><label className="text-[10px] font-black text-stone-500 ml-2">내선번호</label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="예: 6011" value={resInput.ext} onChange={e => setResInput({ ...resInput, ext: e.target.value })} /></div>
                                         <div><label className="text-[10px] font-black text-stone-500 ml-2">기타 </label><input className="w-full mt-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="전달사항을 남겨주세요." value={resInput.note} onChange={e => setResInput({ ...resInput, note: e.target.value })} /></div>
-                                        {/* ✨ 추가: 비회원 전용 비밀번호 필드 */}
+
+                                        {/* 비회원 전용 비밀번호 필드 */}
                                         {!isLoggedIn && (
                                             <div className="bg-rose-50/50 dark:bg-rose-900/10 p-3 rounded-2xl border border-rose-100 dark:border-rose-800">
                                                 <label className="text-[10px] font-black text-rose-500 ml-2">🔒 취소 비밀번호 (숫자 4자리)</label>
@@ -4170,13 +4172,12 @@
                                                 />
                                             </div>
                                         )}
+                                    </div>
 
-                                        
-
-                                        <div className="flex gap-2 mt-4">
-                                            <button onClick={() => { setResPrompt(null); setResInput({ brand: '', name: '', ext: '', note: '', password: '' }); }} className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-4 rounded-2xl btn-press text-[12px]">취소</button>
-                                            <button onClick={submitCustomRes} className="flex-1 bg-teal-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[12px]">예약 확정</button>
-                                        </div>
+                                    {/* 🔘 2. 하단 버튼 영역: 스크롤 영역 밖으로 빼서 고정 */}
+                                    <div className="flex gap-2 mt-6 pt-2 border-t border-stone-100 dark:border-stone-800">
+                                        <button onClick={() => { setResPrompt(null); setResInput({ brand: '', name: '', ext: '', note: '', password: '' }); }} className="flex-1 bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-black py-4 rounded-2xl btn-press text-[12px]">취소</button>
+                                        <button onClick={submitCustomRes} className="flex-1 bg-teal-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[12px]">예약 확정</button>
                                     </div>
                                 </ModalWrapper>
                             )
