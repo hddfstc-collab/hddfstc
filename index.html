@@ -502,6 +502,23 @@
                 }
             ]);
             const [dynamicPosts, setDynamicPosts] = useState([]);
+            /* --- 이 함수를 적당한 곳에 새로 추가하세요 --- */
+            const handleReservationCancel = async (resId) => {
+                try {
+                    // 1. 서버(Firebase)에서 삭제
+                    if (db && fbUser) {
+                        await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(resId).delete();
+                    }
+
+                    // 2. 🔥 핵심: 화면에서 즉시 지우기 (이게 없으면 데이터가 남음)
+                    setDynamicPosts(prev => (prev || []).filter(p => p.id !== resId));
+
+                    showToast('예약이 정상적으로 취소되었습니다.');
+                } catch (e) {
+                    console.error("취소 실패:", e);
+                    showToast('취소 중 오류가 발생했습니다.', true);
+                }
+            };
             const [notices, setNotices] = useState([]);
 
             const [expandedDailyCards, setExpandedDailyCards] = useState({});
@@ -4030,18 +4047,27 @@
                                                                 <div
                                                                     key={time}
                                                                     className={`p-4 rounded-2xl border text-center transition-colors relative ${myRes
-                                                                        ? 'bg-teal-50 dark:bg-teal-900/30 border-teal-500'
-                                                                        : isDisabled
-                                                                            ? 'bg-stone-100 dark:bg-stone-800 border-stone-200 dark:border-stone-700 opacity-60'
-                                                                            : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-700 shadow-sm cursor-pointer hover:border-teal-400 btn-press'
+                                                                            ? 'bg-teal-50 dark:bg-teal-900/30 border-teal-500'
+                                                                            : isDisabled
+                                                                                ? 'bg-stone-100 dark:bg-stone-800 border-stone-200 dark:border-stone-700 opacity-60'
+                                                                                : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-700 shadow-sm cursor-pointer hover:border-teal-400 btn-press'
                                                                         }`}
                                                                     onClick={() => {
-                                                                        if (isDisabled) {
-                                                                            if (isPast) return showToast('이미 지난 시간입니다.', true);
-                                                                            if (isDeadlinePassed) return showToast('예약 마감됨', true);
-                                                                            if (isFull) return showToast('마감되었습니다.', true);
-                                                                        }
+                                                                        // 1️⃣ 관리자 권한 확인 (관리자는 마감되어도 들어갈 수 있어야 함)
+                                                                        const isResAdmin = isAdminAuth || (appUser && appUser.empId === openedReservationApp?.resOperatorId);
+
+                                                                        // 2️⃣ 이미 내가 예약한 경우 차단
                                                                         if (myRes) return showToast('이미 예약하신 시간입니다.', true);
+
+                                                                        // 3️⃣ 비활성화(isDisabled) 상태일 때 처리
+                                                                        if (isDisabled && !isResAdmin) {
+                                                                            if (isPast) return showToast('이미 지난 시간입니다.', true);
+                                                                            if (isDeadlinePassed) return showToast('예약 마감 시간이 지났습니다.', true);
+                                                                            if (isFull) return showToast('마감되었습니다.', true); // 👈 여기서 return이 확실히 작동해야 창이 안 뜹니다.
+                                                                            return; // 기타 비활성화 상태 시 중단
+                                                                        }
+
+                                                                        // 4️⃣ 위 조건들을 모두 통과했을 때만 예약 입력창 오픈
                                                                         setResPrompt(time);
                                                                     }}
                                                                 >
