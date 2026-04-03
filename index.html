@@ -2629,28 +2629,79 @@
                                     <div className="space-y-4 fade-in max-w-5xl mx-auto">
                                         <div className="bg-white dark:bg-stone-900 p-4 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-sm flex items-center gap-3 focus-within:border-teal-500"><Icon name="search" size={20} className="text-stone-400 ml-2 shrink-0" /><input type="text" placeholder="사번, 이름, 소속, 업무 검색..." className="w-full bg-transparent outline-none font-bold text-[13px] text-stone-700 dark:text-stone-300" value={profileSearch} onChange={e => setProfileSearch(e.target.value)} /></div>
                                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pb-20">
+                                            /* --- 수정할 위치: viewMode === 'tasks' 내부의 searchedUsers.map 영역 (약 1127라인~) --- */
                                             {searchedUsers.map(u => {
-                                                const canEdit = canEditProfile(u.empId); const isExpanded = expandedProfiles[u.empId];
+                                                const canEdit = canEditProfile(u.empId);
+                                                const isExpanded = expandedProfiles[u.empId];
+                                                const isManager = (u.jobTitle || '').includes('점장') || (u.jobTitle || '').includes('영업관리자');
+
                                                 return (
                                                     <div key={u.empId} className={`bg-white dark:bg-stone-900 p-4 rounded-[1.2rem] border shadow-sm cursor-pointer ${canEdit ? 'hover:border-teal-400' : ''} ${appUser?.empId === u.empId ? 'border-teal-500/50 shadow-md ring-2 ring-teal-500/10' : 'border-stone-200 dark:border-stone-800'}`} onClick={() => setExpandedProfiles({ ...expandedProfiles, [u.empId]: !isExpanded })}>
-                                                        <div className="flex justify-between items-start">
-                                                            <div className="flex flex-col gap-1 w-full">
-                                                                <div className="flex items-center justify-between w-full">
-                                                                    <div className="flex items-baseline gap-1.5 min-w-0 flex-1"><span className="text-[15px] font-black text-stone-800 dark:text-stone-200">{u.name}</span><span className="text-[10px] text-stone-500 font-bold shrink-0">({u.position})</span></div>{u.jobTitle !== '일반' && <span className="text-[9px] font-black text-teal-600 bg-teal-50 dark:bg-teal-900/30 px-1.5 py-0.5 rounded shrink-0 truncate" style={{ maxWidth: '56px' }} title={u.jobTitle}>{u.jobTitle}</span>}
+                                                        <div className="flex flex-col gap-2">
+                                                            {/* 상단: 성함 및 직급 배지 영역 */}
+                                                            <div className="flex justify-between items-start">
+                                                                <div className="flex flex-col gap-1 min-w-0 flex-1">
+                                                                    {/* 성명: 한 줄로 고정하고 길면 생략 처리 */}
+                                                                    <span className="text-[15px] font-black text-stone-800 dark:text-stone-200 truncate" title={u.name}>
+                                                                        {u.name}
+                                                                    </span>
+
+                                                                    {/* 직급/직책 배지: 성함 밑으로 배치하여 줄바꿈 방지 */}
+                                                                    <div className="flex flex-wrap gap-1">
+                                                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${isManager ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-stone-50 text-stone-500 border-stone-100'} dark:bg-stone-800 dark:border-stone-700`}>
+                                                                            {u.position}
+                                                                        </span>
+                                                                        {u.jobTitle !== '일반' && (
+                                                                            <span className="text-[9px] font-black text-teal-600 bg-teal-50 dark:bg-teal-900/30 px-1.5 py-0.5 rounded border border-teal-100">
+                                                                                {u.jobTitle}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
-                                                                <div className="flex items-center justify-between w-full">
-                                                                    <div className="flex items-center gap-2 mt-0.5"><span className="text-[11px] font-bold text-stone-600 dark:text-stone-400">{u.part}</span><span className="text-[9px] font-bold text-stone-400 border-l border-stone-200 dark:border-stone-700 pl-2">사번: {u.empId}</span></div>
-                                                                    {canEdit && <button onClick={(e) => { e.stopPropagation(); setProfileForm({ name: u.name, part: u.part, category: u.category, brands: u.brands || '', extNumber: u.extNumber || '', position: u.position, jobTitle: u.jobTitle || '일반', password: '', targetEmpId: u.empId }); setProfileTab('info'); setShowProfileEdit(true); }} className="text-white bg-teal-500 hover:bg-teal-600 p-1.5 rounded-lg flex items-center justify-center btn-press shadow-sm"><Icon name="edit" size={14} /></button>}
-                                                                </div>
+
+                                                                {/* 수정 버튼: 성함 우측 상단 배치 */}
+                                                                {canEdit && (
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setProfileForm({ name: u.name, part: u.part, category: u.category, brands: u.brands || '', extNumber: u.extNumber || '', position: u.position, jobTitle: u.jobTitle || '일반', password: '', targetEmpId: u.empId });
+                                                                            setProfileTab('info');
+                                                                            setShowProfileEdit(true);
+                                                                        }}
+                                                                        className="text-white bg-teal-500 hover:bg-teal-600 p-1.5 rounded-lg flex items-center justify-center btn-press shadow-sm shrink-0"
+                                                                    >
+                                                                        <Icon name="edit" size={14} />
+                                                                    </button>
+                                                                )}
+                                                            </div>
+
+                                                            {/* 하단: 소속 및 사번 정보 */}
+                                                            <div className="flex items-center gap-2 pt-1 border-t border-stone-50 dark:border-stone-800/50">
+                                                                <span className="text-[11px] font-bold text-stone-500 dark:text-stone-400">{u.part}</span>
+                                                                <span className="text-[9px] font-bold text-stone-300 dark:text-stone-600 border-l border-stone-200 dark:border-stone-700 pl-2">사번: {u.empId}</span>
                                                             </div>
                                                         </div>
-                                                        <div className="bg-stone-50 dark:bg-stone-800 p-2.5 rounded-xl border border-stone-100 dark:border-stone-700 mt-1 space-y-1.5">
-                                                            <div className="flex justify-between items-center"><p className="text-[9px] font-bold text-stone-400">카테고리</p><Icon name={isExpanded ? 'chevronLeft' : 'chevronRight'} size={12} className={`text-stone-300 transform transition-transform ${isExpanded ? '-rotate-90' : 'rotate-90'}`} /></div>
-                                                            <p className={`text-[11px] font-black text-stone-700 dark:text-stone-300 leading-snug ${isExpanded ? 'line-clamp-none' : 'line-clamp-1'}`}>{u.category || '-'}</p>
-                                                            {(u.brands) && (<><p className="text-[9px] font-bold text-teal-500 mt-1">담당 브랜드</p><p className={`text-[11px] font-black text-teal-700 dark:text-teal-400 leading-snug whitespace-pre-wrap break-words ${isExpanded ? 'line-clamp-none' : 'line-clamp-1'}`}>{u.brands}</p></>)}
+
+                                                        {/* 상세 업무 내용 영역 (기존 유지) */}
+                                                        <div className="bg-stone-50 dark:bg-stone-800 p-2.5 rounded-xl border border-stone-100 dark:border-stone-700 mt-2 space-y-1.5">
+                                                            <div className="flex justify-between items-center">
+                                                                <p className="text-[9px] font-bold text-stone-400">카테고리</p>
+                                                                <Icon name={isExpanded ? 'chevronLeft' : 'chevronRight'} size={12} className={`text-stone-300 transform transition-transform ${isExpanded ? '-rotate-90' : 'rotate-90'}`} />
+                                                            </div>
+                                                            <p className={`text-[11px] font-black text-stone-700 dark:text-stone-300 leading-snug ${isExpanded ? 'line-clamp-none' : 'line-clamp-1'}`}>
+                                                                {u.category || '-'}
+                                                            </p>
+                                                            {u.brands && (
+                                                                <>
+                                                                    <p className="text-[9px] font-bold text-teal-500 mt-1">담당 브랜드</p>
+                                                                    <p className={`text-[11px] font-black text-teal-700 dark:text-teal-400 leading-snug whitespace-pre-wrap break-words ${isExpanded ? 'line-clamp-none' : 'line-clamp-1'}`}>
+                                                                        {u.brands}
+                                                                    </p>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
-                                                )
+                                                );
                                             })}
                                         </div>
                                     </div>
@@ -3639,43 +3690,25 @@
                                                                         const isManager = (u.jobTitle || '').includes('점장') || (u.part || '').includes('점장') || (u.jobTitle || '').includes('영업관리자');
                                                                         return (
                                                                             <div key={u.empId} className="flex flex-col sm:flex-row sm:items-center gap-3 bg-stone-50 dark:bg-stone-800 p-4 rounded-[1.5rem] border border-stone-100 dark:border-stone-700 shadow-sm hover:border-teal-200 transition-all">
-                                                                                /* --- 수정할 위치 (약 2150라인 구성원 목록 렌더링 영역 내부) --- */
                                                                                 <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2 items-center">
-                                                                                    {/* 1. 소속 파트 (Col 1) - 기존 동일 */}
                                                                                     <div className="min-w-0">
                                                                                         <span className="text-[10px] font-bold text-stone-400 block mb-0.5">소속 파트</span>
                                                                                         <span className="text-[12px] font-black text-stone-700 dark:text-stone-300 break-all leading-tight">{u.part}</span>
                                                                                     </div>
-
-                                                                                    {/* 2. 사번 (Col 2) - 기존 동일 */}
                                                                                     <div className="text-center sm:text-left">
                                                                                         <span className="text-[10px] font-bold text-stone-400 block mb-0.5">사번</span>
                                                                                         <span className="font-mono font-bold text-stone-500 text-[11px]">{u.empId}</span>
                                                                                     </div>
-
-                                                                                    {/* 3. ✨ 수정된 영역: 성명 및 직책 통합 배치 (Col 3 & 4 영역 통합) */}
-                                                                                    {/* smBreak 이상에서 2칸을 차지하도록 col-span-2 부여 */}
-                                                                                    <div className="min-w-0 sm:col-span-2 flex flex-col justify-center">
-                                                                                        <span className="text-[10px] font-bold text-stone-400 block mb-0.5">성명 및 직책</span>
-
-                                                                                        {/* 이름: 직급 없이 이름만 표시하고, 너무 길면 한 줄로 자름 (truncate) */}
-                                                                                        <span className="text-[14px] font-black text-stone-800 dark:text-stone-200 block truncate" title={u.name}>{u.name}</span>
-
-                                                                                        {/* 직급 및 직책: 이름 밑으로 내리고 개별 뱃지로 분리 */}
-                                                                                        <div className="flex flex-wrap gap-1 mt-1">
-                                                                                            {/* 직급 뱃지 (예: 과장, 대리) */}
-                                                                                            <span className={`inline-block text-[10px] font-black px-2.5 py-1 rounded-full border ${isManager ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-stone-50 text-stone-600 border-stone-100'}`}>
-                                                                                                {u.position}
-                                                                                            </span>
-                                                                                            {/* 직책 뱃지 (예: 파트장, 점장 - 일반 아닐 때만 표시) */}
-                                                                                            {u.jobTitle && u.jobTitle !== '일반' && (
-                                                                                                <span className="inline-block text-[10px] font-bold px-2.5 py-1 rounded-full bg-teal-50 text-teal-600 border border-teal-100">
-                                                                                                    {u.jobTitle}
-                                                                                                </span>
-                                                                                            )}
-                                                                                        </div>
+                                                                                    <div className="min-w-0">
+                                                                                        <span className="text-[10px] font-bold text-stone-400 block mb-0.5">성명</span>
+                                                                                        <span className="text-[14px] font-black text-stone-800 dark:text-stone-200 break-all">{u.name}</span>
                                                                                     </div>
-                                                                                    {/* ⚠️ 기존에 존재하던 4번째 Col div는 위 영역에 통합되었으므로 삭제해야 합니다. */}
+                                                                                    <div className="flex justify-start sm:justify-end">
+                                                                                        {/* ✅ 직급과 직책을 동시에 표기 (예: 과장 / 영업관리자) */}
+                                                                                        <span className={`inline-block text-[10px] font-black px-2.5 py-1 rounded-lg border ${isManager ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-teal-50 text-teal-600 border-teal-100'}`}>
+                                                                                            {u.position}{u.jobTitle !== '일반' ? ` / ${u.jobTitle}` : ''}
+                                                                                        </span>
+                                                                                    </div>
                                                                                 </div>
                                                                                 <div className="flex justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 sm:border-l border-stone-200 dark:border-stone-600 pl-2">
                                                                                     <button onClick={() => handleResetPassword(u.empId)} className="text-white bg-amber-500 hover:bg-amber-600 p-2.5 rounded-xl btn-press shadow-sm"><Icon name="wrench" size={16} /></button>
