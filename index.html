@@ -1616,19 +1616,20 @@
             };
 
             const handleGenericPostSubmit = async () => {
-                // 1️⃣ 작성자 결정 (로그인 유저 우선, 아니면 입력한 이름)
-                /* --- 제출/저장 함수 전체 --- */
+                // 1️⃣ 작성자 결정
                 const author = appUser ? appUser.name : submitFormState.authorName;
 
-                // 1️⃣ 폼 데이터 가공 (질문 답변들을 content에 담기)
+                // 2️⃣ 폼 데이터 가공 (질문 답변들을 content에 담기)
                 let finalContent = submitFormState.content;
-                if (openedApp?.actionType === 'form') {
-                    const isAnyEmpty = openedApp.fields?.some(f => !formValues[f.id]?.trim());
+                const currentApp = openedApp || openedDynamicApp || openedSubmitForm;
+
+                if (currentApp?.actionType === 'form') {
+                    const isAnyEmpty = currentApp.fields?.some(f => !formValues[f.id]?.trim());
                     if (isAnyEmpty) return showToast('모든 질문 항목을 입력해주세요.', true);
-                    finalContent = JSON.stringify(formValues); // 답변들을 문자열로 변환
+                    finalContent = JSON.stringify(formValues); // 답변들을 JSON 문자열로 변환
                 }
 
-                // 2️⃣ 유효성 검사
+                // 3️⃣ 유효성 검사
                 if (!author) return showToast('작성자 성함을 입력해주세요.', true);
                 if (!finalContent?.trim()) return showToast('내용을 입력해주세요.', true);
 
@@ -1651,35 +1652,34 @@
                     try {
                         setDynamicPosts(prev => prev.map(p => p.id === editingPostId ? updatedPost : p));
                         saveToIDB('dynamicPosts', updatedPost);
-                        if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(editingPostId).set(updatedPost, { merge: true });
+                        if (db) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(editingPostId).set(updatedPost, { merge: true });
 
                         showToast('수정되었습니다.');
                         setEditingPostId(null);
                         setSubmitFormState({ content: '', photos: [], authorName: '', isPinned: false });
                         if (typeof setFormValues === 'function') setFormValues({});
                     } catch (e) { showToast('수정 실패', true); }
-                    return; // 수정 모드 종료
+                    return;
                 }
 
                 // ---------------------------------------------------------
                 // ✅ [Case 2] 새로 만들기 (데이터 신규 저장)
                 // ---------------------------------------------------------
-                // 형님, 이 부분이 없어서 데이터가 안 남았던 겁니다!
                 const newPost = {
                     id: 'post_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-                    appId: openedApp.id,
-                    type: openedApp.actionType === 'form' ? 'form_submit' : 'post', // 타입 구분 중요!
+                    appId: currentApp?.id,
+                    type: currentApp?.actionType === 'form' ? 'form_submit' : 'post',
                     author: author,
                     authorId: appUser ? appUser.empId : 'guest',
-                    content: finalContent,
+                    content: finalContent, // 👈 여기서 가공된 JSON 답변이 들어감
                     photos: submitFormState.photos || [],
                     isPinned: submitFormState.isPinned || false,
                     createdAt: new Date().toISOString(),
-                    readUsers: [appUser ? appUser.empId : 'guest'] // 작성자는 읽음 처리
+                    readUsers: [appUser ? appUser.empId : 'guest']
                 };
 
                 try {
-                    // 1. 로컬 상태 업데이트 (화면에 즉시 반영)
+                    // 1. 화면에 즉시 반영
                     setDynamicPosts(prev => [newPost, ...(prev || [])]);
 
                     // 2. 로컬 DB(IDB) 저장
@@ -1687,50 +1687,17 @@
 
                     // 3. 서버(Firebase) 저장
                     if (db) {
-                        await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newPost.id).set(newPost);
-                    }
-
-                    showToast('성공적으로 저장되었습니다!');
-
-                    // 4. 입력창 초기화
-                    setSubmitFormState({ content: '', photos: [], authorName: '', isPinned: false });
-                    if (typeof setFormValues === 'function') setFormValues({});
-                    setOpenedSubmitForm(null); // 폼 닫기
-
-                } catch (e) {
-                    console.error(e);
-                    showToast('저장 실패', true);
-                }
-
-                // ✅ 신규 등록 모드
-                const newPost = {
-                    id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5),
-                    appId: openedDynamicApp?.id || openedSubmitForm?.id,
-
-                    ...submitFormState,
-
-                    author,
-                    photos: submitFormState.photos || [],
-                    isPinned: submitFormState.isPinned || false, // ✨ 상단 고정 여부 추가
-                    createdAt: new Date().toISOString()
-                };
-
-                try {
-                    setDynamicPosts([newPost, ...(dynamicPosts || [])]);
-
-                    saveToIDB('dynamicPosts', newPost);
-
-                    // ✅ 명시적 초기화 — {} 대신 빈 값으로 완전 리셋 (✨ isPinned 초기화 추가)
-                    setSubmitFormState({ content: '', photos: [], authorName: '', isPinned: false });
-
-                    if (openedSubmitForm) setOpenedSubmitForm(null);
-
-                    if (db && fbUser) {
                         const path = `artifacts/${appId}/public/data/dynamic_posts`;
                         await db.collection(path).doc(newPost.id).set(newPost);
                     }
 
-                    showToast('등록되었습니다.');
+                    showToast('성공적으로 등록되었습니다!');
+
+                    // 4. 입력창 및 상태 초기화
+                    setSubmitFormState({ content: '', photos: [], authorName: '', isPinned: false });
+                    if (typeof setFormValues === 'function') setFormValues({});
+                    if (openedSubmitForm) setOpenedSubmitForm(null);
+
                 } catch (e) {
                     console.error("제출 에러:", e);
                     showToast('등록 실패', true);
