@@ -1292,7 +1292,27 @@
             };
 
             const toggleFavExt = (id) => { setFavoriteExts(prev => { const next = prev.includes(id) ? prev.filter(favId => favId !== id) : [...prev, id]; localStorage.setItem('hmood_fav_exts', JSON.stringify(next)); return next; }); };
+            // 1. 로그아웃 함수 추가 (이게 없어서 에러가 났던 겁니다!)
+            const handleLogout = () => {
+                if (!window.confirm("로그아웃 하시겠습니까?")) return;
 
+                setAppUser(null);
+                if (typeof setFbUser === 'function') setFbUser(null);
+                setIsAdminAuth(false);
+                
+                localStorage.removeItem('h_moody_auth');
+                localStorage.removeItem('hmood_session');
+
+                setViewMode('login');
+                showToast("로그아웃되었습니다.");
+            };
+
+            // 2. 혹시 파트너 탭을 위해 필요한 '상태(State)' 변수들도 없다면 같이 넣어주세요
+            // (아까 "없어"라고 하신 부분이 여기일 수 있습니다)
+            const [adminTab, setAdminTab] = React.useState('notice'); // 관리자 탭 전환용
+            const [partners, setPartners] = React.useState([]);      // 파트너 목록 저장용
+            const [partnerSearch, setPartnerSearch] = React.useState(''); // 검색어
+            const [showClosed, setShowClosed] = React.useState(false);   // 퇴점 매장 보기 토글
             // ✅ POS번호 기반 로그인 및 사용자 친화적 메시지 적용
             const handleLogin = async (e) => {
                 e.preventDefault();
