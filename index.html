@@ -3986,7 +3986,7 @@
                                                                                 <div className="flex justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 sm:border-l border-stone-200 dark:border-stone-600 pl-2">
                                                                                     <button onClick={() => handleResetPassword(u.empId)} className="text-white bg-amber-500 hover:bg-amber-600 p-2.5 rounded-xl btn-press shadow-sm"><Icon name="wrench" size={16} /></button>
                                                                                     <button onClick={() => { setMemberForm({ ...u, password: '' }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="text-white bg-teal-500 hover:bg-teal-600 p-2.5 rounded-xl btn-press shadow-sm"><Icon name="edit" size={16} /></button>
-                                                                                    /* --- 수정된 삭제 버튼 코드 --- */
+                                                                                    {/* --- 수정된 삭제 버튼 코드 --- */}
                                                                                     <button
                                                                                         type="button" // 👈 1. 폼 전송(새로고침)을 방지하는 핵심 설정입니다!
                                                                                         onClick={(e) => {
