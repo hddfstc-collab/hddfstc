@@ -778,7 +778,20 @@
                 return new URLSearchParams(hash.split('?')[1] || '').get('mode');
             };
 
+            useEffect(() => {
+                if (!db) return;
 
+                // 파트너(매장 공용계정) 명단을 실시간으로 가져옵니다.
+                const unsubscribe = db.collection('partners').onSnapshot(snapshot => {
+                    const list = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                    setPartners(list);
+                });
+
+                return () => unsubscribe();
+            }, [db]);
             useEffect(() => {
                 if (isDarkMode) document.documentElement.classList.add('dark');
                 else document.documentElement.classList.remove('dark');
@@ -981,7 +994,6 @@
 
                 // [A] 세션이 없는 경우 (로그아웃 상태)
                 if (!savedSession) {
-                    // 세션이 없으면 URL에 shared가 있더라도 무조건 로그인으로 보냅니다. (로그아웃 후 잔상 제거)
                     setViewMode('login');
                     return;
                 }
@@ -995,15 +1007,15 @@
                     const isPartner = sessionData.role === 'partner';
 
                     // 2. 직영 직원인지 확인
-                    const staffUser = users.find(u => u.empId === sessionData.empId);
+                    const staffUser = users.find(u => String(u.empId) === String(sessionData.empId));
 
                     if (isPartner) {
                         // ✅ 파트너 계정은 새로고침 시 무조건 shared 뷰 유지
                         if (!appUser) setAppUser(sessionData);
                         setViewMode('shared');
                     } else if (staffUser) {
-                        // 직영 직원 상태 복구
-                        if (!appUser) setAppUser(staffUser);
+                        // ✅ 직영 직원 상태 복구 (role 부여 포함)
+                        if (!appUser) setAppUser({ ...staffUser, role: 'staff' });
 
                         // 직영 사원의 경우 URL 모드에 따라 뷰 결정
                         if (isSharedMode) setViewMode('shared');
@@ -1024,7 +1036,12 @@
                 if (!appUser && targetView !== 'shared' && targetView !== 'login') {
                     setViewMode('login');
                     showToast('로그인이 필요합니다.', true);
-                } else {
+                }
+                // ✅ 추가: 파트너 계정은 shared 외의 메뉴 접근 시 로그인으로 튕기거나 차단
+                else if (appUser?.role === 'partner' && targetView !== 'shared') {
+                    showToast('접근 권한이 없습니다.', true);
+                }
+                else {
                     setViewMode(targetView);
                 }
             };
@@ -1318,14 +1335,18 @@
             const handleLogout = () => {
                 if (!window.confirm("로그아웃 하시겠습니까?")) return;
 
+                // 1. 유저 상태 초기화 (직영/공용 및 Firebase 유저 포함)
                 setAppUser(null);
                 if (typeof setFbUser === 'function') setFbUser(null);
                 setIsAdminAuth(false);
 
+                // 2. 브라우저 저장소 데이터 삭제 (새로고침 방지용)
                 localStorage.removeItem('h_moody_auth');
                 localStorage.removeItem('hmood_session');
 
+                // 3. 화면 즉시 전환 (로그인 창으로)
                 setViewMode('login');
+
                 showToast("로그아웃되었습니다.");
             };
 
@@ -1338,30 +1359,43 @@
             const handleLogin = async (e) => {
                 e.preventDefault();
                 const posId = String(loginForm.id || '').trim();
-                const pin = String(loginForm.pw || '').trim();
+                const pin = String(loginForm.pw || loginForm.pin || '').trim(); // pw와 pin 모두 대응
 
-                if (!posId || !pin) return showToast('포스번호와 PIN을 입력해주세요.', true);
+                if (!posId || !pin) return showToast('아이디(포스번호)와 PIN을 입력해주세요.', true);
 
+                // 1️⃣ [직영 사원 체크] 먼저 메모리에 로드된 users 명단에서 확인
+                const staff = users.find(u => String(u.empId) === posId);
+                if (staff && String(staff.pin || staff.empId) === pin) {
+                    const authData = { ...staff, role: 'staff', loginTime: Date.now() };
+
+                    localStorage.setItem('h_moody_auth', JSON.stringify(authData));
+                    localStorage.setItem('hmood_session', JSON.stringify({ empId: posId }));
+
+                    setAppUser(authData);
+                    if (rememberMe) localStorage.setItem('hmood_empId', posId);
+                    setViewMode('daily'); // 직영은 일간 뷰로
+                    showToast(`${authData.name}님 환영합니다.`);
+                    return;
+                }
+
+                // 2️⃣ [파트너 체크] 직영이 아닐 경우 DB에서 'active' 상태인 매장 검색
                 try {
-                    // 🔍 변경 포인트 1: 특정 문서를 찾는 대신, 'active' 상태인 포스번호를 검색합니다.
                     const snapshot = await db.collection('partners')
                         .where('posId', '==', posId)
                         .where('status', '==', 'active')
                         .limit(1)
                         .get();
 
-                    // ✅ 'active' 상태인 매장이 발견되었을 때
                     if (!snapshot.empty) {
-                        const partnerDoc = snapshot.docs[0];
-                        const data = partnerDoc.data();
+                        const data = snapshot.docs[0].data();
 
                         // PIN 번호 확인
                         if (String(data.pin) === pin) {
                             const authData = {
                                 empId: posId,
-                                name: data.name || posId, // 'accountName' 대신 엑셀의 'name' 사용
+                                name: data.name || posId,
                                 role: 'partner',
-                                managedBrands: data.brands || [], // 'managedBrands' 대신 엑셀의 'brands' 사용
+                                managedBrands: data.brands || [],
                                 loginTime: Date.now()
                             };
 
@@ -1370,16 +1404,16 @@
 
                             setAppUser(authData);
                             setCurrentDate(new Date());
-                            showToast(`${authData.name}님, 인증되었습니다.`);
+                            if (rememberMe) localStorage.setItem('hmood_empId', posId);
 
-                            if (viewMode === 'login') setViewMode('shared');
+                            showToast(`${authData.name}님, 인증되었습니다.`);
+                            setViewMode('shared'); // 파트너는 공유 뷰로
                         } else {
                             showToast('PIN 번호가 올바르지 않습니다.', true);
                         }
                     }
-                    // ❌ 'active' 상태인 매장이 없을 때 (퇴점되었거나 아예 없거나)
                     else {
-                        // 🔍 변경 포인트 2: 퇴점된 매장인지 한 번 더 확인해서 친절하게 안내 (선택 사항)
+                        // 퇴점 매장인지 추가 확인
                         const retiredCheck = await db.collection('partners')
                             .where('posId', '==', posId)
                             .where('status', '==', 'closed')
@@ -1389,7 +1423,7 @@
                         if (!retiredCheck.empty) {
                             showToast('해당 포스번호는 퇴점 처리되어 로그인이 불가능합니다.', true);
                         } else {
-                            showToast('등록되지 않은 계정(포스번호)입니다.', true);
+                            showToast('등록되지 않은 계정(사원/포스번호)입니다.', true);
                         }
                     }
                 } catch (error) {
@@ -2535,8 +2569,11 @@
 
                         {viewMode !== 'shared' && (
                             <header className="flex-none sticky top-0 z-50 bg-[#F9F8F6]/95 dark:bg-stone-900/95 backdrop-blur-md border-b border-stone-200/50 dark:border-stone-800/50 px-4 py-3 flex items-center justify-between shadow-sm">
+                                {/* 왼쪽: 로고 및 파트너스 채널 버튼 영역 */}
                                 <div className="flex items-center gap-2 min-w-0">
-                                    <div className="w-8 h-8 bg-teal-600 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0"><Icon name="calendar" size={18} /></div>
+                                    <div className="w-8 h-8 bg-teal-600 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0">
+                                        <Icon name="calendar" size={18} />
+                                    </div>
                                     <div className="flex items-center gap-2 overflow-hidden">
                                         <h1 className="text-[14px] font-black text-stone-800 dark:text-stone-200 tracking-tighter truncate shrink-0">H무디</h1>
 
@@ -2551,6 +2588,42 @@
                                             </button>
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* 오른쪽: 다크모드 및 알약 모양 유저 정보/로그아웃 영역 */}
+                                <div className="flex items-center gap-2">
+                                    {/* 다크모드 전환 버튼 */}
+                                    <button
+                                        onClick={() => setIsDarkMode(!isDarkMode)}
+                                        className="w-9 h-9 flex items-center justify-center text-stone-500 bg-white dark:bg-stone-800 rounded-full shadow-sm btn-press"
+                                    >
+                                        <Icon name={isDarkMode ? "sun" : "moon"} size={16} />
+                                    </button>
+
+                                    {/* ✅ [신규] 유저 정보 및 로그아웃 알약 버튼 */}
+                                    {appUser && (
+                                        <div className="flex items-center gap-2 px-3.5 py-1.5 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-full shadow-sm ml-1 transition-all">
+                                            {/* 사용자 이름 표시: 파트너면 매장명, 직영이면 '시스템 관리자' */}
+                                            <span className="text-[11px] font-black text-stone-700 dark:text-stone-200 underline underline-offset-4 decoration-stone-200 shrink-0">
+                                                {appUser.role === 'partner' ? (appUser.name || appUser.empId) : '시스템 관리자'}
+                                            </span>
+
+                                            {/* 세로 구분선 (이미지와 동일) */}
+                                            <div className="w-[1px] h-3 bg-stone-100 dark:bg-stone-700 mx-0.5" />
+
+                                            {/* 유저 아이콘 (이미지와 동일) */}
+                                            <Icon name="user" size={12} className="text-stone-300" />
+
+                                            {/* 로그아웃 실행 아이콘 버튼 */}
+                                            <button
+                                                onClick={handleLogout}
+                                                className="ml-0.5 text-stone-300 hover:text-rose-500 transition-colors btn-press"
+                                                title="로그아웃"
+                                            >
+                                                <Icon name="logOut" size={14} />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="flex items-center gap-1.5 shrink-0 ml-2">
