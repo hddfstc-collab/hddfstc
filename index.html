@@ -2016,7 +2016,7 @@
                 });
             };
 
-            
+
             const handleResetData = async () => {
                 setConfirmDialog({
                     isOpen: true, message: "모든 데이터를 삭제하고 기본 메뉴로 초기화하시겠습니까?", onConfirm: async () => {
@@ -2554,7 +2554,7 @@
                                         <div className="bg-teal-50 dark:bg-teal-900/30 border border-teal-100 dark:border-teal-800 p-4 rounded-2xl mb-6 text-center">
                                             <p className="text-[11px] font-bold text-teal-700 dark:text-teal-400 leading-relaxed">
                                                 할당된 <b>포스번호</b>를 입력하여 로그인하세요.<br />
-                                                초기 PIN 번호는 <b>포스번호와 동일</b>합니다.<br /> {/* 👈 '사번'을 '포스번호'로 수정 */}
+                                                초기 PIN 번호는 <b>포스번호와 동일</b>합니다.<br />
                                                 <span className="text-[9px] text-teal-500 mt-1 block">(로그인 후 '내 정보'에서 PIN 변경이 가능합니다.)</span>
                                             </p>
                                         </div>
@@ -2565,7 +2565,7 @@
                                                 <input
                                                     type="text"
                                                     className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-[2rem] px-6 py-4 sm:px-7 sm:py-5 font-bold text-[13px] shadow-inner outline-none focus:border-teal-500 transition-colors"
-                                                    placeholder="포스번호 4~5자리 입력"  {/* 👈 '사번'을 '포스번호'로 수정 */}
+                                                    placeholder="포스번호 4~5자리 입력"
                                                     value={loginForm.id || ''}
                                                     onChange={e => setLoginForm({ ...loginForm, id: e.target.value })}
                                                     required
