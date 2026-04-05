@@ -1622,51 +1622,45 @@
             const handleGenericPostSubmit = async () => {
                 try {
                     const currentApp = openedDynamicApp || openedSubmitForm;
-
-                    // 1️⃣ 작성자 결정 (로그인 유저 -> 아니면 폼 답변 중 '이름/성함' 칸 낚아채기)
-                    let author = appUser ? appUser.name : submitFormState.authorName;
-
-                    if (!author || author.trim() === '') {
-                        const nameField = currentApp?.fields?.find(f => f.label.includes('이름') || f.label.includes('성함'));
-                        if (nameField && submitFormState[nameField.id]) {
-                            author = submitFormState[nameField.id];
-                        }
-                    }
-
                     if (!currentApp) return showToast('앱 정보를 찾을 수 없습니다.', true);
 
-                    // 3️⃣ 폼 데이터 가공 (중요: formValues 대신 submitFormState 사용!)
                     let finalContent = submitFormState.content;
+                    let extractedName = '';
 
+                    // 1. 폼 양식 답변 수집 및 이름 자동 추출
                     if (currentApp.actionType === 'form' && currentApp.fields) {
                         const answers = {};
-                        // 형님 UI에서 쓰는 [field.id] 값을 answers 바구니에 담습니다.
                         const isAnyEmpty = currentApp.fields.some(f => {
                             const val = submitFormState[f.id];
                             if (!val || !val.trim()) return true;
                             answers[f.id] = val;
+
+                            // 💡 질문에 '이름/성함/성명'이 있으면 작성자로 자동 인식!
+                            if (f.label.includes('이름') || f.label.includes('성함') || f.label.includes('성명')) {
+                                extractedName = val.trim();
+                            }
                             return false;
                         });
 
                         if (isAnyEmpty) return showToast('모든 질문 항목을 입력해주세요.', true);
-                        finalContent = JSON.stringify(answers); // 답변들을 문자열로 변환
+                        finalContent = JSON.stringify(answers);
                     }
 
-                    // 4️⃣ 유효성 검사
-                    if (!author) return showToast('작성자 성함을 입력해주세요.', true);
+                    // 2. 최종 작성자 결정 (로그인 유저 -> 폼 입력 이름 -> 일반 작성자명)
+                    let author = appUser?.name || extractedName || submitFormState.authorName;
+
+                    if (!author || author.trim() === '') {
+                        return showToast('작성자 성함을 입력해주세요. (양식에 이름 항목이 필요합니다)', true);
+                    }
                     if (!finalContent?.trim()) return showToast('내용을 입력해주세요.', true);
 
-                    // ---------------------------------------------------------
-                    // ✅ [Case 1] 수정 모드
-                    // ---------------------------------------------------------
+                    // 3. 저장/수정 로직
                     if (editingPostId) {
                         const original = (dynamicPosts || []).find(p => p.id === editingPostId);
                         if (!original) return showToast('게시글을 찾을 수 없습니다.', true);
 
                         const updatedPost = {
-                            ...original,
-                            author,
-                            content: finalContent,
+                            ...original, author, content: finalContent,
                             photos: submitFormState.photos || original.photos || [],
                             isPinned: submitFormState.isPinned || false,
                             updatedAt: new Date().toISOString()
@@ -1676,22 +1670,14 @@
                         saveToIDB('dynamicPosts', updatedPost);
                         if (db) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(editingPostId).set(updatedPost, { merge: true });
                         showToast('수정되었습니다.');
-                    }
-                    // ---------------------------------------------------------
-                    // ✅ [Case 2] 새로 만들기
-                    // ---------------------------------------------------------
-                    else {
+                    } else {
                         const newPost = {
                             id: 'post_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
                             appId: currentApp.id,
                             type: currentApp.actionType === 'form' ? 'form_submit' : 'post',
-                            author,
-                            authorId: appUser ? appUser.empId : 'guest',
-                            content: finalContent,
-                            photos: submitFormState.photos || [],
-                            isPinned: submitFormState.isPinned || false,
-                            createdAt: new Date().toISOString(),
-                            readUsers: [appUser ? appUser.empId : 'guest']
+                            author, authorId: appUser ? appUser.empId : 'guest', content: finalContent,
+                            photos: submitFormState.photos || [], isPinned: submitFormState.isPinned || false,
+                            createdAt: new Date().toISOString(), readUsers: [appUser ? appUser.empId : 'guest']
                         };
 
                         setDynamicPosts(prev => [newPost, ...(prev || [])]);
@@ -1700,7 +1686,7 @@
                         showToast('성공적으로 등록되었습니다!');
                     }
 
-                    // 5️⃣ 공통 마무리 (동적 필드 포함 전체 초기화)
+                    // 4. 초기화
                     const fieldResets = {};
                     if (currentApp?.fields) currentApp.fields.forEach(f => { fieldResets[f.id] = ''; });
                     setSubmitFormState({ content: '', photos: [], authorName: '', isPinned: false, ...fieldResets });
@@ -1708,7 +1694,6 @@
                     if (openedSubmitForm) setOpenedSubmitForm(null);
 
                 } catch (err) {
-                    console.error("제출 에러 상세:", err);
                     showToast('등록 중 오류가 발생했습니다.', true);
                 }
             };
@@ -4896,7 +4881,7 @@
                                                 </div>
                                             )}
 
-                                            {/* 작성자 성명 (일반 자유게시판일 때만 노출. 폼 양식은 질문에서 알아서 낚아챔) */}
+                                            {/* 일반 게시판 & 비로그인 시에만 이름 입력칸 노출 (폼 제출형은 숨김) */}
                                             {!appUser && !editingPostId && openedDynamicApp?.actionType !== 'form' && (
                                                 <input
                                                     className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-stone-400"
@@ -4908,7 +4893,7 @@
                                                 />
                                             )}
 
-                                            {/* 🔴 핵심! 폼 양식(form)이면 질문 칸들을 보여주고, 아니면 일반 글쓰기 칸(textarea)을 보여줍니다 */}
+                                            {/* 폼 양식이면 질문칸 노출, 일반 게시판이면 textarea 노출 */}
                                             {openedDynamicApp?.actionType === 'form' && openedDynamicApp?.fields ? (
                                                 <div className="space-y-2 mb-2 bg-stone-50 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-100 dark:border-stone-800">
                                                     {openedDynamicApp.fields.map(field => (
@@ -4942,19 +4927,20 @@
                                                 />
                                             )}
 
-                                            {/* 중요글 상단 고정 체크박스 */}
-                                            <label className={`flex items-center gap-2 text-[11px] font-black cursor-pointer px-1 py-1 mt-1 mb-2 w-fit ${openedDynamicApp?.color || 'text-stone-600'}`}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={submitFormState.isPinned || false}
-                                                    onChange={e => setSubmitFormState({ ...submitFormState, isPinned: e.target.checked })}
-                                                    className="w-3.5 h-3.5 rounded border-stone-300"
-                                                />
-                                                중요글 상단 고정
-                                            </label>
+                                            {/* 상단 고정 옵션 (일반 게시판일 때만 노출) */}
+                                            {openedDynamicApp?.actionType !== 'form' && (
+                                                <label className={`flex items-center gap-2 text-[11px] font-black cursor-pointer px-1 py-1 mt-1 w-fit ${openedDynamicApp?.color || 'text-stone-600'}`}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={submitFormState.isPinned || false}
+                                                        onChange={e => setSubmitFormState({ ...submitFormState, isPinned: e.target.checked })}
+                                                        className="w-3.5 h-3.5 rounded border-stone-300"
+                                                    />
+                                                    중요글 상단 고정
+                                                </label>
+                                            )}
 
-                                            {/* 하단 버튼 영역 */}
-                                            <div className="flex gap-2">
+                                            <div className="flex gap-2 mt-2">
                                                 <label className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer btn-press text-[11px]">
                                                     <Icon name="camera" size={14} />{' '}
                                                     {submitFormState.photos?.length === 0
@@ -5000,7 +4986,7 @@
                                     setSubmitFormState({ content: '', photos: [], authorName: '', isPinned: false });
                                 }}
                             >
-                                <div className="space-y-4 overflow-y-auto flex-1 scrollbar-hide">
+                                <div className="space-y-4 overflow-y-auto flex-1 scrollbar-hide max-h-[70vh] pr-1">
                                     {/* 상단 안내 문구 */}
                                     <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 p-4 rounded-2xl mb-4">
                                         <p className="text-[10px] font-bold text-indigo-600 dark:text-indigo-300 leading-relaxed text-center">
@@ -5011,7 +4997,7 @@
 
                                     {canWrite(openedSubmitForm) ? (
                                         <>
-                                            {/* 2. 커스텀 질문 리스트 (한 번만 매핑) */}
+                                            {/* 커스텀 질문 리스트 (중복 이름입력칸 완전 삭제!) */}
                                             {openedSubmitForm.fields && openedSubmitForm.fields.map((field) => (
                                                 <div key={field.id} className="space-y-1.5">
                                                     <label className="text-[11px] font-bold text-stone-500 dark:text-stone-400 ml-1">
@@ -5037,13 +5023,13 @@
                                                 </div>
                                             ))}
 
-                                            {/* 3. 사진 첨부 및 접수 버튼 */}
-                                            <div className="flex gap-2 mt-4">
+                                            {/* 사진 첨부 및 접수 버튼 */}
+                                            <div className="flex gap-2 mt-4 pt-2">
                                                 <label className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-4 rounded-2xl flex items-center justify-center gap-1.5 cursor-pointer btn-press text-[12px]">
                                                     <Icon name="camera" size={16} />
                                                     {(submitFormState.photos || []).length === 0
                                                         ? '사진 첨부 (최대 5장)'
-                                                        : `사진 추가됨 (${submitFormState.photos.length}/5)`
+                                                        : `사진 첨부됨 (${submitFormState.photos.length}/5)`
                                                     }
                                                     <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => handlePhotoSingle(e, setSubmitFormState)} />
                                                 </label>
