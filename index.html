@@ -4788,19 +4788,24 @@
                                                             {/* ✅ 확장 시 상세 영역 */}
                                                             {isExpanded && (
                                                                 <div className="px-4 pb-4 bg-white dark:bg-stone-800 fade-in border-t border-stone-50 dark:border-stone-700/50 mt-1 pt-3 cursor-auto" onClick={(e) => e.stopPropagation()}>
-                                                                    {/* 폼 양식이 있는 경우 필드별 출력 */}
-                                                                    {openedDynamicApp.fields && openedDynamicApp.fields.length > 0 && (
-                                                                        <div className="space-y-2 mb-3 bg-stone-50 dark:bg-stone-900/50 p-3 rounded-xl border border-stone-100 dark:border-stone-700">
-                                                                            {openedDynamicApp.fields.map(field => (
-                                                                                <div key={field.id} className="flex gap-2 text-[11px] border-b border-stone-200 dark:border-stone-700/50 pb-1.5 mb-1.5 last:border-0 last:pb-0 last:mb-0">
-                                                                                    <span className="font-black text-indigo-500 dark:text-indigo-400 shrink-0 w-24">· {field.label}</span>
-                                                                                    <span className="text-stone-700 dark:text-stone-200 break-all">{post[field.id] || '-'}</span>
-                                                                                </div>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
+                                                                    {/* 폼 양식이 있는 경우 필드별 출력 — content JSON 파싱 */}
+                                                                    {openedDynamicApp.fields && openedDynamicApp.fields.length > 0 && (() => {
+                                                                        let parsed = null;
+                                                                        try { parsed = post.content ? JSON.parse(post.content) : null; } catch(e) {}
+                                                                        return (
+                                                                            <div className="space-y-2 mb-3 bg-stone-50 dark:bg-stone-900/50 p-3 rounded-xl border border-stone-100 dark:border-stone-700">
+                                                                                {openedDynamicApp.fields.map(field => (
+                                                                                    <div key={field.id} className="flex gap-2 text-[11px] border-b border-stone-200 dark:border-stone-700/50 pb-1.5 mb-1.5 last:border-0 last:pb-0 last:mb-0">
+                                                                                        <span className="font-black text-indigo-500 dark:text-indigo-400 shrink-0 w-24">· {field.label}</span>
+                                                                                        <span className="text-stone-700 dark:text-stone-200 break-words overflow-hidden">{(parsed ? parsed[field.id] : post[field.id]) || '-'}</span>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        );
+                                                                    })()}
 
-                                                                    {post.content && (
+                                                                    {/* 일반 게시판(비폼)이고 content가 있을 때만 본문 텍스트 표시 */}
+                                                                    {(!openedDynamicApp.fields || openedDynamicApp.fields.length === 0) && post.content && (
                                                                         <div className="mt-2 mb-3">
                                                                             <p className="text-[12px] font-bold text-stone-600 dark:text-stone-400 whitespace-pre-wrap break-words overflow-hidden">{post.content}</p>
                                                                         </div>
@@ -4879,23 +4884,29 @@
                                                 />
                                             )}
 
-                                            <textarea
-                                                className={`w-full bg-white dark:bg-stone-800 border rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-20 resize-none ${editingPostId ? 'border-teal-300 focus:border-teal-500' : 'border-stone-100 dark:border-stone-700 focus:border-indigo-300'}`}
-                                                placeholder="자유롭게 글을 남겨주세요."
-                                                value={submitFormState.content || ''}
-                                                onChange={(e) =>
-                                                    setSubmitFormState({ ...submitFormState, content: e.target.value })
-                                                }
-                                            />
-                                            <label className={`flex items-center gap-2 text-[11px] font-black cursor-pointer px-1 py-1 mt-1 w-fit ${openedDynamicApp.color || 'text-stone-600'}`}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={submitFormState.isPinned || false}
-                                                    onChange={e => setSubmitFormState({ ...submitFormState, isPinned: e.target.checked })}
-                                                    className="w-3.5 h-3.5 rounded border-stone-300"
+                                            {/* 폼 제출형이 아닐 때만 자유 텍스트 입력 노출 */}
+                                            {openedDynamicApp.actionType !== 'form' && (
+                                                <textarea
+                                                    className={`w-full bg-white dark:bg-stone-800 border rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-20 resize-none ${editingPostId ? 'border-teal-300 focus:border-teal-500' : 'border-stone-100 dark:border-stone-700 focus:border-indigo-300'}`}
+                                                    placeholder="자유롭게 글을 남겨주세요."
+                                                    value={submitFormState.content || ''}
+                                                    onChange={(e) =>
+                                                        setSubmitFormState({ ...submitFormState, content: e.target.value })
+                                                    }
                                                 />
-                                                중요글 상단 고정
-                                            </label>
+                                            )}
+                                            {/* 상단 고정은 게시판 타입에만 (폼 제출형 불필요) */}
+                                            {openedDynamicApp.actionType !== 'form' && (
+                                                <label className={`flex items-center gap-2 text-[11px] font-black cursor-pointer px-1 py-1 mt-1 w-fit ${openedDynamicApp.color || 'text-stone-600'}`}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={submitFormState.isPinned || false}
+                                                        onChange={e => setSubmitFormState({ ...submitFormState, isPinned: e.target.checked })}
+                                                        className="w-3.5 h-3.5 rounded border-stone-300"
+                                                    />
+                                                    중요글 상단 고정
+                                                </label>
+                                            )}
 
                                             <div className="flex gap-2">
                                                 <label className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer btn-press text-[11px]">
