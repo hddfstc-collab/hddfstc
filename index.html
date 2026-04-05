@@ -4854,40 +4854,29 @@
                                                             {/* ✅ 확장 시 상세 영역 */}
                                                             {isExpanded && (
                                                                 <div className="px-4 pb-4 bg-white dark:bg-stone-800 fade-in border-t border-stone-50 dark:border-stone-700/50 mt-1 pt-3 cursor-auto" onClick={(e) => e.stopPropagation()}>
-                                                                    {/* 폼 양식이 있는 경우 필드별 출력 */}
+
+                                                                    {/* 1. 폼 양식인 경우 필드별 출력 (외계어 해독) */}
                                                                     {isFormPost && parsedFormAnswers && (
                                                                         <div className="space-y-2 mb-3 bg-stone-50 dark:bg-stone-900/50 p-3 rounded-xl border border-stone-100 dark:border-stone-700">
                                                                             {openedDynamicApp.fields.map(field => (
                                                                                 <div key={field.id} className="flex gap-2 text-[11px] border-b border-stone-200 dark:border-stone-700/50 pb-1.5 mb-1.5 last:border-0 last:pb-0 last:mb-0">
                                                                                     <span className="font-black text-indigo-500 dark:text-indigo-400 shrink-0 w-24">· {field.label}</span>
-                                                                                    {/* ✨ 핵심: post[field.id]가 아니라 parsedFormAnswers에서 값을 꺼내옵니다! */}
                                                                                     <span className="text-stone-700 dark:text-stone-200 break-all">{parsedFormAnswers[field.id] || '-'}</span>
                                                                                 </div>
                                                                             ))}
                                                                         </div>
                                                                     )}
 
-                                                                    {/* ✨ 외계어(JSON) 숨기기: 폼 제출형이 아닐 때(일반 글)만 본문을 보여줍니다 */}
+                                                                    {/* 2. 일반 글 본문 출력 (🔴 여기가 핵심: !isFormPost를 붙여서 외계어 차단) */}
                                                                     {post.content && !isFormPost && (
                                                                         <div className="mt-2 mb-3">
-                                                                            <p className="text-[12px] font-bold text-stone-600 dark:text-stone-400 whitespace-pre-wrap break-words overflow-hidden">{post.content}</p>
+                                                                            <p className="text-[12px] font-bold text-stone-600 dark:text-stone-400 whitespace-pre-wrap break-words overflow-hidden">
+                                                                                {post.content}
+                                                                            </p>
                                                                         </div>
                                                                     )}
 
-                                                                    {/* 🔴 외계어 숨기기: 폼 타입(isFormPost)이 아닐 때만 텍스트 원본을 출력합니다 */}
-                                                                    {post.content && !isFormPost && (
-                                                                        <div className="mt-2 mb-3">
-                                                                            <p className="text-[12px] font-bold text-stone-600 dark:text-stone-400 whitespace-pre-wrap break-words overflow-hidden">{post.content}</p>
-                                                                        </div>
-                                                                    )}
-
-                                                                    {post.content && (
-                                                                        <div className="mt-2 mb-3">
-                                                                            <p className="text-[12px] font-bold text-stone-600 dark:text-stone-400 whitespace-pre-wrap break-words overflow-hidden">{post.content}</p>
-                                                                        </div>
-                                                                    )}
-
-                                                                    {/* 큰 이미지 출력 */}
+                                                                    {/* 3. 사진 이미지 출력 */}
                                                                     {images.length > 0 && (
                                                                         <div className="space-y-2 mb-4">
                                                                             {images.map((img, i) => (
@@ -4901,13 +4890,12 @@
                                                                         </div>
                                                                     )}
 
-                                                                    {/* 하단 수정/삭제 관리 영역 */}
+                                                                    {/* 4. 하단 수정/삭제 관리 영역 */}
                                                                     {hasManagePerm && (
                                                                         <div className="flex justify-end gap-3 pt-3 border-t border-stone-50 dark:border-stone-800">
                                                                             <button
                                                                                 onClick={() => {
                                                                                     setEditingPostId(post.id);
-                                                                                    // 폼 타입이면 JSON을 파싱해 개별 필드 키도 함께 채움
                                                                                     let parsedEdit = {};
                                                                                     if (openedDynamicApp.fields && post.content) {
                                                                                         try { parsedEdit = JSON.parse(post.content); } catch (e) { }
@@ -4917,7 +4905,7 @@
                                                                                         photos: images,
                                                                                         authorName: post.author || '',
                                                                                         isPinned: post.isPinned || false,
-                                                                                        ...parsedEdit   // ← 개별 필드 키 (q_xxx: "값") 주입
+                                                                                        ...parsedEdit
                                                                                     });
                                                                                 }}
                                                                                 className="text-[11px] font-black text-teal-500 hover:underline px-2 py-1"
