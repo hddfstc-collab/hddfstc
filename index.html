@@ -1299,27 +1299,31 @@
                 const posId = String(loginForm.id || '').trim();
                 const pin = String(loginForm.pw || '').trim();
 
-                // 입력값 확인
                 if (!posId || !pin) return showToast('포스번호와 PIN을 입력해주세요.', true);
 
                 try {
-                    // Firestore의 'partners' 컬렉션에서 해당 포스번호 문서 조회
-                    const partnerDoc = await db.collection('partners').doc(posId).get();
+                    // 🔍 변경 포인트 1: 특정 문서를 찾는 대신, 'active' 상태인 포스번호를 검색합니다.
+                    const snapshot = await db.collection('partners')
+                        .where('posId', '==', posId)
+                        .where('status', '==', 'active')
+                        .limit(1)
+                        .get();
 
-                    if (partnerDoc.exists) {
+                    // ✅ 'active' 상태인 매장이 발견되었을 때
+                    if (!snapshot.empty) {
+                        const partnerDoc = snapshot.docs[0];
                         const data = partnerDoc.data();
 
-                        // PIN 번호 확인 (문자열로 비교)
+                        // PIN 번호 확인
                         if (String(data.pin) === pin) {
                             const authData = {
-                                empId: posId, // 기존 코드 호환용
-                                name: data.accountName || posId,
+                                empId: posId,
+                                name: data.name || posId, // 'accountName' 대신 엑셀의 'name' 사용
                                 role: 'partner',
-                                managedBrands: data.managedBrands || [],
+                                managedBrands: data.brands || [], // 'managedBrands' 대신 엑셀의 'brands' 사용
                                 loginTime: Date.now()
                             };
 
-                            // 브라우저에 인증 정보 저장 (저장물 앱과 공유하는 열쇠)
                             localStorage.setItem('h_moody_auth', JSON.stringify(authData));
                             localStorage.setItem('hmood_session', JSON.stringify({ empId: posId }));
 
@@ -1329,12 +1333,23 @@
 
                             if (viewMode === 'login') setViewMode('shared');
                         } else {
-                            // 💡 핀번호가 틀렸을 때의 메시지
                             showToast('PIN 번호가 올바르지 않습니다.', true);
                         }
-                    } else {
-                        // 💡 요청하신 메시지: 포스번호 자체가 DB에 없을 때
-                        showToast('등록되지 않은 계정(포스번호)입니다.', true);
+                    }
+                    // ❌ 'active' 상태인 매장이 없을 때 (퇴점되었거나 아예 없거나)
+                    else {
+                        // 🔍 변경 포인트 2: 퇴점된 매장인지 한 번 더 확인해서 친절하게 안내 (선택 사항)
+                        const retiredCheck = await db.collection('partners')
+                            .where('posId', '==', posId)
+                            .where('status', '==', 'closed')
+                            .limit(1)
+                            .get();
+
+                        if (!retiredCheck.empty) {
+                            showToast('해당 포스번호는 퇴점 처리되어 로그인이 불가능합니다.', true);
+                        } else {
+                            showToast('등록되지 않은 계정(포스번호)입니다.', true);
+                        }
                     }
                 } catch (error) {
                     console.error(error);
@@ -2628,19 +2643,53 @@
                                 {viewMode === 'shared' && (
                                     <div className="space-y-5 max-w-2xl mx-auto pb-10 mt-2 fade-in">
                                         <div className="sticky top-[-1rem] -mx-4 px-6 py-4 z-40 bg-[#EBE9E4]/95 dark:bg-stone-950/95 backdrop-blur-md border-b border-stone-200/50 dark:border-stone-800/50 flex justify-between items-center mb-4">
+
+                                            {/* 👈 왼쪽: 타이틀 & 직영 이동 버튼 */}
                                             <div className="flex items-center gap-2">
                                                 <h2 className="text-xl font-black flex items-center gap-2 text-stone-800 dark:text-stone-200">
                                                     <Icon name="shield" className="text-teal-600" size={24} /> 파트너스 채널
                                                 </h2>
-                                                <button onClick={() => handleNavClick('daily')} className="bg-stone-800 dark:bg-stone-700 text-white p-1.5 rounded-lg shadow flex items-center justify-center btn-press ml-1 transition-transform" title="직영채널 이동">
-                                                    <Icon name="calendar" size={16} />
-                                                </button>
+
+                                                {/* ✅ [직영 & 관리자] 전용: 직영 채널 이동 버튼 */}
+                                                {/* 'partner'가 아닌 로그인 사용자(직영/관리자)만 보입니다 */}
+                                                {(isAdminAuth || (fbUser && fbUser.role !== 'partner')) && (
+                                                    <button
+                                                        onClick={() => handleNavClick('daily')}
+                                                        className="bg-stone-800 dark:bg-stone-700 text-white p-1.5 rounded-lg shadow flex items-center justify-center btn-press ml-1 transition-transform"
+                                                        title="직영채널 이동"
+                                                    >
+                                                        <Icon name="calendar" size={16} />
+                                                    </button>
+                                                )}
                                             </div>
+
+                                            {/* 👉 오른쪽: 기능 버튼 (다크모드 / 복사 / 로그아웃) */}
                                             <div className="flex gap-2">
+                                                {/* 1. 다크모드 (공용/직영/관리자 공통) */}
                                                 <button onClick={() => setIsDarkMode(!isDarkMode)} className="bg-white dark:bg-stone-800 p-2.5 rounded-full shadow-md text-stone-400 hover:text-amber-500 btn-press transition-colors">
                                                     {isDarkMode ? <Icon name="sun" size={16} /> : <Icon name="moon" size={16} />}
                                                 </button>
-                                                <button onClick={() => { navigator.clipboard.writeText(window.location.origin + window.location.pathname + '?mode=shared'); showToast('복사 완료') }} className="bg-white dark:bg-stone-800 p-2.5 rounded-full shadow-md text-stone-400 hover:text-teal-600 btn-press"><Icon name="copy" size={16} /></button>
+
+                                                {/* 2. [직영 & 관리자] 전용: 주소 복사 버튼 */}
+                                                {(isAdminAuth || (fbUser && fbUser.role !== 'partner')) && (
+                                                    <button
+                                                        onClick={() => { navigator.clipboard.writeText(window.location.origin + window.location.pathname + '?mode=shared'); showToast('복사 완료') }}
+                                                        className="bg-white dark:bg-stone-800 p-2.5 rounded-full shadow-md text-stone-400 hover:text-teal-600 btn-press"
+                                                    >
+                                                        <Icon name="copy" size={16} />
+                                                    </button>
+                                                )}
+
+                                                {/* 3. [전체 로그인] 전용: 로그아웃 버튼 */}
+                                                {/* 공용(협력), 직영, 관리자 모두 로그인 상태라면 보입니다 */}
+                                                {(fbUser || isAdminAuth) && (
+                                                    <button
+                                                        onClick={handleLogout}
+                                                        className="bg-rose-500 text-white px-4 py-2 rounded-xl text-[11px] font-black shadow-lg btn-press flex items-center gap-1"
+                                                    >
+                                                        <Icon name="logOut" size={14} /> 로그아웃
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
 
@@ -3210,6 +3259,89 @@
                                 )}
                                 {/* ADMIN VIEW */}
                                 {viewMode === 'admin' && (
+                                    <div className="flex gap-2 mb-6">
+                                        <button 
+                                            onClick={() => setAdminTab('notice')} 
+                                            className={`px-6 py-2 rounded-full text-xs font-black ${adminTab === 'notice' ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-400'}`}
+                                        >
+                                            공지사항 관리
+                                        </button>
+                                        <button 
+                                            onClick={() => setAdminTab('partner')} 
+                                            className={`px-6 py-2 rounded-full text-xs font-black ${adminTab === 'partner' ? 'bg-teal-600 text-white' : 'bg-stone-100 text-stone-400'}`}
+                                        >
+                                            공용계정(파트너) 관리
+                                        </button>
+                                    </div>
+
+                                    {/* 2. 파트너 관리 탭 내용 (adminTab === 'partner' 일 때 노출) */}
+                                    {adminTab === 'partner' && (
+                                        <div className="space-y-4 fade-in">
+                                            {/* 상단 컨트롤바: 검색 및 퇴점매장 토글 */}
+                                            <div className="flex justify-between items-center bg-white dark:bg-stone-900 p-4 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800">
+                                                <div className="relative flex-1 max-w-xs">
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="매장명/포스번호 검색" 
+                                                        className="w-full bg-stone-100 dark:bg-stone-800 border-none rounded-full py-2 pl-10 pr-4 text-xs"
+                                                        onChange={(e) => setPartnerSearch(e.target.value)}
+                                                    />
+                                                    <Icon name="search" size={14} className="absolute left-4 top-2.5 text-stone-400" />
+                                                </div>
+                                                
+                                                <label className="flex items-center gap-2 text-[10px] font-bold text-stone-400 cursor-pointer">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={showClosed} 
+                                                        onChange={(e) => setShowClosed(e.target.checked)} 
+                                                        className="rounded-sm accent-teal-600"
+                                                    />
+                                                    퇴점 매장 포함
+                                                </label>
+                                            </div>
+
+                                            {/* 파트너 리스트 테이블 */}
+                                            <div className="bg-white dark:bg-stone-900 rounded-[2rem] border border-stone-100 dark:border-stone-800 overflow-hidden shadow-sm">
+                                                <table className="w-full text-left text-[11px]">
+                                                    <thead className="bg-stone-50 dark:bg-stone-800/50 text-stone-500 font-bold">
+                                                        <tr>
+                                                            <th className="py-4 px-6">포스ID</th>
+                                                            <th className="py-4 px-6">매장명</th>
+                                                            <th className="py-4 px-6">상태</th>
+                                                            <th className="py-4 px-6 text-right">관리</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-stone-50 dark:divide-stone-800">
+                                                        {partners
+                                                            .filter(p => (showClosed ? true : p.status === 'active'))
+                                                            .filter(p => p.name.includes(partnerSearch) || p.posId.includes(partnerSearch))
+                                                            .map(p => (
+                                                            <tr key={p.id} className={`${p.status === 'closed' ? 'opacity-40 grayscale' : ''} hover:bg-stone-50/50 transition-colors`}>
+                                                                <td className="py-4 px-6 font-mono font-bold text-teal-600">{p.posId}</td>
+                                                                <td className="py-4 px-6 font-black text-stone-700 dark:text-stone-200">{p.name}</td>
+                                                                <td className="py-4 px-6">
+                                                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${p.status === 'active' ? 'bg-green-100 text-green-600' : 'bg-stone-200 text-stone-500'}`}>
+                                                                        {p.status === 'active' ? '영업중' : '퇴점'}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="py-4 px-6 text-right flex justify-end gap-2">
+                                                                    {/* 수정 버튼 */}
+                                                                    <button onClick={() => handleEditPartner(p)} className="p-1.5 text-stone-400 hover:text-teal-600"><Icon name="edit2" size={14} /></button>
+                                                                    
+                                                                    {/* 상태 변경 버튼 (부활 또는 퇴점) */}
+                                                                    {p.status === 'active' ? (
+                                                                        <button onClick={() => handleToggleStatus(p.id, 'closed')} className="p-1.5 text-stone-400 hover:text-rose-500" title="퇴점처리"><Icon name="userMinus" size={14} /></button>
+                                                                    ) : (
+                                                                        <button onClick={() => handleToggleStatus(p.id, 'active')} className="p-1.5 text-stone-400 hover:text-green-600" title="부활시키기"><Icon name="userPlus" size={14} /></button>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="max-w-3xl mx-auto pb-20 fade-in">
                                         {!isAdminAuth && !isHealthOnlyAdmin && !appUser ? (
                                             <div className="bg-white dark:bg-stone-900 p-10 rounded-[3rem] shadow-2xl border border-stone-200 dark:border-stone-800 text-center mt-10 max-w-sm mx-auto">
