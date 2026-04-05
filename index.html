@@ -241,7 +241,8 @@
             { v: 'cyan', l: '시안색', t: 'text-cyan-500', b: 'bg-cyan-50' }
         ];
 
-        const firebaseConfig = {
+        // 다시 이 주소로 복구하세요!
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
             apiKey: "AIzaSyCDW2TzDtMDfAVmSRHM7a-IZDhsBlkRMEQ",
             authDomain: "ware-house-b36d7.firebaseapp.com",
             projectId: "ware-house-b36d7",
@@ -1292,43 +1293,80 @@
 
             const toggleFavExt = (id) => { setFavoriteExts(prev => { const next = prev.includes(id) ? prev.filter(favId => favId !== id) : [...prev, id]; localStorage.setItem('hmood_fav_exts', JSON.stringify(next)); return next; }); };
 
-            // ✅ 수정 적용: 로그인 처리 시, 평문 비교와 암호화 비교를 안전하게 동시에 처리
+            // ✅ POS번호 기반 로그인 및 사용자 친화적 메시지 적용
             const handleLogin = async (e) => {
                 e.preventDefault();
-                const loginId = String(loginForm.id || '').trim();
-                const loginPw = String(loginForm.pw || '').trim();
+                const posId = String(loginForm.id || '').trim();
+                const pin = String(loginForm.pw || '').trim();
 
-                if (!loginId || !loginPw) return showToast('사원번호와 비밀번호를 모두 입력해주세요.', true);
+                // 입력값 확인
+                if (!posId || !pin) return showToast('포스번호와 PIN을 입력해주세요.', true);
 
-                const pwHash = await hashPassword(loginPw);
-                const idHash = await hashPassword(loginId);
+                try {
+                    // Firestore의 'partners' 컬렉션에서 해당 포스번호 문서 조회
+                    const partnerDoc = await db.collection('partners').doc(posId).get();
 
-                const f = (users || []).find(u => {
-                    if (String(u?.empId) !== loginId) return false;
-                    const dbPw = String(u?.password || '').trim();
-                    // 해시, 평문, 사번해시, 평문사번 모두 호환되도록 완벽 방어
-                    return dbPw === pwHash || dbPw === loginPw || dbPw === idHash || dbPw === loginId;
-                });
+                    if (partnerDoc.exists) {
+                        const data = partnerDoc.data();
 
-                if (f) {
-                    if (rememberMe) localStorage.setItem('hmood_empId', loginForm.id);
-                    else localStorage.removeItem('hmood_empId');
+                        // PIN 번호 확인 (문자열로 비교)
+                        if (String(data.pin) === pin) {
+                            const authData = {
+                                empId: posId, // 기존 코드 호환용
+                                name: data.accountName || posId,
+                                role: 'partner',
+                                managedBrands: data.managedBrands || [],
+                                loginTime: Date.now()
+                            };
 
-                    localStorage.setItem('hmood_session', JSON.stringify({ empId: f.empId }));
-                    setAppUser(f);
+                            // 브라우저에 인증 정보 저장 (저장물 앱과 공유하는 열쇠)
+                            localStorage.setItem('h_moody_auth', JSON.stringify(authData));
+                            localStorage.setItem('hmood_session', JSON.stringify({ empId: posId }));
 
-                    // 로그인 직후 URL 모드 판독하여 이동
-                    const urlMode = new URLSearchParams(window.location.search).get('mode') || new URLSearchParams(window.location.hash.split('?')[1] || '').get('mode');
-                    if (urlMode === 'shared') setViewMode('shared');
-                    else setViewMode('daily');
+                            setAppUser(authData);
+                            setCurrentDate(new Date());
+                            showToast(`${authData.name}님, 인증되었습니다.`);
 
-                    setCurrentDate(new Date());
-                    showToast(`${f.name}님 환영합니다!`);
-                } else {
-                    showToast('사원번호 또는 비밀번호가 올바르지 않습니다.', true);
+                            if (viewMode === 'login') setViewMode('shared');
+                        } else {
+                            // 💡 핀번호가 틀렸을 때의 메시지
+                            showToast('PIN 번호가 올바르지 않습니다.', true);
+                        }
+                    } else {
+                        // 💡 요청하신 메시지: 포스번호 자체가 DB에 없을 때
+                        showToast('등록되지 않은 계정(포스번호)입니다.', true);
+                    }
+                } catch (error) {
+                    console.error(error);
+                    showToast('시스템 오류가 발생했습니다.', true);
                 }
             };
+            // ✅ [추가] 관리자용: 파트너(매장) 일괄 등록 함수
+            const uploadPartners = async (partnerList) => {
+                if (!window.confirm(`${partnerList.length}개의 매장 정보를 등록하시겠습니까?`)) return;
 
+                const batch = db.batch();
+
+                partnerList.forEach((p) => {
+                    // 문서 ID를 포스번호(posId)로 설정하여 저장
+                    const partnerRef = db.collection('partners').doc(String(p.posId));
+                    batch.set(partnerRef, {
+                        pin: String(p.pin || p.posId),
+                        accountName: p.name,
+                        managedBrands: p.brands || [],
+                        role: 'partner',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                });
+
+                try {
+                    await batch.commit();
+                    showToast(`${partnerList.length}개의 매장이 성공적으로 등록되었습니다!`);
+                } catch (error) {
+                    console.error(error);
+                    showToast('매장 등록 중 오류가 발생했습니다.', true);
+                }
+            };
             const handleUpdateDuty = async (empId, dateStr, newStatus, isAdminOverride = false) => {
                 if (!isAdminOverride && !appUser) return showToast('시스템 로그인이 필요합니다.', true);
                 if (!isAdminOverride && appUser.empId !== empId) return showToast('본인의 스케줄만 수정할 수 있습니다.', true);
@@ -1961,8 +1999,48 @@
 
             const handleClearAllPosts = () => { setConfirmDialog({ isOpen: true, message: '모든 게시글 데이터를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.', onConfirm: async () => { setConfirmDialog({ isOpen: false }); setDynamicPosts([]); try { window.localDB.transaction('dynamicPosts', 'readwrite').objectStore('dynamicPosts').clear(); } catch (e) { } try { if (db && fbUser) { const snap = await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).get(); const batch = db.batch(); snap.docs.forEach(d => batch.delete(d.ref)); await batch.commit(); } } catch (e) { } showToast('초기화 완료'); }, onCancel: () => setConfirmDialog({ isOpen: false }) }); };
             const handleArchiveEvent = async () => { setConfirmDialog({ isOpen: true, message: '이벤트를 종료하시겠습니까?', onConfirm: async () => { setConfirmDialog({ isOpen: false }); try { const archived = { ...currentEvent, isActive: false, status: 'closed' }; setCurrentEvent(archived); saveToIDB('events', archived); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/events`).doc('current').update({ isActive: false, status: 'closed' }); showToast('이벤트가 종료되었습니다.'); } catch (e) { showToast('종료 실패', true); } }, onCancel: () => setConfirmDialog({ isOpen: false }) }); };
-            const handleResetEvent = async () => { setConfirmDialog({ isOpen: true, message: '이벤트를 완전히 삭제하시겠습니까?', onConfirm: async () => { setConfirmDialog({ isOpen: false }); try { setCurrentEvent(null); deleteFromIDB('events', 'current'); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/events`).doc('current').delete(); showToast('이벤트가 삭제되었습니다.'); } catch (e) { showToast('삭제 실패', true); } }, onCancel: () => setConfirmDialog({ isOpen: false }) }); };
+            const handleResetEvent = async () => {
+                setConfirmDialog({
+                    isOpen: true,
+                    message: '이벤트를 완전히 삭제하시겠습니까?',
+                    onConfirm: async () => {
+                        setConfirmDialog({ isOpen: false });
+                        try {
+                            setCurrentEvent(null);
+                            deleteFromIDB('events', 'current');
+                            if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/events`).doc('current').delete();
+                            showToast('이벤트가 삭제되었습니다.');
+                        } catch (e) { showToast('삭제 실패', true); }
+                    },
+                    onCancel: () => setConfirmDialog({ isOpen: false })
+                });
+            };
 
+            // 📍 이 자리에 붙여넣으세요!
+            const uploadPartners = async (partnerList) => {
+                if (!window.confirm(`${partnerList.length}개의 매장 정보를 등록하시겠습니까?`)) return;
+
+                const batch = db.batch();
+
+                partnerList.forEach((p) => {
+                    const partnerRef = db.collection('partners').doc(String(p.posId));
+                    batch.set(partnerRef, {
+                        pin: String(p.pin || p.posId),
+                        accountName: p.name,
+                        managedBrands: p.brands || [],
+                        role: 'partner',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                });
+
+                try {
+                    await batch.commit();
+                    showToast(`${partnerList.length}개의 매장이 등록되었습니다!`);
+                } catch (error) {
+                    console.error(error);
+                    showToast('등록 중 오류 발생', true);
+                }
+            };
             const handleResetData = async () => {
                 setConfirmDialog({
                     isOpen: true, message: "모든 데이터를 삭제하고 기본 메뉴로 초기화하시겠습니까?", onConfirm: async () => {
@@ -2496,25 +2574,47 @@
                                             <div className="bg-teal-600 w-20 h-20 sm:w-24 sm:h-24 rounded-[2.5rem] sm:rounded-[3rem] mx-auto mb-6 flex items-center justify-center text-white shadow-xl"><Icon name="user" size={40} /></div>
                                             <h2 className="text-2xl sm:text-3xl font-black tracking-tighter text-stone-800 dark:text-stone-200">H무디 로그인</h2>
                                         </div>
+
                                         <div className="bg-teal-50 dark:bg-teal-900/30 border border-teal-100 dark:border-teal-800 p-4 rounded-2xl mb-6 text-center">
-                                            <p className="text-[11px] font-bold text-teal-700 dark:text-teal-400 leading-relaxed">사원번호를 입력하여 로그인하세요.<br />초기 비밀번호는 <b>사번과 동일</b>합니다.<br />로그인 후 우측 상단 '내 정보'에서 비밀번호를 변경해 주세요.<br /><span className="text-[9px] text-teal-500">(변경하지 않아도 시스템 사용은 가능합니다.)</span></p>
+                                            <p className="text-[11px] font-bold text-teal-700 dark:text-teal-400 leading-relaxed">
+                                                할당된 <b>포스번호</b>를 입력하여 로그인하세요.<br />
+                                                초기 PIN 번호는 <b>포스번호와 동일</b>합니다.<br /> {/* 👈 '사번'을 '포스번호'로 수정 */}
+                                                <span className="text-[9px] text-teal-500 mt-1 block">(로그인 후 '내 정보'에서 PIN 변경이 가능합니다.)</span>
+                                            </p>
                                         </div>
 
                                         <form className="space-y-5 sm:space-y-6" onSubmit={handleLogin}>
                                             <div className="space-y-2 text-left">
-                                                <label className="text-[11px] font-black text-stone-400 ml-4">사원번호</label>
-                                                <input type="text" className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-[2rem] px-6 py-4 sm:px-7 sm:py-5 font-bold text-[13px] shadow-inner outline-none focus:border-teal-500 transition-colors" placeholder="사번 입력" value={loginForm.id || ''} onChange={e => setLoginForm({ ...loginForm, id: e.target.value })} required />
+                                                <label className="text-[11px] font-black text-stone-400 ml-4">포스번호</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-[2rem] px-6 py-4 sm:px-7 sm:py-5 font-bold text-[13px] shadow-inner outline-none focus:border-teal-500 transition-colors"
+                                                    placeholder="포스번호 4~5자리 입력"  {/* 👈 '사번'을 '포스번호'로 수정 */}
+                                                    value={loginForm.id || ''}
+                                                    onChange={e => setLoginForm({ ...loginForm, id: e.target.value })}
+                                                    required
+                                                />
                                             </div>
+
                                             <div className="space-y-2 text-left">
-                                                <label className="text-[11px] font-black text-stone-400 ml-4">비밀번호</label>
-                                                <input type="password" className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-[2rem] px-6 py-4 sm:px-7 sm:py-5 font-bold text-[13px] shadow-inner outline-none focus:border-teal-500 transition-colors" placeholder="비밀번호" value={loginForm.pw || ''} onChange={e => setLoginForm({ ...loginForm, pw: e.target.value })} required />
+                                                <label className="text-[11px] font-black text-stone-400 ml-4">PIN 번호</label> {/* 👈 '비밀번호'를 'PIN 번호'로 수정 (선택사항) */}
+                                                <input
+                                                    type="password"
+                                                    className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-[2rem] px-6 py-4 sm:px-7 sm:py-5 font-bold text-[13px] shadow-inner outline-none focus:border-teal-500 transition-colors"
+                                                    placeholder="PIN 번호 입력"
+                                                    value={loginForm.pw || ''}
+                                                    onChange={e => setLoginForm({ ...loginForm, pw: e.target.value })}
+                                                    required
+                                                />
                                             </div>
+
                                             <div className="flex items-center justify-between px-4 pt-2">
                                                 <label className="flex items-center gap-2 cursor-pointer group">
                                                     <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="w-4 h-4 text-teal-600 bg-stone-100 border-stone-300 rounded focus:ring-teal-500" />
-                                                    <span className="text-[11px] font-bold text-stone-500 group-hover:text-stone-700 transition-colors">사원번호 기억하기</span>
+                                                    <span className="text-[11px] font-bold text-stone-500 group-hover:text-stone-700 transition-colors">포스번호 기억하기</span>
                                                 </label>
                                             </div>
+
                                             <button className="w-full bg-stone-800 hover:bg-stone-900 text-white font-black py-4 sm:py-5 rounded-[2rem] shadow-xl mt-6 btn-press text-[14px] tracking-widest transition-colors">접속하기</button>
                                         </form>
 
@@ -2528,18 +2628,16 @@
                                                 onClick={async () => {
                                                     const pin = prompt('관리자 마스터 PIN을 입력하세요.');
                                                     if (!pin) return;
-
                                                     const savedHash = localStorage.getItem('hmood_master_pin_hash');
                                                     const inputHash = typeof hashPassword === 'function' ? await hashPassword(pin) : pin;
 
                                                     if ((!savedHash && pin === '6011') || savedHash === inputHash) {
                                                         setIsAdminAuth(true);
-                                                        setAppUser({ empId: 'admin_master', name: '시스템 관리자', jobTitle: '최고 관리자', part: '시스템관리', position: '마스터' });
+                                                        setAppUser({ empId: 'admin_master', name: '시스템 관리자', jobTitle: '최고 관리자', part: '시스템관리', position: '마스터', role: 'admin' });
                                                         setViewMode('daily');
-                                                        if (typeof showToast === 'function') showToast('최고 관리자 모드로 접속했습니다.');
+                                                        showToast('최고 관리자 모드로 접속했습니다.');
                                                     } else {
-                                                        if (typeof showToast === 'function') showToast('PIN 번호가 일치하지 않습니다.', true);
-                                                        else alert('PIN 번호가 일치하지 않습니다.');
+                                                        showToast('PIN 번호가 일치하지 않습니다.', true);
                                                     }
                                                 }}
                                                 className="text-[11px] font-black text-stone-400 hover:text-teal-600 transition-colors btn-press flex items-center justify-center gap-1.5 mx-auto"
@@ -4071,15 +4169,47 @@
                                                             </div>
 
                                                             {isAdminAuth && (
-                                                                <div className="pt-6 border-t border-stone-200 dark:border-stone-700 mt-2">
-                                                                    <button
-                                                                        onClick={handleClearAllPosts}
-                                                                        className="w-full bg-rose-50 dark:bg-rose-900/20 text-rose-500 font-black px-5 py-3 rounded-2xl flex items-center justify-center gap-2 btn-press text-xs border border-rose-100 dark:border-rose-900/30 hover:bg-rose-100 transition-colors"
-                                                                    >
-                                                                        <Icon name="trash" size={14} /> 모든 게시글/제출 데이터 영구 삭제
-                                                                    </button>
-                                                                    <p className="text-[9px] text-center text-stone-400 font-bold mt-3">※ 삭제된 데이터는 복구할 수 없으니 주의하십시오.</p>
-                                                                </div>
+                                                                <>
+                                                                    {/* ✅ [추가] 파트너 계정 퀵 등록 카드 */}
+                                                                    <div className="mb-6 p-6 bg-teal-50 dark:bg-teal-900/20 rounded-[2.5rem] border border-teal-100 dark:border-teal-800 shadow-sm">
+                                                                        <div className="flex items-center gap-3 mb-4">
+                                                                            <div className="p-2 bg-teal-600 rounded-xl text-white">
+                                                                                <Icon name="user" size={18} />
+                                                                            </div>
+                                                                            <h3 className="font-black text-stone-800 dark:text-stone-200">파트너 계정 생성</h3>
+                                                                        </div>
+
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                // 테스트 데이터 3종
+                                                                                const testData = [
+                                                                                    { posId: "1001", name: "아디다스 현대점", brands: ["아디다스"] },
+                                                                                    { posId: "1002", name: "나이키 강남점", brands: ["나이키"] },
+                                                                                    { posId: "2001", name: "비이커 통합매장", brands: ["비이커", "구호"] }
+                                                                                ];
+                                                                                uploadPartners(testData);
+                                                                            }}
+                                                                            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-teal-100 dark:shadow-none transition-all btn-press flex items-center justify-center gap-2 text-sm"
+                                                                        >
+                                                                            <Icon name="plus" size={16} /> 테스트 계정 3개 즉시 등록
+                                                                        </button>
+                                                                        <p className="text-[10px] text-teal-600/70 dark:text-teal-400/70 mt-3 px-2 text-center font-bold leading-relaxed">
+                                                                            클릭 시 DB(partners)에 1001, 1002, 2001번<br />
+                                                                            포스 정보가 자동으로 생성됩니다.
+                                                                        </p>
+                                                                    </div>
+
+                                                                    {/* 여기서부터 기존에 보여주신 삭제 버튼 코드입니다 */}
+                                                                    <div className="pt-6 border-t border-stone-200 dark:border-stone-700 mt-2">
+                                                                        <button
+                                                                            onClick={handleClearAllPosts}
+                                                                            className="w-full bg-rose-50 dark:bg-rose-900/20 text-rose-500 font-black px-5 py-3 rounded-2xl flex items-center justify-center gap-2 btn-press text-xs border border-rose-100 dark:border-rose-900/30 hover:bg-rose-100 transition-colors"
+                                                                        >
+                                                                            <Icon name="trash" size={14} /> 모든 게시글/제출 데이터 영구 삭제
+                                                                        </button>
+                                                                        <p className="text-[9px] text-center text-stone-400 font-bold mt-3">※ 삭제된 데이터는 복구할 수 없으니 주의하십시오.</p>
+                                                                    </div>
+                                                                </>
                                                             )}
                                                         </div>
                                                     </div>
