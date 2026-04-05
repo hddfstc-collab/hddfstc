@@ -1621,11 +1621,17 @@
 
             const handleGenericPostSubmit = async () => {
                 try {
-                    // 1️⃣ 작성자 결정
-                    const author = appUser ? appUser.name : submitFormState.authorName;
-
-                    // 2️⃣ 현재 열린 앱 정보 (변수명 정리)
                     const currentApp = openedDynamicApp || openedSubmitForm;
+
+                    // 1️⃣ 작성자 결정 (로그인 유저 -> 아니면 폼 답변 중 '이름/성함' 칸 낚아채기)
+                    let author = appUser ? appUser.name : submitFormState.authorName;
+
+                    if (!author || author.trim() === '') {
+                        const nameField = currentApp?.fields?.find(f => f.label.includes('이름') || f.label.includes('성함'));
+                        if (nameField && submitFormState[nameField.id]) {
+                            author = submitFormState[nameField.id];
+                        }
+                    }
 
                     if (!currentApp) return showToast('앱 정보를 찾을 수 없습니다.', true);
 
@@ -4796,9 +4802,19 @@
                                                                             {openedDynamicApp.fields.map(field => (
                                                                                 <div key={field.id} className="flex gap-2 text-[11px] border-b border-stone-200 dark:border-stone-700/50 pb-1.5 mb-1.5 last:border-0 last:pb-0 last:mb-0">
                                                                                     <span className="font-black text-indigo-500 dark:text-indigo-400 shrink-0 w-24">· {field.label}</span>
-                                                                                    <span className="text-stone-700 dark:text-stone-200 break-all">{post[field.id] || '-'}</span>
+                                                                                    {/* 🔴 핵심 수정: 파싱된 데이터(parsedFormAnswers)에서 값을 꺼내옵니다! */}
+                                                                                    <span className="text-stone-700 dark:text-stone-200 break-all">
+                                                                                        {parsedFormAnswers ? parsedFormAnswers[field.id] : '-'}
+                                                                                    </span>
                                                                                 </div>
                                                                             ))}
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* 🔴 외계어 숨기기: 폼 타입(isFormPost)이 아닐 때만 텍스트 원본을 출력합니다 */}
+                                                                    {post.content && !isFormPost && (
+                                                                        <div className="mt-2 mb-3">
+                                                                            <p className="text-[12px] font-bold text-stone-600 dark:text-stone-400 whitespace-pre-wrap break-words overflow-hidden">{post.content}</p>
                                                                         </div>
                                                                     )}
 
@@ -4880,7 +4896,8 @@
                                                 </div>
                                             )}
 
-                                            {!appUser && !editingPostId && (
+                                            {/* 작성자 성명 (일반 자유게시판일 때만 노출. 폼 양식은 질문에서 알아서 낚아챔) */}
+                                            {!appUser && !editingPostId && openedDynamicApp?.actionType !== 'form' && (
                                                 <input
                                                     className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-stone-400"
                                                     placeholder="작성자 성명 (필수)"
@@ -4891,15 +4908,42 @@
                                                 />
                                             )}
 
-                                            <textarea
-                                                className={`w-full bg-white dark:bg-stone-800 border rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-20 resize-none ${editingPostId ? 'border-teal-300 focus:border-teal-500' : 'border-stone-100 dark:border-stone-700 focus:border-indigo-300'}`}
-                                                placeholder="자유롭게 글을 남겨주세요."
-                                                value={submitFormState.content || ''}
-                                                onChange={(e) =>
-                                                    setSubmitFormState({ ...submitFormState, content: e.target.value })
-                                                }
-                                            />
-                                            <label className={`flex items-center gap-2 text-[11px] font-black cursor-pointer px-1 py-1 mt-1 w-fit ${openedDynamicApp.color || 'text-stone-600'}`}>
+                                            {/* 🔴 핵심! 폼 양식(form)이면 질문 칸들을 보여주고, 아니면 일반 글쓰기 칸(textarea)을 보여줍니다 */}
+                                            {openedDynamicApp?.actionType === 'form' && openedDynamicApp?.fields ? (
+                                                <div className="space-y-2 mb-2 bg-stone-50 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-100 dark:border-stone-800">
+                                                    {openedDynamicApp.fields.map(field => (
+                                                        <div key={field.id}>
+                                                            <label className="text-[10px] font-black text-stone-500 ml-1">{field.label}</label>
+                                                            {field.type === 'textarea' ? (
+                                                                <textarea
+                                                                    className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl p-3 text-xs font-bold shadow-inner outline-none h-20 resize-none focus:border-teal-400"
+                                                                    value={submitFormState[field.id] || ''}
+                                                                    onChange={e => setSubmitFormState({ ...submitFormState, [field.id]: e.target.value })}
+                                                                />
+                                                            ) : (
+                                                                <input
+                                                                    type={field.type}
+                                                                    className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-teal-400"
+                                                                    value={submitFormState[field.id] || ''}
+                                                                    onChange={e => setSubmitFormState({ ...submitFormState, [field.id]: e.target.value })}
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <textarea
+                                                    className={`w-full bg-white dark:bg-stone-800 border rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-20 resize-none ${editingPostId ? 'border-teal-300 focus:border-teal-500' : 'border-stone-100 dark:border-stone-700 focus:border-indigo-300'}`}
+                                                    placeholder="자유롭게 글을 남겨주세요."
+                                                    value={submitFormState.content || ''}
+                                                    onChange={(e) =>
+                                                        setSubmitFormState({ ...submitFormState, content: e.target.value })
+                                                    }
+                                                />
+                                            )}
+
+                                            {/* 중요글 상단 고정 체크박스 */}
+                                            <label className={`flex items-center gap-2 text-[11px] font-black cursor-pointer px-1 py-1 mt-1 mb-2 w-fit ${openedDynamicApp?.color || 'text-stone-600'}`}>
                                                 <input
                                                     type="checkbox"
                                                     checked={submitFormState.isPinned || false}
@@ -4909,6 +4953,7 @@
                                                 중요글 상단 고정
                                             </label>
 
+                                            {/* 하단 버튼 영역 */}
                                             <div className="flex gap-2">
                                                 <label className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer btn-press text-[11px]">
                                                     <Icon name="camera" size={14} />{' '}
@@ -4966,21 +5011,6 @@
 
                                     {canWrite(openedSubmitForm) ? (
                                         <>
-                                            {/* 1. 작성자 성함 입력칸 (비로그인 시에만 노출) */}
-                                            {!appUser && (
-                                                <div className="space-y-1.5 mb-6">
-                                                    <label className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 ml-1 flex items-center gap-1">
-                                                        <Icon name="user" size={14} /> 작성자 성함 (필수)
-                                                    </label>
-                                                    <input
-                                                        className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 text-xs font-bold shadow-inner outline-none focus:border-indigo-400"
-                                                        placeholder="제출하시는 분의 성함을 입력하세요"
-                                                        value={submitFormState.authorName || ''}
-                                                        onChange={e => setSubmitFormState({ ...submitFormState, authorName: e.target.value })}
-                                                    />
-                                                </div>
-                                            )}
-
                                             {/* 2. 커스텀 질문 리스트 (한 번만 매핑) */}
                                             {openedSubmitForm.fields && openedSubmitForm.fields.map((field) => (
                                                 <div key={field.id} className="space-y-1.5">
