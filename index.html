@@ -1335,7 +1335,9 @@
                 const type = app.actionType;
                 if (type === 'popup_ext' || type === 'link_ext' || app.name.includes('내선')) { setShowExtModal(true); return; }
                 if (type === 'form' || type === 'custom_form') {
-                    setSubmitFormState({ content: '', photos: [], authorName: '' });
+                    const fieldResets2 = {};
+                    if (app?.fields) app.fields.forEach(f => { fieldResets2[f.id] = ''; });
+                    setSubmitFormState({ content: '', photos: [], authorName: '', ...fieldResets2 });
                     setOpenedSubmitForm(app);
                     (dynamicPosts || []).filter(p => p.appId === app.id).forEach(p => markAsRead(p.id));
                     return;
@@ -1692,8 +1694,10 @@
                         showToast('성공적으로 등록되었습니다!');
                     }
 
-                    // 5️⃣ 공통 마무리 (깔끔하게 비우기)
-                    setSubmitFormState({ content: '', photos: [], authorName: '', isPinned: false });
+                    // 5️⃣ 공통 마무리 (동적 필드 포함 전체 초기화)
+                    const fieldResets = {};
+                    if (currentApp?.fields) currentApp.fields.forEach(f => { fieldResets[f.id] = ''; });
+                    setSubmitFormState({ content: '', photos: [], authorName: '', isPinned: false, ...fieldResets });
                     setEditingPostId(null);
                     if (openedSubmitForm) setOpenedSubmitForm(null);
 
@@ -2681,7 +2685,7 @@
                                                                             <div className="bg-stone-50 dark:bg-stone-800 p-1.5 rounded-lg border border-stone-100 dark:border-stone-700 mb-2">
                                                                                 <p className="text-[10px] font-black text-stone-700 dark:text-stone-300 truncate">{u?.category || '-'}</p>
                                                                                 {u?.brands && (
-                                                                                    <p className={`text-[9px] font-black text-teal-700 cursor-pointer transition-all ${expandedDailyCards[m.empId] ? 'whitespace-pre-wrap break-all' : 'truncate'}`} onClick={(e) => { e.stopPropagation(); setExpandedDailyCards(prev => ({ ...prev, [m.empId]: !prev[m.empId] })); }}>{u.brands}</p>
+                                                                                    <p className={`text-[9px] font-black text-teal-700 cursor-pointer transition-all ${expandedDailyCards[m.empId] ? 'whitespace-pre-wrap break-words overflow-hidden' : 'truncate'}`} onClick={(e) => { e.stopPropagation(); setExpandedDailyCards(prev => ({ ...prev, [m.empId]: !prev[m.empId] })); }}>{u.brands}</p>
                                                                                 )}
                                                                             </div>
                                                                         )}
@@ -3181,7 +3185,7 @@
                                                                             // 3. 읽음 처리 로직 (기존 코드)
                                                                             (dynamicPosts || []).filter(p => p.id === app.id).forEach(p => markAsRead(p.id));
 
-                                                                        }} className="...">폼 열기 / 제출</button>
+                                                                        }} className="w-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 font-black py-3 rounded-xl btn-press text-xs border border-indigo-200 dark:border-indigo-800">폼 열기 / 제출</button>
                                                                     )}
                                                                     {/* 일반 게시판형 */}
                                                                     {app.actionType === 'board' && (
@@ -3245,7 +3249,7 @@
                                                                                                     </div>
 
                                                                                                     {/* 게시글 내용: 접혔을 땐 2줄, 펼쳐지면 전체 */}
-                                                                                                    <p className={`text-[13px] font-bold leading-snug text-stone-800 dark:text-stone-200 ${isExpanded ? 'whitespace-pre-wrap' : 'line-clamp-1'}`}>
+                                                                                                    <p className={`text-[13px] font-bold leading-snug text-stone-800 dark:text-stone-200 overflow-hidden ${isExpanded ? 'whitespace-pre-wrap break-words' : 'line-clamp-1'}`}>
                                                                                                         {notice.content}
                                                                                                     </p>
 
@@ -4601,7 +4605,7 @@
 
                                                 {/* 안내 텍스트 출력 */}
                                                 {openedGuide.guideContent ? (
-                                                    <p className="text-[14px] font-bold text-stone-700 dark:text-stone-300 leading-relaxed whitespace-pre-wrap">
+                                                    <p className="text-[14px] font-bold text-stone-700 dark:text-stone-300 leading-relaxed whitespace-pre-wrap break-words overflow-hidden">
                                                         {openedGuide.guideContent}
                                                     </p>
                                                 ) : (
@@ -4720,8 +4724,18 @@
                                                     const hasManagePerm = canWrite(openedDynamicApp) || isAdminAuth || isMyPost;
 
                                                     // ✨ 줄바꿈 원천 차단: 첫 줄만 깨끗하게 자르기
-                                                    const rawText = openedDynamicApp.fields && openedDynamicApp.fields.length > 0 ? (post[openedDynamicApp.fields[0].id] || post.content || '내용 없음') : (post.title || post.content || '내용 없음');
-                                                    const firstLine = rawText.split('\n')[0];
+                                                    // 폼 제출형은 content가 JSON이므로 파싱 후 표시
+                                                    const isFormPost = openedDynamicApp.actionType === 'form' && openedDynamicApp.fields && openedDynamicApp.fields.length > 0;
+                                                    let parsedFormAnswers = null;
+                                                    if (isFormPost && post.content) {
+                                                        try { parsedFormAnswers = JSON.parse(post.content); } catch(e) { parsedFormAnswers = null; }
+                                                    }
+                                                    const rawText = isFormPost
+                                                        ? (parsedFormAnswers ? openedDynamicApp.fields.map(f => `[${f.label}]\n${parsedFormAnswers[f.id] || '-'}`).join('\n\n') : post.content || '내용 없음')
+                                                        : (post.title || post.content || '내용 없음');
+                                                    const firstLine = isFormPost
+                                                        ? (parsedFormAnswers ? (parsedFormAnswers[openedDynamicApp.fields[0].id] || '내용 없음') : (post.content || '내용 없음')).split('\n')[0]
+                                                        : rawText.split('\n')[0];
 
                                                     return (
                                                         <div
@@ -4749,8 +4763,8 @@
                                                                 </div>
 
                                                                 {/* ✨ 1줄 요약 처리 (줄바꿈이 절대 합쳐지지 않게 truncate 적용) */}
-                                                                <div className={`pr-8 ${isExpanded ? 'block' : 'truncate'}`}>
-                                                                    <p className={`text-[13px] font-bold text-stone-800 dark:text-stone-200 leading-snug ${isExpanded ? 'whitespace-pre-wrap block' : 'truncate'}`}>
+                                                                <div className={`pr-8 ${isExpanded ? 'block overflow-hidden' : 'truncate'}`}>
+                                                                    <p className={`text-[13px] font-bold text-stone-800 dark:text-stone-200 leading-snug ${isExpanded ? 'whitespace-pre-wrap break-words overflow-hidden block' : 'truncate'}`}>
                                                                         {isExpanded ? rawText : firstLine}
                                                                     </p>
                                                                 </div>
@@ -4788,7 +4802,7 @@
 
                                                                     {post.content && (
                                                                         <div className="mt-2 mb-3">
-                                                                            <p className="text-[12px] font-bold text-stone-600 dark:text-stone-400 whitespace-pre-wrap">{post.content}</p>
+                                                                            <p className="text-[12px] font-bold text-stone-600 dark:text-stone-400 whitespace-pre-wrap break-words overflow-hidden">{post.content}</p>
                                                                         </div>
                                                                     )}
 
@@ -4929,7 +4943,7 @@
                                     setSubmitFormState({ content: '', photos: [], authorName: '', isPinned: false });
                                 }}
                             >
-                                <div className="space-y-4">
+                                <div className="space-y-4 overflow-y-auto flex-1 scrollbar-hide">
                                     {/* 상단 안내 문구 */}
                                     <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 p-4 rounded-2xl mb-4">
                                         <p className="text-[10px] font-bold text-indigo-600 dark:text-indigo-300 leading-relaxed text-center">
@@ -5048,7 +5062,7 @@
                                                 {selectedAdminPost.photos && Array.isArray(selectedAdminPost.photos) && selectedAdminPost.photos.length > 0 && selectedAdminPost.photos.map((ph, i) => (
                                                     <img key={i} src={ph} className="w-full h-auto rounded-2xl object-cover cursor-pointer mb-1" onClick={() => setExpandedImage(ph)} />
                                                 ))}
-                                                <div className="border-t border-stone-100 dark:border-stone-700 pt-4"><p className="text-[13px] font-bold text-stone-700 dark:text-stone-300 whitespace-pre-wrap">{selectedAdminPost.content}</p></div>
+                                                <div className="border-t border-stone-100 dark:border-stone-700 pt-4"><p className="text-[13px] font-bold text-stone-700 dark:text-stone-300 whitespace-pre-wrap break-words overflow-hidden">{selectedAdminPost.content}</p></div>
                                                 <button onClick={() => setSelectedAdminPost(null)} className="w-full bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300 font-black py-3 rounded-2xl btn-press text-[11px]">목록으로</button>
                                             </div>
                                         ) : (
@@ -5095,7 +5109,7 @@
                             confirmDialog.isOpen && (
                                 <div className="fixed inset-0 z-[400] flex items-center justify-center p-4 bg-stone-900/80 backdrop-blur-sm fade-in">
                                     <div className="bg-white dark:bg-stone-800 w-full max-w-sm rounded-[3rem] p-8 shadow-2xl text-center">
-                                        <p className="text-[14px] font-black text-stone-600 dark:text-stone-300 whitespace-pre-wrap leading-relaxed mb-8 mt-4">{confirmDialog.message}</p>
+                                        <p className="text-[14px] font-black text-stone-600 dark:text-stone-300 whitespace-pre-wrap break-words overflow-hidden leading-relaxed mb-8 mt-4">{confirmDialog.message}</p>
                                         <div className="flex gap-3">
                                             <button onClick={confirmDialog.onCancel} className="flex-1 bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300 font-black py-4 rounded-2xl text-[13px] btn-press">취소</button>
                                             {confirmDialog.telHref ? (<a href={confirmDialog.telHref} onClick={confirmDialog.onCancel} className="flex-1 flex items-center justify-center bg-teal-600 text-white font-black py-4 rounded-2xl text-[13px] decoration-none btn-press">통화 연결</a>) : (<button onClick={confirmDialog.onConfirm} className="flex-1 bg-stone-800 text-white font-black py-4 rounded-2xl text-[13px] btn-press">확인</button>)}
@@ -5233,8 +5247,8 @@
                                                             </div>
 
                                                             {/* ✨ 무조건 1줄로 보이게 수정! (CSS truncate + JS 첫 줄 추출 연동) */}
-                                                            <div className={`pr-8 ${isExpanded ? 'block' : 'truncate'}`}>
-                                                                <p className={`text-[13px] font-bold text-stone-800 dark:text-stone-200 leading-snug ${isExpanded ? 'whitespace-pre-wrap block' : 'truncate'}`}>
+                                                            <div className={`pr-8 ${isExpanded ? 'block overflow-hidden' : 'truncate'}`}>
+                                                                <p className={`text-[13px] font-bold text-stone-800 dark:text-stone-200 leading-snug ${isExpanded ? 'whitespace-pre-wrap break-words overflow-hidden block' : 'truncate'}`}>
                                                                     {isExpanded ? notice.content : firstLine}
                                                                 </p>
                                                             </div>
