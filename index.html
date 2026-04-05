@@ -971,31 +971,53 @@
             }, []);
 
             useEffect(() => {
+                // 데이터가 로딩 중일 때는 판단을 유보합니다.
                 if (!users || users.length === 0) return;
 
-                const urlMode = new URLSearchParams(window.location.search).get('mode') || new URLSearchParams(window.location.hash.split('?')[1] || '').get('mode');
+                const urlMode = new URLSearchParams(window.location.search).get('mode') ||
+                    new URLSearchParams(window.location.hash.split('?')[1] || '').get('mode');
                 const isSharedMode = urlMode === 'shared';
-
                 const savedSession = localStorage.getItem('hmood_session');
 
+                // [A] 세션이 없는 경우 (로그아웃 상태)
                 if (!savedSession) {
-                    if (isSharedMode) setViewMode('shared');
-                    else setViewMode('login');
+                    // 세션이 없으면 URL에 shared가 있더라도 무조건 로그인으로 보냅니다. (로그아웃 후 잔상 제거)
+                    setViewMode('login');
                     return;
                 }
+
+                // [B] 세션이 있는 경우 (새로고침 상태)
                 try {
-                    const { empId } = JSON.parse(savedSession);
-                    if (!empId) return;
-                    const found = users.find(u => u.empId === empId);
-                    if (found && !appUser) {
-                        setAppUser(found);
-                        if (isSharedMode) {
-                            setViewMode('shared');
-                        } else if (viewMode === 'login' || viewMode === 'all') {
-                            setViewMode('daily');
-                        }
+                    const sessionData = JSON.parse(savedSession);
+                    if (!sessionData.empId) return;
+
+                    // 1. 공용 계정(Partner)인지 확인
+                    const isPartner = sessionData.role === 'partner';
+
+                    // 2. 직영 직원인지 확인
+                    const staffUser = users.find(u => u.empId === sessionData.empId);
+
+                    if (isPartner) {
+                        // ✅ 파트너 계정은 새로고침 시 무조건 shared 뷰 유지
+                        if (!appUser) setAppUser(sessionData);
+                        setViewMode('shared');
+                    } else if (staffUser) {
+                        // 직영 직원 상태 복구
+                        if (!appUser) setAppUser(staffUser);
+
+                        // 직영 사원의 경우 URL 모드에 따라 뷰 결정
+                        if (isSharedMode) setViewMode('shared');
+                        else if (viewMode === 'login' || viewMode === 'all') setViewMode('daily');
+                    } else {
+                        // 둘 다 아니면 세션 만료 처리
+                        localStorage.removeItem('hmood_session');
+                        setViewMode('login');
                     }
-                } catch (e) { localStorage.removeItem('hmood_session'); }
+                } catch (e) {
+                    console.error("세션 복구 에러", e);
+                    localStorage.removeItem('hmood_session');
+                    setViewMode('login');
+                }
             }, [users]);
 
             const handleNavClick = (targetView) => {
@@ -1299,7 +1321,7 @@
                 setAppUser(null);
                 if (typeof setFbUser === 'function') setFbUser(null);
                 setIsAdminAuth(false);
-                
+
                 localStorage.removeItem('h_moody_auth');
                 localStorage.removeItem('hmood_session');
 
@@ -2706,7 +2728,8 @@
                                                         onClick={handleLogout}
                                                         className="bg-rose-500 text-white px-4 py-2 rounded-xl text-[11px] font-black shadow-lg btn-press flex items-center gap-1"
                                                     >
-                                                        <Icon name="logOut" size={14} /> 로그아웃
+                                                        <Icon name="logOut" size={12} />
+                                                        <span className="hidden sm:inline">로그아웃</span> {/* 👈 PC에서만 글자 보이고 모바일은 아이콘만! */}
                                                     </button>
                                                 )}
                                             </div>
@@ -3348,8 +3371,8 @@
                                                                         <td className="py-4 px-6">
                                                                             <span
                                                                                 className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${p.status === 'active'
-                                                                                        ? 'bg-green-100 text-green-600'
-                                                                                        : 'bg-stone-200 text-stone-500'
+                                                                                    ? 'bg-green-100 text-green-600'
+                                                                                    : 'bg-stone-200 text-stone-500'
                                                                                     }`}
                                                                             >
                                                                                 {p.status === 'active' ? '영업중' : '퇴점'}
@@ -3436,8 +3459,8 @@
                                                                 key={tab.id}
                                                                 onClick={() => setAdminTab(tab.id)}
                                                                 className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${currentAdminTab === tab.id
-                                                                        ? 'bg-stone-800 text-white shadow-md'
-                                                                        : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
+                                                                    ? 'bg-stone-800 text-white shadow-md'
+                                                                    : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
                                                                     }`}
                                                             >
                                                                 {tab.name}
@@ -3447,12 +3470,13 @@
                                                             onClick={() => {
                                                                 setIsAdminAuth(false);
                                                                 setIsHealthOnlyAdmin(false);
-                                                                setViewMode('daily');
-                                                                showToast('관리자 모드가 종료되었습니다.');
+                                                                setViewMode(appUser?.role === 'partner' ? 'shared' : 'daily');
+                                                                showToast('관리자 모드를 종료합니다.');
                                                             }}
-                                                            className="snap-center px-4 py-3 rounded-[1.2rem] font-black text-[11px] whitespace-nowrap bg-rose-50 dark:bg-rose-900/30 text-rose-500 border border-rose-200 dark:border-rose-800 shrink-0 flex items-center gap-1.5 ml-auto btn-press hover:bg-rose-100 transition-colors"
+                                                            className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 hover:bg-rose-500 hover:text-white transition-all btn-press shadow-sm"
+                                                            title="관리자 종료"
                                                         >
-                                                            <Icon name="logOut" size={14} /> 관리자 종료
+                                                            <Icon name="xCircle" size={18} />
                                                         </button>
                                                     </div>
 
