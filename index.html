@@ -1627,62 +1627,54 @@
                     let finalContent = submitFormState.content;
                     let extractedName = '';
 
-                    // 1. 폼 양식 답변 수집 및 이름 자동 추출
+                    // 1. 폼 양식 답변 수집 (사번/브랜드 매칭 유지 + 숫자 체크 추가)
                     if (currentApp.actionType === 'form' && currentApp.fields) {
                         const answers = {};
                         let isAnyRequiredEmpty = false;
-                        let numericErrorMsg = ''; // ✨ 숫자 체크 에러 메시지용 변수
+                        let numericErrorMsg = '';
 
                         currentApp.fields.forEach(f => {
                             const val = submitFormState[f.id] ? String(submitFormState[f.id]).trim() : '';
                             const isEmpty = !val;
 
-                            // 💡 필수 항목인데 비어있는지 체크
+                            // 필수값 체크
                             if (f.isRequired !== false && isEmpty) {
                                 isAnyRequiredEmpty = true;
                             }
 
-                            // 💡 숫자형(number)인데 숫자가 아닌 문자가 섞여있는지 체크
+                            // 숫자형 체크 (영문/한글 섞이면 컷!)
                             if (!isEmpty && f.type === 'number') {
-                                // 숫자가 아니거나, 숫자가 아닌 문자가 포함된 경우
                                 if (isNaN(val) || /[^0-9]/.test(val)) {
                                     numericErrorMsg = `[${f.label}] 항목은 숫자만 입력해주세요.`;
                                 }
                             }
 
-                            // 비어있지 않으면 바구니에 담기
+                            // 데이터 바구니에 담기 (사번, 브랜드 등 모든 값이 일로 들어갑니다)
                             if (!isEmpty) {
                                 answers[f.id] = val;
-
-                                // 이름 자동 추출 로직 유지
+                                // 이름 추출 로직
                                 if (f.label.includes('이름') || f.label.includes('성함') || f.label.includes('성명')) {
                                     extractedName = val;
                                 }
                             }
                         });
 
-                        // 1순위: 숫자 입력 오류부터 잡기
+                        // 에러 우선순위: 숫자 오류 -> 필수값 누락
                         if (numericErrorMsg) return showToast(numericErrorMsg, true);
-
-                        // 2순위: 필수값 미입력 잡기
                         if (isAnyRequiredEmpty) return showToast('필수 질문 항목을 모두 입력해주세요.', true);
 
                         finalContent = JSON.stringify(answers);
                     }
 
-                    // 2. 최종 작성자 결정 (로그인 유저 -> 폼 입력 이름 -> 일반 작성자명)
+                    // 2. 작성자 결정
                     let author = appUser?.name || extractedName || submitFormState.authorName;
-
                     if (!author || author.trim() === '') {
-                        if (currentApp?.actionType === 'form') {
-                            author = '익명 제출'; // ✨ 폼 양식에 '이름' 칸이 없으면 튕기지 말고 '익명'으로 통과!
-                        } else {
-                            return showToast('작성자 성함을 입력해주세요.', true);
-                        }
+                        author = (currentApp?.actionType === 'form') ? '익명 제출' : '';
                     }
+                    if (!author) return showToast('작성자 성함을 입력해주세요.', true);
                     if (!finalContent?.trim()) return showToast('내용을 입력해주세요.', true);
 
-                    // 3. 저장/수정 로직
+                    // 3. 저장/수정 로직 (⚡ 1초 딜레이 제거를 위해 UI부터 즉시 반영)
                     if (editingPostId) {
                         const original = (dynamicPosts || []).find(p => p.id === editingPostId);
                         if (!original) return showToast('게시글을 찾을 수 없습니다.', true);
@@ -1694,10 +1686,15 @@
                             updatedAt: new Date().toISOString()
                         };
 
+                        // ⚡ 화면 갱신 & 초기화부터 즉시 실행
                         setDynamicPosts(prev => prev.map(p => p.id === editingPostId ? updatedPost : p));
-                        saveToIDB('dynamicPosts', updatedPost);
-                        if (db) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(editingPostId).set(updatedPost, { merge: true });
+                        setEditingPostId(null);
                         showToast('수정되었습니다.');
+
+                        // 실제 저장은 비동기로 처리 (await 제거)
+                        saveToIDB('dynamicPosts', updatedPost);
+                        if (db) db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(editingPostId).set(updatedPost, { merge: true });
+
                     } else {
                         const newPost = {
                             id: 'post_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
@@ -1708,18 +1705,20 @@
                             createdAt: new Date().toISOString(), readUsers: [appUser ? appUser.empId : 'guest']
                         };
 
+                        // ⚡ 목록 추가 & 창 닫기부터 즉시 실행
                         setDynamicPosts(prev => [newPost, ...(prev || [])]);
-                        saveToIDB('dynamicPosts', newPost);
-                        if (db) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newPost.id).set(newPost);
+                        setOpenedSubmitForm(null);
                         showToast('성공적으로 등록되었습니다!');
+
+                        // 실제 저장은 비동기로 처리 (await 제거)
+                        saveToIDB('dynamicPosts', newPost);
+                        if (db) db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newPost.id).set(newPost);
                     }
 
-                    // 4. 초기화
+                    // 4. 최종 폼 초기화
                     const fieldResets = {};
                     if (currentApp?.fields) currentApp.fields.forEach(f => { fieldResets[f.id] = ''; });
                     setSubmitFormState({ content: '', photos: [], authorName: '', isPinned: false, ...fieldResets });
-                    setEditingPostId(null);
-                    if (openedSubmitForm) setOpenedSubmitForm(null);
 
                 } catch (err) {
                     showToast('등록 중 오류가 발생했습니다.', true);
