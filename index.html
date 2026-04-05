@@ -1628,21 +1628,32 @@
                     let extractedName = '';
 
                     // 1. 폼 양식 답변 수집 및 이름 자동 추출
+                    // 1. 폼 양식 답변 수집 및 이름 자동 추출
                     if (currentApp.actionType === 'form' && currentApp.fields) {
                         const answers = {};
-                        const isAnyEmpty = currentApp.fields.some(f => {
-                            const val = submitFormState[f.id];
-                            if (!val || !val.trim()) return true;
-                            answers[f.id] = val;
+                        let isAnyRequiredEmpty = false; // 필수값이 비었는지 체크하는 깃발
 
-                            // 💡 질문에 '이름/성함/성명'이 있으면 작성자로 자동 인식!
-                            if (f.label.includes('이름') || f.label.includes('성함') || f.label.includes('성명')) {
-                                extractedName = val.trim();
+                        currentApp.fields.forEach(f => {
+                            const val = submitFormState[f.id];
+                            const isEmpty = (!val || !val.trim());
+
+                            // 💡 필드 설정이 '필수(isRequired !== false)'인데 비어있으면 에러 깃발 들기!
+                            if (f.isRequired !== false && isEmpty) {
+                                isAnyRequiredEmpty = true;
                             }
-                            return false;
+
+                            // 비어있지 않으면 바구니에 담기 (선택 항목이라 안 썼으면 그냥 무시)
+                            if (!isEmpty) {
+                                answers[f.id] = val;
+
+                                // 이름 자동 추출 로직 유지
+                                if (f.label.includes('이름') || f.label.includes('성함') || f.label.includes('성명')) {
+                                    extractedName = val.trim();
+                                }
+                            }
                         });
 
-                        if (isAnyEmpty) return showToast('모든 질문 항목을 입력해주세요.', true);
+                        if (isAnyRequiredEmpty) return showToast('필수 질문 항목을 모두 입력해주세요.', true);
                         finalContent = JSON.stringify(answers);
                     }
 
@@ -1650,7 +1661,11 @@
                     let author = appUser?.name || extractedName || submitFormState.authorName;
 
                     if (!author || author.trim() === '') {
-                        return showToast('작성자 성함을 입력해주세요. (양식에 이름 항목이 필요합니다)', true);
+                        if (currentApp?.actionType === 'form') {
+                            author = '익명 제출'; // ✨ 폼 양식에 '이름' 칸이 없으면 튕기지 말고 '익명'으로 통과!
+                        } else {
+                            return showToast('작성자 성함을 입력해주세요.', true);
+                        }
                     }
                     if (!finalContent?.trim()) return showToast('내용을 입력해주세요.', true);
 
@@ -3630,6 +3645,21 @@
                                                                                                 <option value="number">숫자형 (숫자만)</option>
                                                                                                 <option value="textarea">설명형 (여러 줄 입력)</option>
                                                                                             </select>
+                                                                                            {/* 👇 추가할 부분: 필수 항목 체크박스 */}
+                                                                                            <label className="flex items-center gap-1.5 mt-2 text-[10px] font-black text-stone-500 cursor-pointer">
+                                                                                                <input
+                                                                                                    type="checkbox"
+                                                                                                    /* 기존에 만든 질문들은 기본적으로 필수로 적용되게 처리 */
+                                                                                                    checked={field.isRequired !== false}
+                                                                                                    onChange={(e) => {
+                                                                                                        const newFields = appManagerForm.fields.map(f => f.id === field.id ? { ...f, isRequired: e.target.checked } : f);
+                                                                                                        setAppManagerForm({ ...appManagerForm, fields: newFields });
+                                                                                                    }}
+                                                                                                    className="w-3.5 h-3.5 rounded border-stone-300 text-indigo-600 focus:ring-indigo-500"
+                                                                                                />
+                                                                                                필수 항목으로 지정
+                                                                                            </label>
+                                                                                            {/* 👆 여기까지 추가 */}
                                                                                         </div>
                                                                                         <button
                                                                                             onClick={() => {
@@ -4865,106 +4895,109 @@
 
                                     {/* ✅ 하단 작성/수정 영역 */}
                                     {canWrite(openedDynamicApp) ? (
-                                        <div className="shrink-0 pt-4 border-t border-stone-200 dark:border-stone-700 mt-2 space-y-3">
-                                            {/* 수정 모드 헤더 */}
-                                            {editingPostId && (
-                                                <div className="flex items-center justify-between">
-                                                    <p className="text-[11px] font-black text-teal-600 flex items-center gap-1.5">
-                                                        <Icon name="edit" size={13} /> 게시글 수정 중
-                                                    </p>
+                                        // ✨ 핵심 로직: 폼 양식(form)인데 '수정 모드'가 아니면 입력칸을 아예 숨겨서 데이터 볼 공간을 넓힙니다!
+                                        openedDynamicApp?.actionType === 'form' && !editingPostId ? null : (
+                                            <div className="shrink-0 pt-4 border-t border-stone-200 dark:border-stone-700 mt-2 space-y-3">
+                                                {/* 수정 모드 헤더 */}
+                                                {editingPostId && (
+                                                    <div className="flex items-center justify-between">
+                                                        <p className="text-[11px] font-black text-teal-600 flex items-center gap-1.5">
+                                                            <Icon name="edit" size={13} /> 게시글 수정 중
+                                                        </p>
+                                                        <button
+                                                            onClick={() => { setEditingPostId(null); setSubmitFormState({ content: '', photos: [], authorName: '' }); }}
+                                                            className="text-[10px] font-black text-stone-400 hover:text-rose-500 bg-stone-100 dark:bg-stone-800 px-3 py-1.5 rounded-lg btn-press"
+                                                        >
+                                                            취소
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                {/* 일반 게시판 & 비로그인 시에만 이름 입력칸 노출 */}
+                                                {!appUser && !editingPostId && openedDynamicApp?.actionType !== 'form' && (
+                                                    <input
+                                                        className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-stone-400"
+                                                        placeholder="작성자 성명 (필수)"
+                                                        value={submitFormState.authorName || ''}
+                                                        onChange={(e) =>
+                                                            setSubmitFormState({ ...submitFormState, authorName: e.target.value })
+                                                        }
+                                                    />
+                                                )}
+
+                                                {/* 폼 양식이면 질문칸 노출, 일반 게시판이면 textarea 노출 */}
+                                                {openedDynamicApp?.actionType === 'form' && openedDynamicApp?.fields ? (
+                                                    <div className="space-y-2 mb-2 bg-stone-50 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-100 dark:border-stone-800">
+                                                        {openedDynamicApp.fields.map(field => (
+                                                            <div key={field.id}>
+                                                                <label className="text-[10px] font-black text-stone-500 ml-1">{field.label}</label>
+                                                                {field.type === 'textarea' ? (
+                                                                    <textarea
+                                                                        className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl p-3 text-xs font-bold shadow-inner outline-none h-20 resize-none focus:border-teal-400"
+                                                                        value={submitFormState[field.id] || ''}
+                                                                        onChange={e => setSubmitFormState({ ...submitFormState, [field.id]: e.target.value })}
+                                                                    />
+                                                                ) : (
+                                                                    <input
+                                                                        type={field.type}
+                                                                        className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-teal-400"
+                                                                        value={submitFormState[field.id] || ''}
+                                                                        onChange={e => setSubmitFormState({ ...submitFormState, [field.id]: e.target.value })}
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <textarea
+                                                        className={`w-full bg-white dark:bg-stone-800 border rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-20 resize-none ${editingPostId ? 'border-teal-300 focus:border-teal-500' : 'border-stone-100 dark:border-stone-700 focus:border-indigo-300'}`}
+                                                        placeholder="자유롭게 글을 남겨주세요."
+                                                        value={submitFormState.content || ''}
+                                                        onChange={(e) =>
+                                                            setSubmitFormState({ ...submitFormState, content: e.target.value })
+                                                        }
+                                                    />
+                                                )}
+
+                                                {/* 상단 고정 옵션 (일반 게시판일 때만 노출) */}
+                                                {openedDynamicApp?.actionType !== 'form' && (
+                                                    <label className={`flex items-center gap-2 text-[11px] font-black cursor-pointer px-1 py-1 mt-1 w-fit ${openedDynamicApp.color || 'text-stone-600'}`}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={submitFormState.isPinned || false}
+                                                            onChange={e => setSubmitFormState({ ...submitFormState, isPinned: e.target.checked })}
+                                                            className="w-3.5 h-3.5 rounded border-stone-300"
+                                                        />
+                                                        중요글 상단 고정
+                                                    </label>
+                                                )}
+
+                                                <div className="flex gap-2 mt-2">
+                                                    <label className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer btn-press text-[11px]">
+                                                        <Icon name="camera" size={14} />{' '}
+                                                        {submitFormState.photos?.length === 0
+                                                            ? '사진 첨부 (최대 5장)'
+                                                            : submitFormState.photos?.length >= 5
+                                                                ? `사진 첨부 완료 (5/5)`
+                                                                : `사진 추가됨 (${submitFormState.photos.length}/5)`
+                                                        }
+                                                        <input
+                                                            type="file"
+                                                            className="hidden"
+                                                            accept="image/*"
+                                                            onChange={(e) => handlePhotoSingle(e, setSubmitFormState)}
+                                                        />
+                                                    </label>
+
                                                     <button
-                                                        onClick={() => { setEditingPostId(null); setSubmitFormState({ content: '', photos: [], authorName: '' }); }}
-                                                        className="text-[10px] font-black text-stone-400 hover:text-rose-500 bg-stone-100 dark:bg-stone-800 px-3 py-1.5 rounded-lg btn-press"
+                                                        onClick={handleGenericPostSubmit}
+                                                        className={`flex-1 font-black py-3 rounded-xl shadow-md btn-press text-[11px] text-white ${editingPostId ? 'bg-teal-500 hover:bg-teal-600' : 'bg-stone-800 hover:bg-stone-700'}`}
                                                     >
-                                                        취소
+                                                        {editingPostId ? '수정 완료' : '게시글 등록'}
                                                     </button>
                                                 </div>
-                                            )}
-
-                                            {/* 일반 게시판 & 비로그인 시에만 이름 입력칸 노출 (폼 제출형은 숨김) */}
-                                            {!appUser && !editingPostId && openedDynamicApp?.actionType !== 'form' && (
-                                                <input
-                                                    className="w-full bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-stone-400"
-                                                    placeholder="작성자 성명 (필수)"
-                                                    value={submitFormState.authorName || ''}
-                                                    onChange={(e) =>
-                                                        setSubmitFormState({ ...submitFormState, authorName: e.target.value })
-                                                    }
-                                                />
-                                            )}
-
-                                            {/* 폼 양식이면 질문칸 노출, 일반 게시판이면 textarea 노출 */}
-                                            {openedDynamicApp?.actionType === 'form' && openedDynamicApp?.fields ? (
-                                                <div className="space-y-2 mb-2 bg-stone-50 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-100 dark:border-stone-800">
-                                                    {openedDynamicApp.fields.map(field => (
-                                                        <div key={field.id}>
-                                                            <label className="text-[10px] font-black text-stone-500 ml-1">{field.label}</label>
-                                                            {field.type === 'textarea' ? (
-                                                                <textarea
-                                                                    className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl p-3 text-xs font-bold shadow-inner outline-none h-20 resize-none focus:border-teal-400"
-                                                                    value={submitFormState[field.id] || ''}
-                                                                    onChange={e => setSubmitFormState({ ...submitFormState, [field.id]: e.target.value })}
-                                                                />
-                                                            ) : (
-                                                                <input
-                                                                    type={field.type}
-                                                                    className="w-full mt-1 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold shadow-inner outline-none focus:border-teal-400"
-                                                                    value={submitFormState[field.id] || ''}
-                                                                    onChange={e => setSubmitFormState({ ...submitFormState, [field.id]: e.target.value })}
-                                                                />
-                                                            )}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <textarea
-                                                    className={`w-full bg-white dark:bg-stone-800 border rounded-2xl p-4 text-xs font-bold shadow-inner outline-none h-20 resize-none ${editingPostId ? 'border-teal-300 focus:border-teal-500' : 'border-stone-100 dark:border-stone-700 focus:border-indigo-300'}`}
-                                                    placeholder="자유롭게 글을 남겨주세요."
-                                                    value={submitFormState.content || ''}
-                                                    onChange={(e) =>
-                                                        setSubmitFormState({ ...submitFormState, content: e.target.value })
-                                                    }
-                                                />
-                                            )}
-
-                                            {/* 상단 고정 옵션 (일반 게시판일 때만 노출) */}
-                                            {openedDynamicApp?.actionType !== 'form' && (
-                                                <label className={`flex items-center gap-2 text-[11px] font-black cursor-pointer px-1 py-1 mt-1 w-fit ${openedDynamicApp?.color || 'text-stone-600'}`}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={submitFormState.isPinned || false}
-                                                        onChange={e => setSubmitFormState({ ...submitFormState, isPinned: e.target.checked })}
-                                                        className="w-3.5 h-3.5 rounded border-stone-300"
-                                                    />
-                                                    중요글 상단 고정
-                                                </label>
-                                            )}
-
-                                            <div className="flex gap-2 mt-2">
-                                                <label className="flex-1 bg-stone-100 dark:bg-stone-800 text-stone-500 font-black py-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer btn-press text-[11px]">
-                                                    <Icon name="camera" size={14} />{' '}
-                                                    {submitFormState.photos?.length === 0
-                                                        ? '사진 첨부 (최대 5장)'
-                                                        : submitFormState.photos?.length >= 5
-                                                            ? `사진 첨부 완료 (5/5)`
-                                                            : `사진 추가됨 (${submitFormState.photos.length}/5)`
-                                                    }
-                                                    <input
-                                                        type="file"
-                                                        className="hidden"
-                                                        accept="image/*"
-                                                        onChange={(e) => handlePhotoSingle(e, setSubmitFormState)}
-                                                    />
-                                                </label>
-
-                                                <button
-                                                    onClick={handleGenericPostSubmit}
-                                                    className={`flex-1 font-black py-3 rounded-xl shadow-md btn-press text-[11px] text-white ${editingPostId ? 'bg-teal-500 hover:bg-teal-600' : 'bg-stone-800 hover:bg-stone-700'}`}
-                                                >
-                                                    {editingPostId ? '수정 완료' : '게시글 등록'}
-                                                </button>
                                             </div>
-                                        </div>
+                                        )
                                     ) : (
                                         <div className="shrink-0 pt-4 border-t border-stone-200 dark:border-stone-700 mt-2 text-center">
                                             <p className="text-[11px] font-bold text-stone-400 bg-stone-50 dark:bg-stone-800 py-3 rounded-xl border border-stone-100 dark:border-stone-700">
@@ -5002,6 +5035,8 @@
                                                 <div key={field.id} className="space-y-1.5">
                                                     <label className="text-[11px] font-bold text-stone-500 dark:text-stone-400 ml-1">
                                                         {field.label}
+                                                        {/* 👇 필수 항목일 경우 빨간 별표(*) 표시 */}
+                                                        {field.isRequired !== false && <span className="text-rose-500 ml-1">*</span>}
                                                     </label>
 
                                                     {field.type === 'textarea' ? (
