@@ -1359,26 +1359,27 @@
             const handleLogin = async (e) => {
                 e.preventDefault();
                 const posId = String(loginForm.id || '').trim();
-                const pin = String(loginForm.pw || loginForm.pin || '').trim(); // pw와 pin 모두 대응
+                const pin = String(loginForm.pw || loginForm.pin || '').trim();
 
                 if (!posId || !pin) return showToast('아이디(포스번호)와 PIN을 입력해주세요.', true);
 
-                // 1️⃣ [직영 사원 체크] 먼저 메모리에 로드된 users 명단에서 확인
+                // 1️⃣ [직영 사원 체크]
                 const staff = users.find(u => String(u.empId) === posId);
                 if (staff && String(staff.pin || staff.empId) === pin) {
                     const authData = { ...staff, role: 'staff', loginTime: Date.now() };
 
                     localStorage.setItem('h_moody_auth', JSON.stringify(authData));
-                    localStorage.setItem('hmood_session', JSON.stringify({ empId: posId }));
+                    // ✅ role: 'staff' 추가
+                    localStorage.setItem('hmood_session', JSON.stringify({ empId: posId, role: 'staff' }));
 
                     setAppUser(authData);
                     if (rememberMe) localStorage.setItem('hmood_empId', posId);
-                    setViewMode('daily'); // 직영은 일간 뷰로
+                    setViewMode('daily');
                     showToast(`${authData.name}님 환영합니다.`);
                     return;
                 }
 
-                // 2️⃣ [파트너 체크] 직영이 아닐 경우 DB에서 'active' 상태인 매장 검색
+                // 2️⃣ [파트너 체크]
                 try {
                     const snapshot = await db.collection('partners')
                         .where('posId', '==', posId)
@@ -1389,7 +1390,6 @@
                     if (!snapshot.empty) {
                         const data = snapshot.docs[0].data();
 
-                        // PIN 번호 확인
                         if (String(data.pin) === pin) {
                             const authData = {
                                 empId: posId,
@@ -1400,20 +1400,19 @@
                             };
 
                             localStorage.setItem('h_moody_auth', JSON.stringify(authData));
-                            localStorage.setItem('hmood_session', JSON.stringify({ empId: posId }));
+                            // ✅ role: 'partner' 추가 (이게 있어야 새로고침 시 안 튕김)
+                            localStorage.setItem('hmood_session', JSON.stringify({ empId: posId, role: 'partner' }));
 
                             setAppUser(authData);
                             setCurrentDate(new Date());
                             if (rememberMe) localStorage.setItem('hmood_empId', posId);
 
                             showToast(`${authData.name}님, 인증되었습니다.`);
-                            setViewMode('shared'); // 파트너는 공유 뷰로
+                            setViewMode('shared');
                         } else {
                             showToast('PIN 번호가 올바르지 않습니다.', true);
                         }
-                    }
-                    else {
-                        // 퇴점 매장인지 추가 확인
+                    } else {
                         const retiredCheck = await db.collection('partners')
                             .where('posId', '==', posId)
                             .where('status', '==', 'closed')
@@ -2569,14 +2568,13 @@
 
                         {viewMode !== 'shared' && (
                             <header className="flex-none sticky top-0 z-50 bg-[#F9F8F6]/95 dark:bg-stone-900/95 backdrop-blur-md border-b border-stone-200/50 dark:border-stone-800/50 px-4 py-3 flex items-center justify-between shadow-sm">
-                                {/* 왼쪽: 로고 및 파트너스 채널 버튼 영역 */}
+                                {/* 왼쪽: 로고 및 파트너스 채널 버튼 */}
                                 <div className="flex items-center gap-2 min-w-0">
                                     <div className="w-8 h-8 bg-teal-600 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0">
                                         <Icon name="calendar" size={18} />
                                     </div>
                                     <div className="flex items-center gap-2 overflow-hidden">
                                         <h1 className="text-[14px] font-black text-stone-800 dark:text-stone-200 tracking-tighter truncate shrink-0">H무디</h1>
-
                                         <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-stone-200 dark:border-stone-700">
                                             <button
                                                 onClick={() => { setViewMode('shared'); setCurrentDate(new Date()); }}
@@ -2590,81 +2588,62 @@
                                     </div>
                                 </div>
 
-                                {/* 오른쪽: 다크모드 및 알약 모양 유저 정보/로그아웃 영역 */}
-                                <div className="flex items-center gap-2">
-                                    {/* 다크모드 전환 버튼 */}
+                                {/* 오른쪽: 버튼 영역 (다크모드 + 유저 정보 알약) */}
+                                <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                    {/* 다크모드 버튼 */}
                                     <button
                                         onClick={() => setIsDarkMode(!isDarkMode)}
-                                        className="w-9 h-9 flex items-center justify-center text-stone-500 bg-white dark:bg-stone-800 rounded-full shadow-sm btn-press"
+                                        className="p-2 bg-white dark:bg-stone-800 text-stone-400 hover:text-amber-500 rounded-full shadow-sm btn-press transition-colors"
                                     >
-                                        <Icon name={isDarkMode ? "sun" : "moon"} size={16} />
-                                    </button>
-
-                                    {/* ✅ [신규] 유저 정보 및 로그아웃 알약 버튼 */}
-                                    {appUser && (
-                                        <div className="flex items-center gap-2 px-3.5 py-1.5 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-full shadow-sm ml-1 transition-all">
-                                            {/* 사용자 이름 표시: 파트너면 매장명, 직영이면 '시스템 관리자' */}
-                                            <span className="text-[11px] font-black text-stone-700 dark:text-stone-200 underline underline-offset-4 decoration-stone-200 shrink-0">
-                                                {appUser.role === 'partner' ? (appUser.name || appUser.empId) : '시스템 관리자'}
-                                            </span>
-
-                                            {/* 세로 구분선 (이미지와 동일) */}
-                                            <div className="w-[1px] h-3 bg-stone-100 dark:bg-stone-700 mx-0.5" />
-
-                                            {/* 유저 아이콘 (이미지와 동일) */}
-                                            <Icon name="user" size={12} className="text-stone-300" />
-
-                                            {/* 로그아웃 실행 아이콘 버튼 */}
-                                            <button
-                                                onClick={handleLogout}
-                                                className="ml-0.5 text-stone-300 hover:text-rose-500 transition-colors btn-press"
-                                                title="로그아웃"
-                                            >
-                                                <Icon name="logOut" size={14} />
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                                    <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 bg-white dark:bg-stone-800 text-stone-400 hover:text-amber-500 rounded-full shadow-sm btn-press transition-colors">
                                         {isDarkMode ? <Icon name="sun" size={14} /> : <Icon name="moon" size={14} />}
                                     </button>
 
-                                    {appUser ? (
-                                        <div className="flex items-center gap-1.5 bg-white dark:bg-stone-800 px-3 py-1.5 rounded-full border border-stone-200 dark:border-stone-700 shadow-sm">
+                                    {/* 유저 정보 알약 버튼 */}
+                                    {appUser && (
+                                        <div className="flex items-center gap-1.5 bg-white dark:bg-stone-800 px-3 py-1.5 rounded-full border border-stone-200 dark:border-stone-700 shadow-sm transition-all">
+                                            {/* 사용자 성함/매장명 클릭 (프로필 수정 창 연결) */}
                                             <button
-                                                onClick={() => { setShowProfileEdit(true); setProfileTab('info'); setProfileForm({ name: appUser.name, part: appUser.part, category: appUser.category, brands: appUser.brands || '', extNumber: appUser.extNumber || '', position: appUser.position, jobTitle: appUser.jobTitle || '일반', password: '', targetEmpId: appUser.empId }); }}
+                                                onClick={() => {
+                                                    setShowProfileEdit(true);
+                                                    setProfileTab('info');
+                                                    setProfileForm({
+                                                        ...appUser,
+                                                        brands: appUser.brands || '',
+                                                        jobTitle: appUser.jobTitle || '일반',
+                                                        password: '',
+                                                        targetEmpId: appUser.empId
+                                                    });
+                                                }}
                                                 className="flex items-center gap-1 text-[10px] font-black text-stone-600 dark:text-stone-300 hover:text-teal-600 transition-colors btn-press"
                                             >
-                                                <span className="underline decoration-stone-300 dark:decoration-stone-600 underline-offset-2">{appUser.name}</span>
-                                                <span className="hidden xs:inline">님</span>
+                                                <span className="underline decoration-stone-300 dark:decoration-stone-600 underline-offset-2">
+                                                    {appUser.role === 'partner' ? (appUser.name || appUser.empId) : appUser.name}
+                                                </span>
+                                                <span className="hidden xs:inline">{appUser.role === 'partner' ? '' : '님'}</span>
                                             </button>
 
+                                            {/* 세로 구분선 */}
                                             <div className="w-px h-3 bg-stone-200 dark:bg-stone-700 mx-0.5"></div>
 
+                                            {/* 내 정보 아이콘 버튼 */}
                                             <button
                                                 onClick={() => { setShowProfileEdit(true); setProfileTab('pw'); }}
                                                 className="text-stone-400 hover:text-teal-500 transition-colors flex items-center gap-1"
+                                                title="내 정보"
                                             >
                                                 <Icon name="user" size={12} />
-                                                <span className="hidden sm:inline text-[10px] font-bold">내 정보</span>
                                             </button>
 
+                                            {/* 로그아웃 버튼 (handleLogout 연동) */}
                                             <button
-                                                onClick={() => {
-                                                    setAppUser(null);
-                                                    setIsAdminAuth(false); // ✨ 핵심: 관리자 권한도 즉시 회수!
-                                                    localStorage.removeItem('hmood_session');
-                                                    setViewMode('login');
-                                                    showToast('로그아웃 되었습니다.');
-                                                }}
+                                                onClick={handleLogout}
                                                 className="text-stone-400 hover:text-rose-500 transition-colors flex items-center gap-1 pl-1"
+                                                title="로그아웃"
                                             >
-                                                <Icon name="logout" size={12} />
+                                                <Icon name="logOut" size={12} />
                                             </button>
                                         </div>
-                                    ) : null}
+                                    )}
                                 </div>
                             </header>
                         )}
