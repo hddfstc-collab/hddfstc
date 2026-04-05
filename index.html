@@ -1628,32 +1628,45 @@
                     let extractedName = '';
 
                     // 1. 폼 양식 답변 수집 및 이름 자동 추출
-                    // 1. 폼 양식 답변 수집 및 이름 자동 추출
                     if (currentApp.actionType === 'form' && currentApp.fields) {
                         const answers = {};
-                        let isAnyRequiredEmpty = false; // 필수값이 비었는지 체크하는 깃발
+                        let isAnyRequiredEmpty = false;
+                        let numericErrorMsg = ''; // ✨ 숫자 체크 에러 메시지용 변수
 
                         currentApp.fields.forEach(f => {
-                            const val = submitFormState[f.id];
-                            const isEmpty = (!val || !val.trim());
+                            const val = submitFormState[f.id] ? String(submitFormState[f.id]).trim() : '';
+                            const isEmpty = !val;
 
-                            // 💡 필드 설정이 '필수(isRequired !== false)'인데 비어있으면 에러 깃발 들기!
+                            // 💡 필수 항목인데 비어있는지 체크
                             if (f.isRequired !== false && isEmpty) {
                                 isAnyRequiredEmpty = true;
                             }
 
-                            // 비어있지 않으면 바구니에 담기 (선택 항목이라 안 썼으면 그냥 무시)
+                            // 💡 숫자형(number)인데 숫자가 아닌 문자가 섞여있는지 체크
+                            if (!isEmpty && f.type === 'number') {
+                                // 숫자가 아니거나, 숫자가 아닌 문자가 포함된 경우
+                                if (isNaN(val) || /[^0-9]/.test(val)) {
+                                    numericErrorMsg = `[${f.label}] 항목은 숫자만 입력해주세요.`;
+                                }
+                            }
+
+                            // 비어있지 않으면 바구니에 담기
                             if (!isEmpty) {
                                 answers[f.id] = val;
 
                                 // 이름 자동 추출 로직 유지
                                 if (f.label.includes('이름') || f.label.includes('성함') || f.label.includes('성명')) {
-                                    extractedName = val.trim();
+                                    extractedName = val;
                                 }
                             }
                         });
 
+                        // 1순위: 숫자 입력 오류부터 잡기
+                        if (numericErrorMsg) return showToast(numericErrorMsg, true);
+
+                        // 2순위: 필수값 미입력 잡기
                         if (isAnyRequiredEmpty) return showToast('필수 질문 항목을 모두 입력해주세요.', true);
+
                         finalContent = JSON.stringify(answers);
                     }
 
