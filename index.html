@@ -451,43 +451,50 @@
 
                 if (appData.length === 0) {
                     if (typeof showToast === 'function') showToast(`${appName} 데이터가 없습니다.`, true);
-                    else alert(`${appName} 데이터가 없습니다.`);
                     return;
                 }
 
                 const rows = appData.map(p => {
                     const row = {
-                        "ID": p.id,
                         "작성일": new Date(p.createdAt).toLocaleString(),
-                        "작성자": p.author || '익명',
+                        "작성자": p.author || '익명'
                     };
 
-                    if (openedDynamicApp.fields && openedDynamicApp.fields.length > 0) {
+                    // 1. 외계어 보따리(JSON) 해독 시도
+                    let parsedData = {};
+                    try {
+                        parsedData = JSON.parse(p.content);
+                    } catch (e) {
+                        parsedData = null;
+                    }
+
+                    // 2. 폼 질문(fields)이 있는 경우: 질문 제목을 제목으로, 해독된 값을 데이터로!
+                    if (openedDynamicApp.fields && openedDynamicApp.fields.length > 0 && parsedData && typeof parsedData === 'object') {
                         openedDynamicApp.fields.forEach(field => {
-                            row[field.label] = p[field.id] || '-';
+                            // ✨ 핵심: p[field.id]가 아니라 해독된 parsedData[field.id]에서 가져옵니다.
+                            row[field.label] = parsedData[field.id] || '-';
                         });
                     } else {
+                        // 3. 일반 게시판 글인 경우
                         row["내용"] = p.content || '-';
                     }
 
-                    if (p.formData) {
-                        return { ...row, ...p.formData };
-                    }
                     return row;
                 });
 
                 try {
                     const worksheet = XLSX.utils.json_to_sheet(rows);
                     const workbook = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(workbook, worksheet, appName || "데이터");
+                    XLSX.utils.book_append_sheet(workbook, worksheet, "제출데이터");
 
-                    const fileName = `${appName || '게시판'}_데이터_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                    // 엑셀 파일명 깔끔하게 정리
+                    const fileName = `${appName.replace(/\s/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
                     XLSX.writeFile(workbook, fileName);
 
-                    if (typeof showToast === 'function') showToast(`${appName} 엑셀 다운로드 완료!`);
+                    showToast(`${appName} 엑셀 다운로드 완료!`);
                 } catch (error) {
-                    console.error("Excel Download Error:", error);
-                    alert("엑셀 생성 중 오류가 발생했습니다.");
+                    console.error("Excel Error:", error);
+                    showToast("엑셀 생성 중 오류가 발생했습니다.", true);
                 }
             };
             const [dynamicApps, setDynamicApps] = useState([
