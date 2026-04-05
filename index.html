@@ -2016,31 +2016,7 @@
                 });
             };
 
-            // 📍 이 자리에 붙여넣으세요!
-            const uploadPartners = async (partnerList) => {
-                if (!window.confirm(`${partnerList.length}개의 매장 정보를 등록하시겠습니까?`)) return;
-
-                const batch = db.batch();
-
-                partnerList.forEach((p) => {
-                    const partnerRef = db.collection('partners').doc(String(p.posId));
-                    batch.set(partnerRef, {
-                        pin: String(p.pin || p.posId),
-                        accountName: p.name,
-                        managedBrands: p.brands || [],
-                        role: 'partner',
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                });
-
-                try {
-                    await batch.commit();
-                    showToast(`${partnerList.length}개의 매장이 등록되었습니다!`);
-                } catch (error) {
-                    console.error(error);
-                    showToast('등록 중 오류 발생', true);
-                }
-            };
+            
             const handleResetData = async () => {
                 setConfirmDialog({
                     isOpen: true, message: "모든 데이터를 삭제하고 기본 메뉴로 초기화하시겠습니까?", onConfirm: async () => {
