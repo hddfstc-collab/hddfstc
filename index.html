@@ -694,7 +694,8 @@
 
                 setNoticeForm(prev => ({
                     ...prev,
-                    photos: [...(prev.photos || []), ...resizedImages]
+                    // .slice(0, 5)를 추가해서 최대 5장까지만 저장되도록 제한해!
+                    photos: [...(prev.photos || []), ...resizedImages].slice(0, 5)
                 }));
 
                 e.target.value = '';
@@ -1789,7 +1790,7 @@
                 const isOwner = fbUser && targetPost.userId === fbUser.uid;
                 const isResAdmin = isAdminAuth || (appUser && appUser.empId === openedReservationApp?.resOperatorId);
 
-                if (isSystemAdmin || isResAdmin || isOwner) {
+                if (isAdminAuth || isResAdmin || isOwner) {
                     setConfirmDialog({
                         isOpen: true,
                         message: "예약을 취소하시겠습니까?",
@@ -2188,7 +2189,7 @@
                             </h3>
                         </div>
 
-                        /* 1. 뚜껑에 스크롤을 뚫어줍니다 (max-h와 overflow-y-auto 추가) */
+                        {/* 1. 뚜껑에 스크롤을 뚫어줍니다 (max-h와 overflow-y-auto 추가) */}
                         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
                             {posts.map(p => {
                                 const isUnread = !readPostIds.includes(p.id);
@@ -5451,7 +5452,7 @@
                     }
                 </>
             ); // <--- return 문이 끝나는 곳
-        }; // 👈 ✨ 짜잔! 바로 여기에 추가해 주시면 됩니다!
+        }; // <--- App 함수 종료 (설명용 한글 주석은 삭제하는 것이 깔끔해!)
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
