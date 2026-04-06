@@ -826,6 +826,8 @@
 
             const AVAILABLE_TABS = useMemo(() => {
                 return [
+                    { id: 'notice', name: '📢 공지사항 관리', show: isAdminAuth }, // 추가됨
+                    { id: 'partner', name: '🤝 파트너(매장) 관리', show: isAdminAuth }, // 추가됨
                     { id: 'health', name: '🏥 헬스키퍼 관리', show: isHealthOnlyAdmin || isAdminAuth || isHealthAdmin },
                     { id: 'apps', name: '공지 및 앱/폴더 관리', show: isAdminAuth || (!isHealthOnlyAdmin && appUser && (appUser.jobTitle === '영업관리자' || appUser.jobTitle === '파트장' || appUser.jobTitle === '점장')) },
                     { id: 'members', name: '구성원/조직 관리', show: isAdminAuth && !isHealthOnlyAdmin },
@@ -1439,11 +1441,15 @@
                 partnerList.forEach((p) => {
                     // 문서 ID를 포스번호(posId)로 설정하여 저장
                     const partnerRef = db.collection('partners').doc(String(p.posId));
+
+                    // 덮어쓰기를 위해 set 사용 (merge 옵션은 선택)
                     batch.set(partnerRef, {
+                        posId: String(p.posId),           // ✅ 누락되었던 검색용 포스번호 추가
+                        name: p.name,                     // ✅ 누락되었던 매장명 추가
                         pin: String(p.pin || p.posId),
-                        accountName: p.name,
                         managedBrands: p.brands || [],
                         role: 'partner',
+                        status: 'active',                 // ✅ 누락되었던 영업상태(active) 추가
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                 });
@@ -3338,346 +3344,280 @@
                                 )}
                                 {/* ADMIN VIEW */}
                                 {viewMode === 'admin' && (
-                                    <>
-                                        {/* ① 상단 탭 버튼 */}
-                                        <div className="flex gap-2 mb-6 max-w-3xl mx-auto overflow-x-auto scrollbar-hide">
-                                            <button
-                                                onClick={() => setAdminTab('notice')}
-                                                className={`px-6 py-2 rounded-full text-xs font-black whitespace-nowrap shrink-0 ${adminTab === 'notice' ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-400'}`}
-                                            >
-                                                공지사항 관리
-                                            </button>
-                                            <button
-                                                onClick={() => setAdminTab('partner')}
-                                                className={`px-6 py-2 rounded-full text-xs font-black whitespace-nowrap shrink-0 ${adminTab === 'partner' ? 'bg-teal-600 text-white' : 'bg-stone-100 text-stone-400'}`}
-                                            >
-                                                공용계정 관리
-                                            </button>
-                                            <button
-                                                onClick={() => setAdminTab('apps')}
-                                                className={`px-6 py-2 rounded-full text-xs font-black whitespace-nowrap shrink-0 ${adminTab !== 'notice' && adminTab !== 'partner' ? 'bg-indigo-600 text-white' : 'bg-stone-100 text-stone-400'}`}
-                                            >
-                                                시스템 관리자
-                                            </button>
-                                        </div>
-
-                                        {/* ② 공지사항 관리 탭 컨텐츠 */}
-                                        {adminTab === 'notice' && (
-                                            <div className="max-w-3xl mx-auto space-y-3 fade-in mb-10">
-                                                {(notices || []).length === 0 ? (
-                                                    <div className="flex flex-col items-center justify-center py-16 bg-white dark:bg-stone-900 rounded-[2.5rem] border-2 border-dashed border-stone-100 dark:border-stone-800">
-                                                        <Icon name="bellRing" size={32} className="text-stone-300 mb-3" />
-                                                        <p className="text-[12px] font-bold text-stone-400">등록된 공지사항이 없습니다.</p>
-                                                    </div>
-                                                ) : (
-                                                    <div className="space-y-2">
-                                                        {[...(notices || [])].sort((a, b) => (a.isPinned === b.isPinned ? 0 : a.isPinned ? -1 : 1)).map(n => (
-                                                            <div key={n.id} className={`bg-white dark:bg-stone-900 p-4 rounded-2xl border shadow-sm flex items-start justify-between gap-3 ${n.isPinned ? 'border-rose-200 dark:border-rose-800' : 'border-stone-100 dark:border-stone-800'}`}>
-                                                                <div className="flex-1 min-w-0">
-                                                                    {n.isPinned && <span className="inline-flex items-center gap-1 text-[9px] font-black text-rose-500 bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded-full mb-1.5"><Icon name="pin" size={9} /> 중요</span>}
-                                                                    <p className="text-[12px] font-black text-stone-800 dark:text-stone-200 whitespace-pre-wrap break-words">{n.content}</p>
-                                                                    <p className="text-[10px] text-stone-400 font-bold mt-1.5">{n.author} · {formatLocalTime(n.createdAt)}</p>
-                                                                </div>
-                                                                {(isAdminAuth || (appUser && n.author === appUser.name)) && (
-                                                                    <div className="flex gap-1 shrink-0">
-                                                                        <button onClick={() => { setEditingNoticeId(n.id); setNoticeForm({ content: n.content, photos: Array.isArray(n.photos) ? n.photos : [], isPinned: !!n.isPinned }); setIsNoticeModalOpen(true); }} className="p-1.5 text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/30 rounded-lg"><Icon name="edit" size={14} /></button>
-                                                                        <button onClick={() => handleDeleteNotice(n.id)} className="p-1.5 text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg"><Icon name="trash" size={14} /></button>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                                {(isAdminAuth || (appUser && canWrite((dynamicApps || []).find(a => a.actionType === 'widget_notices')))) && (
-                                                    <button
-                                                        onClick={() => { setEditingNoticeId(null); setNoticeForm({ content: '', photos: [], isPinned: false }); setIsNoticeModalOpen(true); }}
-                                                        className="w-full bg-rose-500 hover:bg-rose-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[13px] flex items-center justify-center gap-2 mt-2"
-                                                    >
-                                                        <Icon name="edit" size={16} /> 새 공지사항 작성
+                                    <div className="max-w-3xl mx-auto pb-20 fade-in">
+                                        {!isAdminAuth && !isHealthOnlyAdmin && !appUser ? (
+                                            /* --- 미인증: PIN 로그인 화면 --- */
+                                            <div className="bg-white dark:bg-stone-900 p-10 rounded-[3rem] shadow-2xl border border-stone-200 dark:border-stone-800 text-center mt-10 max-w-sm mx-auto">
+                                                <h3 className="text-2xl font-black mb-2 text-stone-800 dark:text-stone-200">시스템 관리자</h3>
+                                                <form
+                                                    onSubmit={async (e) => {
+                                                        e.preventDefault();
+                                                        const inputHash = await hashPassword(pinInput);
+                                                        const storedHash = masterPinHash || (await hashPassword(DEFAULT_PIN));
+                                                        if (inputHash === storedHash) setIsAdminAuth(true);
+                                                        else showToast('PIN이 일치하지 않습니다.', true);
+                                                    }}
+                                                >
+                                                    <input
+                                                        type="password"
+                                                        placeholder="PIN 번호 입력"
+                                                        className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 py-5 rounded-2xl text-center font-black tracking-[0.5em] mb-4 outline-none focus:border-teal-500"
+                                                        value={pinInput}
+                                                        onChange={(e) => setPinInput(e.target.value)}
+                                                        autoFocus
+                                                    />
+                                                    <button className="w-full bg-stone-800 text-white py-4 rounded-2xl font-black shadow-xl tracking-widest text-[13px] btn-press">
+                                                        접속
                                                     </button>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        {/* ③ 파트너(공용계정) 관리 전용 화면 */}
-                                        {adminTab === 'partner' && (
-                                            <div className="max-w-3xl mx-auto space-y-4 fade-in mb-10">
-                                                {/* 검색/필터 바 */}
-                                                <div className="flex justify-between items-center bg-white dark:bg-stone-900 p-4 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800">
-                                                    <div className="relative flex-1 max-w-xs">
-                                                        <input
-                                                            type="text"
-                                                            placeholder="매장명/포스번호 검색"
-                                                            className="w-full bg-stone-100 dark:bg-stone-800 border-none rounded-full py-2 pl-10 pr-4 text-xs"
-                                                            onChange={(e) => setPartnerSearch(e.target.value)}
-                                                        />
-                                                        <Icon name="search" size={14} className="absolute left-4 top-2.5 text-stone-400" />
-                                                    </div>
-                                                    <label className="flex items-center gap-2 text-[10px] font-bold text-stone-400 cursor-pointer">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={showClosed}
-                                                            onChange={(e) => setShowClosed(e.target.checked)}
-                                                            className="rounded-sm accent-teal-600"
-                                                        />
-                                                        퇴점 매장 포함
-                                                    </label>
-                                                </div>
-
-                                                {/* 파트너 테이블 */}
-                                                <div className="bg-white dark:bg-stone-900 rounded-[2rem] border border-stone-100 dark:border-stone-800 overflow-hidden shadow-sm">
-                                                    <table className="w-full text-left text-[11px]">
-                                                        <thead className="bg-stone-50 dark:bg-stone-800/50 text-stone-500 font-bold">
-                                                            <tr>
-                                                                <th className="py-4 px-6">포스ID</th>
-                                                                <th className="py-4 px-6">매장명</th>
-                                                                <th className="py-4 px-6">상태</th>
-                                                                <th className="py-4 px-6 text-right">관리</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y divide-stone-50 dark:divide-stone-800">
-                                                            {partners
-                                                                .filter((p) => (showClosed ? true : p.status === 'active'))
-                                                                .filter((p) => p.name.includes(partnerSearch) || p.posId.includes(partnerSearch))
-                                                                .map((p) => (
-                                                                    <tr
-                                                                        key={p.id}
-                                                                        className={`${p.status === 'closed' ? 'opacity-40 grayscale' : ''
-                                                                            } hover:bg-stone-50/50 transition-colors`}
-                                                                    >
-                                                                        <td className="py-4 px-6 font-mono font-bold text-teal-600">{p.posId}</td>
-                                                                        <td className="py-4 px-6 font-black text-stone-700 dark:text-stone-200">{p.name}</td>
-                                                                        <td className="py-4 px-6">
-                                                                            <span
-                                                                                className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${p.status === 'active'
-                                                                                    ? 'bg-green-100 text-green-600'
-                                                                                    : 'bg-stone-200 text-stone-500'
-                                                                                    }`}
-                                                                            >
-                                                                                {p.status === 'active' ? '영업중' : '퇴점'}
-                                                                            </span>
-                                                                        </td>
-                                                                        <td className="py-4 px-6 text-right flex justify-end gap-2">
-                                                                            <button onClick={() => handleEditPartner(p)} className="p-1.5 text-stone-400 hover:text-teal-600">
-                                                                                <Icon name="edit2" size={14} />
-                                                                            </button>
-                                                                            {p.status === 'active' ? (
-                                                                                <button
-                                                                                    onClick={() => handleToggleStatus(p.id, 'closed')}
-                                                                                    className="p-1.5 text-stone-400 hover:text-rose-500"
-                                                                                    title="퇴점처리"
-                                                                                >
-                                                                                    <Icon name="userMinus" size={14} />
-                                                                                </button>
-                                                                            ) : (
-                                                                                <button
-                                                                                    onClick={() => handleToggleStatus(p.id, 'active')}
-                                                                                    className="p-1.5 text-stone-400 hover:text-green-600"
-                                                                                    title="부활시키기"
-                                                                                >
-                                                                                    <Icon name="userPlus" size={14} />
-                                                                                </button>
-                                                                            )}
-                                                                        </td>
-                                                                    </tr>
-                                                                ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* ④ 시스템 관리 전체 (시스템 관리자 탭) */}
-                                        {adminTab !== 'notice' && adminTab !== 'partner' && (
-                                        <div className="max-w-3xl mx-auto pb-20 fade-in">
-                                            {!isAdminAuth && !isHealthOnlyAdmin && !appUser ? (
-                                                /* --- 미인증: PIN 로그인 화면 --- */
-                                                <div className="bg-white dark:bg-stone-900 p-10 rounded-[3rem] shadow-2xl border border-stone-200 dark:border-stone-800 text-center mt-10 max-w-sm mx-auto">
-                                                    <h3 className="text-2xl font-black mb-2 text-stone-800 dark:text-stone-200">시스템 관리자</h3>
-                                                    <form
-                                                        onSubmit={async (e) => {
-                                                            e.preventDefault();
-                                                            const inputHash = await hashPassword(pinInput);
-                                                            const storedHash = masterPinHash || (await hashPassword(DEFAULT_PIN));
-                                                            if (inputHash === storedHash) setIsAdminAuth(true);
-                                                            else showToast('PIN이 일치하지 않습니다.', true);
-                                                        }}
-                                                    >
-                                                        <input
-                                                            type="password"
-                                                            placeholder="PIN 번호 입력"
-                                                            className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 py-5 rounded-2xl text-center font-black tracking-[0.5em] mb-4 outline-none focus:border-teal-500"
-                                                            value={pinInput}
-                                                            onChange={(e) => setPinInput(e.target.value)}
-                                                            autoFocus
-                                                        />
-                                                        <button className="w-full bg-stone-800 text-white py-4 rounded-2xl font-black shadow-xl tracking-widest text-[13px] btn-press">
-                                                            접속
-                                                        </button>
-                                                    </form>
-                                                    {isHealthAdmin && (
-                                                        <div className="mt-4 pt-4 border-t border-stone-200 dark:border-stone-800">
-                                                            <button
-                                                                onClick={() => {
-                                                                    setIsHealthOnlyAdmin(true);
-                                                                    setAdminTab('health');
-                                                                }}
-                                                                className="w-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 font-black py-3 rounded-xl shadow-sm btn-press text-[12px] border border-teal-200 dark:border-teal-800"
-                                                            >
-                                                                🏥 헬스키퍼 관리자 메뉴 접속
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                /* --- 인증 후: 관리 패널 --- */
-                                                <div className="bg-white dark:bg-stone-900 p-6 md:p-8 rounded-[3.5rem] shadow-2xl border border-stone-200 dark:border-stone-800 space-y-6 fade-in">
-                                                    {/* 관리 탭 목록 */}
-                                                    <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide border-b border-stone-100 dark:border-stone-700 snap-x">
-                                                        {AVAILABLE_TABS.map((tab) => (
-                                                            <button
-                                                                key={tab.id}
-                                                                onClick={() => setAdminTab(tab.id)}
-                                                                className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${currentAdminTab === tab.id
-                                                                    ? 'bg-stone-800 text-white shadow-md'
-                                                                    : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
-                                                                    }`}
-                                                            >
-                                                                {tab.name}
-                                                            </button>
-                                                        ))}
+                                                </form>
+                                                {isHealthAdmin && (
+                                                    <div className="mt-4 pt-4 border-t border-stone-200 dark:border-stone-800">
                                                         <button
                                                             onClick={() => {
-                                                                setIsAdminAuth(false);
-                                                                setIsHealthOnlyAdmin(false);
-                                                                setViewMode(appUser?.role === 'partner' ? 'shared' : 'daily');
-                                                                showToast('관리자 모드를 종료합니다.');
+                                                                setIsHealthOnlyAdmin(true);
+                                                                setAdminTab('health');
                                                             }}
-                                                            className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 hover:bg-rose-500 hover:text-white transition-all btn-press shadow-sm"
-                                                            title="관리자 종료"
+                                                            className="w-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 font-black py-3 rounded-xl shadow-sm btn-press text-[12px] border border-teal-200 dark:border-teal-800"
                                                         >
-                                                            <Icon name="xCircle" size={18} />
+                                                            🏥 헬스키퍼 관리자 메뉴 접속
                                                         </button>
                                                     </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            /* --- 인증 후: 단일 통합 관리 패널 --- */
+                                            <div className="bg-white dark:bg-stone-900 p-6 md:p-8 rounded-[3.5rem] shadow-2xl border border-stone-200 dark:border-stone-800 space-y-6 fade-in">
 
-                                                    {/* apps 탭 */}
-                                                    {currentAdminTab === 'apps' && (
-                                                        <div className="space-y-5 fade-in">
-                                                            {isAdminAuth && (
-                                                                <div className="mb-6 p-6 bg-teal-50 dark:bg-teal-900/20 rounded-[2.5rem] border border-teal-100 dark:border-teal-800 shadow-sm">
-                                                                    <div className="flex items-center gap-3 mb-4">
-                                                                        <div className="p-2 bg-teal-600 rounded-xl text-white">
-                                                                            <Icon name="user" size={18} />
+                                                {/* ✅ 단일 탭 목록 (가로 스크롤) */}
+                                                <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide border-b border-stone-100 dark:border-stone-700 snap-x">
+                                                    {AVAILABLE_TABS.map((tab) => (
+                                                        <button
+                                                            key={tab.id}
+                                                            onClick={() => setAdminTab(tab.id)}
+                                                            className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${currentAdminTab === tab.id
+                                                                ? 'bg-stone-800 text-white shadow-md'
+                                                                : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
+                                                                }`}
+                                                        >
+                                                            {tab.name}
+                                                        </button>
+                                                    ))}
+                                                    <button
+                                                        onClick={() => {
+                                                            setIsAdminAuth(false);
+                                                            setIsHealthOnlyAdmin(false);
+                                                            setViewMode(appUser?.role === 'partner' ? 'shared' : 'daily');
+                                                            showToast('관리자 모드를 종료합니다.');
+                                                        }}
+                                                        className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 hover:bg-rose-500 hover:text-white transition-all btn-press shadow-sm"
+                                                        title="관리자 종료"
+                                                    >
+                                                        <Icon name="xCircle" size={18} />
+                                                    </button>
+                                                </div>
+
+                                                {/* ① 공지사항 관리 탭 컨텐츠 */}
+                                                {currentAdminTab === 'notice' && (
+                                                    <div className="max-w-3xl mx-auto space-y-3 fade-in mb-10">
+                                                        {(notices || []).length === 0 ? (
+                                                            <div className="flex flex-col items-center justify-center py-16 bg-white dark:bg-stone-900 rounded-[2.5rem] border-2 border-dashed border-stone-100 dark:border-stone-800">
+                                                                <Icon name="bellRing" size={32} className="text-stone-300 mb-3" />
+                                                                <p className="text-[12px] font-bold text-stone-400">등록된 공지사항이 없습니다.</p>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="space-y-2">
+                                                                {[...(notices || [])].sort((a, b) => (a.isPinned === b.isPinned ? 0 : a.isPinned ? -1 : 1)).map(n => (
+                                                                    <div key={n.id} className={`bg-white dark:bg-stone-900 p-4 rounded-2xl border shadow-sm flex items-start justify-between gap-3 ${n.isPinned ? 'border-rose-200 dark:border-rose-800' : 'border-stone-100 dark:border-stone-800'}`}>
+                                                                        <div className="flex-1 min-w-0">
+                                                                            {n.isPinned && <span className="inline-flex items-center gap-1 text-[9px] font-black text-rose-500 bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded-full mb-1.5"><Icon name="pin" size={9} /> 중요</span>}
+                                                                            <p className="text-[12px] font-black text-stone-800 dark:text-stone-200 whitespace-pre-wrap break-words">{n.content}</p>
+                                                                            <p className="text-[10px] text-stone-400 font-bold mt-1.5">{n.author} · {formatLocalTime(n.createdAt)}</p>
                                                                         </div>
-                                                                        <h3 className="font-black text-stone-800 dark:text-stone-200">파트너 계정 생성</h3>
+                                                                        {(isAdminAuth || (appUser && n.author === appUser.name)) && (
+                                                                            <div className="flex gap-1 shrink-0">
+                                                                                <button onClick={() => { setEditingNoticeId(n.id); setNoticeForm({ content: n.content, photos: Array.isArray(n.photos) ? n.photos : [], isPinned: !!n.isPinned }); setIsNoticeModalOpen(true); }} className="p-1.5 text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/30 rounded-lg"><Icon name="edit" size={14} /></button>
+                                                                                <button onClick={() => handleDeleteNotice(n.id)} className="p-1.5 text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg"><Icon name="trash" size={14} /></button>
+                                                                            </div>
+                                                                        )}
                                                                     </div>
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            const testData = [
-                                                                                { posId: '1001', name: '아디다스 현대점', brands: ['아디다스'] },
-                                                                                { posId: '1002', name: '나이키 강남점', brands: ['나이키'] },
-                                                                                { posId: '2001', name: '비이커 통합매장', brands: ['비이커', '구호'] },
-                                                                            ];
-                                                                            uploadPartners(testData);
-                                                                        }}
-                                                                        className="w-full bg-teal-600 text-white font-bold py-4 rounded-2xl shadow-lg btn-press flex items-center justify-center gap-2 text-sm"
-                                                                    >
-                                                                        <Icon name="plus" size={16} /> 테스트 계정 3개 즉시 등록
-                                                                    </button>
-                                                                </div>
-                                                            )}
-                                                            {/* 나머지 apps 탭 컨텐츠 */}
-                                                        </div>
-                                                    )}
-
-                                                    {/* health / schedules / security / members / posts 탭들 */}
-                                                    {/* ... */}
-
-                                                    {/* 게시글 영구 삭제 (posts 탭 전용) */}
-                                                    {isAdminAuth && currentAdminTab === 'posts' && (
-                                                        <div className="pt-6 border-t border-stone-200 dark:border-stone-700 mt-2">
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                        {(isAdminAuth || (appUser && canWrite((dynamicApps || []).find(a => a.actionType === 'widget_notices')))) && (
                                                             <button
-                                                                onClick={handleClearAllPosts}
-                                                                className="w-full bg-rose-50 dark:bg-rose-900/20 text-rose-500 font-black px-5 py-3 rounded-2xl flex items-center justify-center gap-2 btn-press text-xs border border-rose-100 dark:border-rose-900/30 hover:bg-rose-100 transition-colors"
+                                                                onClick={() => { setEditingNoticeId(null); setNoticeForm({ content: '', photos: [], isPinned: false }); setIsNoticeModalOpen(true); }}
+                                                                className="w-full bg-rose-500 hover:bg-rose-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[13px] flex items-center justify-center gap-2 mt-2"
                                                             >
-                                                                <Icon name="trash" size={14} /> 모든 게시글/제출 데이터 영구 삭제
+                                                                <Icon name="edit" size={16} /> 새 공지사항 작성
                                                             </button>
-                                                            <p className="text-[9px] text-center text-stone-400 font-bold mt-3">
-                                                                ※ 삭제된 데이터는 복구할 수 없으니 주의하십시오.
-                                                            </p>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* ② 파트너(공용계정) 관리 전용 화면 */}
+                                                {currentAdminTab === 'partner' && (
+                                                    <div className="max-w-3xl mx-auto space-y-4 fade-in mb-10">
+                                                        {/* 검색/필터 바 */}
+                                                        <div className="flex justify-between items-center bg-white dark:bg-stone-900 p-4 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800">
+                                                            <div className="relative flex-1 max-w-xs">
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="매장명/포스번호 검색"
+                                                                    className="w-full bg-stone-100 dark:bg-stone-800 border-none rounded-full py-2 pl-10 pr-4 text-xs"
+                                                                    onChange={(e) => setPartnerSearch(e.target.value)}
+                                                                />
+                                                                <Icon name="search" size={14} className="absolute left-4 top-2.5 text-stone-400" />
+                                                            </div>
+                                                            <label className="flex items-center gap-2 text-[10px] font-bold text-stone-400 cursor-pointer">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={showClosed}
+                                                                    onChange={(e) => setShowClosed(e.target.checked)}
+                                                                    className="rounded-sm accent-teal-600"
+                                                                />
+                                                                퇴점 매장 포함
+                                                            </label>
                                                         </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
+
+                                                        {/* 파트너 테이블 */}
+                                                        <div className="bg-white dark:bg-stone-900 rounded-[2rem] border border-stone-100 dark:border-stone-800 overflow-hidden shadow-sm">
+                                                            <table className="w-full text-left text-[11px]">
+                                                                <thead className="bg-stone-50 dark:bg-stone-800/50 text-stone-500 font-bold">
+                                                                    <tr>
+                                                                        <th className="py-4 px-6">포스ID</th>
+                                                                        <th className="py-4 px-6">매장명</th>
+                                                                        <th className="py-4 px-6">상태</th>
+                                                                        <th className="py-4 px-6 text-right">관리</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-stone-50 dark:divide-stone-800">
+                                                                    {partners
+                                                                        .filter((p) => (showClosed ? true : p.status === 'active'))
+                                                                        .filter((p) => p.name.includes(partnerSearch) || p.posId.includes(partnerSearch))
+                                                                        .map((p) => (
+                                                                            <tr
+                                                                                key={p.id}
+                                                                                className={`${p.status === 'closed' ? 'opacity-40 grayscale' : ''} hover:bg-stone-50/50 transition-colors`}
+                                                                            >
+                                                                                <td className="py-4 px-6 font-mono font-bold text-teal-600">{p.posId}</td>
+                                                                                <td className="py-4 px-6 font-black text-stone-700 dark:text-stone-200">{p.name}</td>
+                                                                                <td className="py-4 px-6">
+                                                                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${p.status === 'active' ? 'bg-green-100 text-green-600' : 'bg-stone-200 text-stone-500'}`}>
+                                                                                        {p.status === 'active' ? '영업중' : '퇴점'}
+                                                                                    </span>
+                                                                                </td>
+                                                                                <td className="py-4 px-6 text-right flex justify-end gap-2">
+                                                                                    <button onClick={() => handleEditPartner(p)} className="p-1.5 text-stone-400 hover:text-teal-600">
+                                                                                        <Icon name="edit2" size={14} />
+                                                                                    </button>
+                                                                                    {p.status === 'active' ? (
+                                                                                        <button onClick={() => handleToggleStatus(p.id, 'closed')} className="p-1.5 text-stone-400 hover:text-rose-500" title="퇴점처리">
+                                                                                            <Icon name="userMinus" size={14} />
+                                                                                        </button>
+                                                                                    ) : (
+                                                                                        <button onClick={() => handleToggleStatus(p.id, 'active')} className="p-1.5 text-stone-400 hover:text-green-600" title="부활시키기">
+                                                                                            <Icon name="userPlus" size={14} />
+                                                                                        </button>
+                                                                                    )}
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* ③ 앱 관리 탭 컨텐츠 */}
+                                                {currentAdminTab === 'apps' && (
+                                                    <div className="space-y-5 fade-in">
+                                                        {isAdminAuth && (
+                                                            <div className="mb-6 p-6 bg-teal-50 dark:bg-teal-900/20 rounded-[2.5rem] border border-teal-100 dark:border-teal-800 shadow-sm">
+                                                                <div className="flex items-center gap-3 mb-4">
+                                                                    <div className="p-2 bg-teal-600 rounded-xl text-white">
+                                                                        <Icon name="user" size={18} />
+                                                                    </div>
+                                                                    <h3 className="font-black text-stone-800 dark:text-stone-200">파트너 계정 생성</h3>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const testData = [
+                                                                            { posId: '1001', name: '아디다스 현대점', brands: ['아디다스'] },
+                                                                            { posId: '1002', name: '나이키 강남점', brands: ['나이키'] },
+                                                                            { posId: '2001', name: '비이커 통합매장', brands: ['비이커', '구호'] },
+                                                                        ];
+                                                                        uploadPartners(testData);
+                                                                    }}
+                                                                    className="w-full bg-teal-600 text-white font-bold py-4 rounded-2xl shadow-lg btn-press flex items-center justify-center gap-2 text-sm"
+                                                                >
+                                                                    <Icon name="plus" size={16} /> 테스트 계정 3개 즉시 등록
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                        {/* 나머지 apps 탭 컨텐츠 (사용자 코드 그대로 유지) */}
+                                                    </div>
+                                                )}
+
+                                                {/* health / schedules / security / members / posts 탭들 컨텐츠가 이곳에 위치합니다. (생략) */}
+
+
+                                                {/* ④ 게시글 영구 삭제 (posts 탭 전용) */}
+                                                {isAdminAuth && currentAdminTab === 'posts' && (
+                                                    <div className="pt-6 border-t border-stone-200 dark:border-stone-700 mt-2">
+                                                        <button
+                                                            onClick={handleClearAllPosts}
+                                                            className="w-full bg-rose-50 dark:bg-rose-900/20 text-rose-500 font-black px-5 py-3 rounded-2xl flex items-center justify-center gap-2 btn-press text-xs border border-rose-100 dark:border-rose-900/30 hover:bg-rose-100 transition-colors"
+                                                        >
+                                                            <Icon name="trash" size={14} /> 모든 게시글/제출 데이터 영구 삭제
+                                                        </button>
+                                                        <p className="text-[9px] text-center text-stone-400 font-bold mt-3">
+                                                            ※ 삭제된 데이터는 복구할 수 없으니 주의하십시오.
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
                                         )}
-                                    </>
-                                )}
-                            </div>
-
-                        </main >
-
-                        {/* ✅ N뱃지 기준 새 소식 팝업 (완성본) */}
-                        {
-                            showNewPostPopup && unreadPopupTargets.length > 0 && (
-                                <ModalWrapper
-                                    title="새 소식이 있습니다"
-                                    icon="bell"
-                                    onClose={() => setShowNewPostPopup(false)}
-                                >
-                                    <div className="space-y-3">
-                                        {unreadPopupTargets.slice(0, 5).map(app => (
-                                            <button
-                                                key={app.id}
-                                                onClick={() => {
-                                                    // 1. 폴더 안에 있는 앱이면 폴더부터 열어줌
-                                                    if (app.parentId) {
-                                                        const folder = dynamicApps.find(f => String(f.id) === String(app.parentId));
-                                                        if (folder) setOpenedFolder(folder);
-                                                    }
-
-                                                    // 2. 앱 화면 실행 (안내형/게시판형에 맞는 화면)
-                                                    handleAppClick(app);
-
-                                                    // 3. 💥 안내형 데이터(`notices`) 읽음 처리
-                                                    // widget_notices는 readNoticeIds, 일반 board형은 readPostIds 기준
-                                                    const targetNotices = (notices || []).filter(n =>
-                                                        app.actionType === 'widget_notices' || String(n.appId) === String(app.id)
-                                                    );
-                                                    targetNotices.forEach(n => markAsRead(n.id));
-
-                                                    // 4. 일반 게시글 데이터(`dynamicPosts`) 읽음 처리
-                                                    // readPostIds 기준으로 추적되므로 markPostAsRead 사용
-                                                    const appPosts = (dynamicPosts || []).filter(p => String(p.appId) === String(app.id));
-                                                    appPosts.forEach(p => markPostAsRead(p.id));
-
-                                                    // 5. 팝업 닫기
-                                                    setShowNewPostPopup(false);
-                                                }}
-                                                className="w-full text-left bg-stone-50 dark:bg-stone-800/50 hover:bg-stone-100 dark:hover:bg-stone-800 p-4 rounded-2xl transition-all border border-stone-100 dark:border-stone-700 shadow-sm group"
-                                            >
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <div className={`w-2 h-2 rounded-full ${app.color?.replace('text-', 'bg-') || 'bg-teal-500'} animate-pulse`}></div>
-                                                    <p className="text-[12px] font-black text-stone-800 dark:text-stone-200 truncate group-hover:text-teal-600 transition-colors">
-                                                        {app.name}
-                                                    </p>
-                                                </div>
-                                                <p className="text-[10px] text-stone-500 dark:text-stone-400 ml-4">
-                                                    새로운 안내 사항이 등록되었습니다. 클릭하여 확인하세요.
-                                                </p>
-                                            </button>
-                                        ))}
-
-                                        <button
-                                            onClick={() => setShowNewPostPopup(false)}
-                                            className="w-full mt-2 py-3 text-[11px] font-black text-stone-400 hover:text-stone-600 transition-colors btn-press"
-                                        >
-                                            나중에 보기 (닫기)
-                                        </button>
                                     </div>
-                                </ModalWrapper>
-                            )
-                        }
+                                )}
+                        </main>
+
+                        {/* ✅ N뱃지 기준 새 소식 팝업 (완성본 유지) */}
+                        {showNewPostPopup && unreadPopupTargets.length > 0 && (
+                            <ModalWrapper title="새 소식이 있습니다" icon="bell" onClose={() => setShowNewPostPopup(false)}>
+                                <div className="space-y-3">
+                                    {unreadPopupTargets.slice(0, 5).map(app => (
+                                        <button
+                                            key={app.id}
+                                            onClick={() => {
+                                                if (app.parentId) {
+                                                    const folder = dynamicApps.find(f => String(f.id) === String(app.parentId));
+                                                    if (folder) setOpenedFolder(folder);
+                                                }
+                                                handleAppClick(app);
+
+                                                const targetNotices = (notices || []).filter(n => app.actionType === 'widget_notices' || String(n.appId) === String(app.id));
+                                                targetNotices.forEach(n => markAsRead(n.id));
+
+                                                const appPosts = (dynamicPosts || []).filter(p => String(p.appId) === String(app.id));
+                                                appPosts.forEach(p => markPostAsRead(p.id));
+
+                                                setShowNewPostPopup(false);
+                                            }}
+                                            className="w-full text-left bg-stone-50 dark:bg-stone-800/50 hover:bg-stone-100 dark:hover:bg-stone-800 p-4 rounded-2xl transition-all border border-stone-100 dark:border-stone-700 shadow-sm group"
+                                        >
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <div className={`w-2 h-2 rounded-full ${app.color?.replace('text-', 'bg-') || 'bg-teal-500'} animate-pulse`}></div>
+                                                <p className="text-[12px] font-black text-stone-800 dark:text-stone-200 truncate group-hover:text-teal-600 transition-colors">{app.name}</p>
+                                            </div>
+                                            <p className="text-[10px] text-stone-500 dark:text-stone-400 ml-4">새로운 안내 사항이 등록되었습니다. 클릭하여 확인하세요.</p>
+                                        </button>
+                                    ))}
+                                    <button onClick={() => setShowNewPostPopup(false)} className="w-full mt-2 py-3 text-[11px] font-black text-stone-400 hover:text-stone-600 transition-colors btn-press">
+                                        나중에 보기 (닫기)
+                                    </button>
+                                </div>
+                            </ModalWrapper>
+                        )}
 
                         {/* 💡 파트너스 페이지(shared) 및 로그인 화면에서는 하단 탭 숨김 */}
                         {
