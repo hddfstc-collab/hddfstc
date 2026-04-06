@@ -3343,420 +3343,655 @@
                                     </div>
                                 )}
                                 {/* ADMIN VIEW */}
-                                {viewMode === 'admin' && (
-                                    <div className="max-w-3xl mx-auto pb-20 fade-in">
-                                        {!isAdminAuth && !isHealthOnlyAdmin && !appUser ? (
-                                            /* --- 미인증: PIN 로그인 화면 --- */
-                                            <div className="bg-white dark:bg-stone-900 p-10 rounded-[3rem] shadow-2xl border border-stone-200 dark:border-stone-800 text-center mt-10 max-w-sm mx-auto">
-                                                <h3 className="text-2xl font-black mb-2 text-stone-800 dark:text-stone-200">시스템 관리자</h3>
-                                                <form
-                                                    onSubmit={async (e) => {
-                                                        e.preventDefault();
-                                                        const inputHash = await hashPassword(pinInput);
-                                                        const storedHash = masterPinHash || (await hashPassword(DEFAULT_PIN));
-                                                        if (inputHash === storedHash) setIsAdminAuth(true);
-                                                        else showToast('PIN이 일치하지 않습니다.', true);
-                                                    }}
-                                                >
-                                                    <input
-                                                        type="password"
-                                                        placeholder="PIN 번호 입력"
-                                                        className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 py-5 rounded-2xl text-center font-black tracking-[0.5em] mb-4 outline-none focus:border-teal-500"
-                                                        value={pinInput}
-                                                        onChange={(e) => setPinInput(e.target.value)}
-                                                        autoFocus
-                                                    />
-                                                    <button className="w-full bg-stone-800 text-white py-4 rounded-2xl font-black shadow-xl tracking-widest text-[13px] btn-press">
-                                                        접속
-                                                    </button>
-                                                </form>
-                                                {currentAdminTab === 'health' && (
-                                                    <div className="space-y-6 fade-in" style={isLargeTextMode ? { zoom: '1.25' } : {}}>
-                                                        {/* 저시력자용 모드 토글 */}
-                                                        <div className="bg-indigo-50/50 dark:bg-indigo-900/20 p-6 rounded-[2.5rem] border border-indigo-100 dark:border-indigo-800 shadow-sm flex items-center justify-between">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-10 h-10 bg-indigo-200 text-indigo-700 rounded-full flex items-center justify-center"><Icon name="search" size={20} /></div>
-                                                                <div>
-                                                                    <p className="text-[13px] font-black text-indigo-700 dark:text-indigo-400">저시력자용 큰 글씨 모드</p>
-                                                                    <p className="text-[10px] text-indigo-500 mt-0.5">예약 목록의 이름, 시간이 매우 크게 보입니다.</p>
-                                                                </div>
-                                                            </div>
-                                                            <button onClick={() => setIsLargeTextMode(!isLargeTextMode)} className={`w-14 h-8 flex items-center rounded-full p-1 transition-colors ${isLargeTextMode ? 'bg-indigo-500' : 'bg-stone-300 dark:bg-stone-600'}`}>
-                                                                <div className={`bg-white w-6 h-6 rounded-full shadow-md transform transition-transform ${isLargeTextMode ? 'translate-x-6' : ''}`}></div>
-                                                            </button>
-                                                        </div>
-
-                                                        {/* 예약 시스템 설정 (담당자 지정 기능 추가됨) */}
-                                                        <div className="bg-indigo-50/50 dark:bg-indigo-900/20 p-6 rounded-[2.5rem] border border-indigo-100 dark:border-indigo-800 shadow-sm">
-                                                            <h3 className="text-[13px] font-black text-indigo-700 dark:text-indigo-400 mb-4 flex items-center gap-2">
-                                                                <Icon name="settings" size={18} /> 예약 시스템 설정 (담당자 및 시간 변경)
-                                                            </h3>
-                                                            {(dynamicApps || []).filter(a => a.actionType === 'reservation').map(resApp => (
-                                                                <div key={resApp.id} className="space-y-4 border-t border-indigo-100 dark:border-indigo-800/50 pt-4 mt-2">
-                                                                    <p className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mb-2">
-                                                                        [{resApp.name}] {userMap[resApp.resOperatorId] ? `현재 담당자: ${userMap[resApp.resOperatorId].name}` : '담당자 미지정'}
-                                                                    </p>
-
-                                                                    {/* ✨ 담당자 지정을 위한 사번 입력 필드 */}
-                                                                    <div>
-                                                                        <label className="text-[10px] font-bold text-stone-500 ml-1">담당 헬스키퍼 사번 (Employee ID)</label>
-                                                                        <div className="flex gap-2 mt-1">
-                                                                            <input
-                                                                                className="flex-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400 shadow-inner"
-                                                                                placeholder="사번을 입력하세요 (예: 123456)"
-                                                                                value={resForm.operatorId}
-                                                                                onChange={e => setResForm({ ...resForm, operatorId: e.target.value })}
-                                                                            />
-                                                                            {userMap[resForm.operatorId] && (
-                                                                                <div className="bg-teal-50 dark:bg-teal-900/30 px-3 py-3 rounded-xl border border-teal-100 dark:border-teal-800 flex items-center shrink-0">
-                                                                                    <span className="text-[10px] font-black text-teal-600">{userMap[resForm.operatorId].name} 님</span>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div>
-                                                                        <label className="text-[10px] font-bold text-stone-500 ml-1">운영 시간대 (콤마 구분 입력)</label>
-                                                                        <input className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400 shadow-inner" value={resForm.slots} onChange={e => setResForm({ ...resForm, slots: e.target.value })} />
-                                                                    </div>
-
-                                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                                                        <div><label className="text-[10px] font-bold text-stone-500 ml-1">타임당 예약 허용 인원</label><input type="number" min="1" className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400 shadow-inner" value={resForm.max} onChange={e => setResForm({ ...resForm, max: parseInt(e.target.value) || 1 })} /></div>
-                                                                        <div><label className="text-[10px] font-bold text-stone-500 ml-1">예약 마감 (일 전)</label><input type="number" min="0" className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400 shadow-inner" value={resForm.lDays} onChange={e => setResForm({ ...resForm, lDays: parseInt(e.target.value) || 0 })} /></div>
-                                                                        <div><label className="text-[10px] font-bold text-stone-500 ml-1">예약 마감 (시간 전)</label><input type="number" min="0" className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400 shadow-inner" value={resForm.lHours} onChange={e => setResForm({ ...resForm, lHours: parseInt(e.target.value) || 0 })} /></div>
-                                                                    </div>
-                                                                    <button onClick={() => handleUpdateResApp(resApp.id)} className="w-full bg-indigo-600 text-white font-black py-4 rounded-xl text-[12px] shadow-md btn-press mt-2">담당자 및 설정 즉시 반영하기</button>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-
-                                                        {/* 예약 리스트 및 통계 부분 (기존과 동일) */}
-                                                        <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-700">
-
-                                                            {/* 제목 + 엑셀 버튼 */}
-                                                            <div className="flex items-center justify-between mb-4">
-                                                                <h3 className="text-[13px] font-black text-stone-800 dark:text-stone-200 flex items-center gap-2">
-                                                                    <Icon name="calendar" size={18} className="text-pink-500" />
-                                                                    전체 예약 내역 및 강제 취소
-                                                                </h3>
-                                                            </div>
-
-
-                                                            {/* 예약 리스트 */}
-                                                            <div className="max-h-[500px] overflow-y-auto scrollbar-hide space-y-3 pr-1">
-                                                                {dynamicPosts.filter(p => p.type === 'reservation').length === 0 ? (
-                                                                    <p className="text-[11px] text-center text-stone-400 py-6">
-                                                                        예약 내역이 없습니다.
-                                                                    </p>
-                                                                ) : (
-                                                                    dynamicPosts
-                                                                        .filter(p => p.type === 'reservation')
-                                                                        .map(res => (
-                                                                            <div
-                                                                                key={res.id}
-                                                                                className="bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm flex justify-between items-center group"
-                                                                            >
-                                                                                <div className="flex flex-col gap-1 w-full mr-2">
-                                                                                    <span
-                                                                                        className={
-                                                                                            `${isLargeTextMode ? 'text-2xl mb-1' : 'text-[13px]'} font-black text-stone-800 dark:text-stone-200`
-                                                                                        }
-                                                                                    >
-                                                                                        {res.author}{' '}
-                                                                                        <span
-                                                                                            className={
-                                                                                                `${isLargeTextMode ? 'text-base font-bold' : 'text-[10px] font-normal'} text-stone-400`
-                                                                                            }
-                                                                                        >
-                                                                                            ({res.ext || '내선없음'})
-                                                                                        </span>
-                                                                                    </span>
-
-                                                                                    <span
-                                                                                        className={
-                                                                                            `${isLargeTextMode
-                                                                                                ? 'text-lg bg-pink-50 dark:bg-pink-900/30 p-2 rounded-xl mt-1 inline-block'
-                                                                                                : 'text-[10px]'
-                                                                                            } font-bold text-pink-600 w-fit`
-                                                                                        }
-                                                                                    >
-                                                                                        {res.resDate} {res.resTime}
-                                                                                    </span>
-
-                                                                                    {res.content && (
-                                                                                        <span
-                                                                                            className={
-                                                                                                `${isLargeTextMode
-                                                                                                    ? 'text-sm mt-2 font-bold p-3 bg-stone-50 dark:bg-stone-800 rounded-xl'
-                                                                                                    : 'text-[10px] line-clamp-1 mt-1'
-                                                                                                } text-stone-500`
-                                                                                            }
-                                                                                        >
-                                                                                            비고: {res.content}
-                                                                                        </span>
-                                                                                    )}
-                                                                                </div>
-
-                                                                                <button
-                                                                                    onClick={e => {
-                                                                                        e.stopPropagation();
-                                                                                        handleReservationCancel(res?.id || post?.id);
-                                                                                    }}
-                                                                                    className={
-                                                                                        `bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white ${isLargeTextMode ? 'p-4' : 'p-2.5'} rounded-xl transition-colors btn-press shrink-0 flex flex-col items-center justify-center`
-                                                                                    }
-                                                                                >
-                                                                                    <Icon name="trash" size={isLargeTextMode ? 24 : 16} />
-                                                                                    <span className="text-[10px] font-black mt-1">취소</span>
-                                                                                </button>
-                                                                            </div>
-                                                                        ))
-                                                                )}
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                            <div className="bg-indigo-50 dark:bg-indigo-900/20 p-6 rounded-[2.5rem] border border-indigo-100 dark:border-indigo-800">
-                                                                <h3 className="text-[13px] font-black text-indigo-700 dark:text-indigo-400 mb-4 flex items-center gap-2"><Icon name="barChart" size={18} /> 이용 횟수 통계 (Top 10)</h3>
-                                                                <div className="space-y-2">
-                                                                    {(() => {
-                                                                        const resCounts = {};
-                                                                        dynamicPosts.filter(p => p.type === 'reservation').forEach(p => { resCounts[p.author] = (resCounts[p.author] || 0) + 1; });
-                                                                        const sortedStats = Object.entries(resCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
-                                                                        if (sortedStats.length === 0) return <p className="text-[11px] text-center text-indigo-400 py-6">통계 데이터가 없습니다.</p>;
-                                                                        return sortedStats.map(([name, count], idx) => (
-                                                                            <div key={name} className="flex justify-between items-center text-[11px] font-bold bg-white/50 dark:bg-stone-900/50 p-2 rounded-xl border border-indigo-200/50">
-                                                                                <span className="text-stone-700 dark:text-stone-300">{idx + 1}. {name}</span><span className="text-indigo-600 bg-indigo-100 dark:bg-indigo-900 px-2 py-0.5 rounded-md">{count}회</span>
-                                                                            </div>
-                                                                        ));
-                                                                    })()}
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="bg-rose-50 dark:bg-rose-900/20 p-6 rounded-[2.5rem] border border-rose-100 dark:border-rose-800">
-                                                                <h3 className="text-[13px] font-black text-rose-600 dark:text-rose-400 mb-4 flex items-center gap-2"><Icon name="shield" size={18} /> 악성 예약자 블랙리스트</h3>
-                                                                <div className="flex gap-2 mb-4">
-                                                                    <input className="w-1/2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-2 text-[10px] font-bold outline-none focus:border-rose-400" placeholder="브랜드명" value={blacklistInput.brand} onChange={e => setBlacklistInput({ ...blacklistInput, brand: e.target.value })} />
-                                                                    <input className="w-1/2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-2 text-[10px] font-bold outline-none focus:border-rose-400" placeholder="성명" value={blacklistInput.name} onChange={e => setBlacklistInput({ ...blacklistInput, name: e.target.value })} />
-                                                                    <button onClick={async () => {
-                                                                        if (!blacklistInput.brand || !blacklistInput.name) return showToast('브랜드와 성명을 입력하세요', true);
-                                                                        const newBl = { id: `bl_${Date.now()}`, brand: blacklistInput.brand, name: blacklistInput.name, createdAt: new Date().toISOString() };
-                                                                        setBlacklists([newBl, ...blacklists]); saveToIDB('blacklists', newBl);
-                                                                        if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/blacklists`).doc(newBl.id).set(newBl);
-                                                                        setBlacklistInput({ brand: '', name: '' }); showToast('블랙리스트에 추가되었습니다.');
-                                                                    }} className="bg-rose-600 text-white px-3 py-2 rounded-xl text-[10px] font-black shrink-0">추가</button>
-                                                                </div>
-                                                                <div className="space-y-2 max-h-32 overflow-y-auto scrollbar-hide">
-                                                                    {blacklists.length === 0 ? <p className="text-[10px] text-center text-rose-400 py-2">등록된 블랙리스트가 없습니다.</p> : blacklists.map(bl => (
-                                                                        <div key={bl.id} className="flex justify-between items-center text-[10px] font-bold bg-white/50 dark:bg-stone-900/50 p-2 rounded-xl border border-rose-200/50">
-                                                                            <span className="text-stone-700 dark:text-stone-300">{bl.brand} - {bl.name}</span>
-                                                                            <button onClick={async () => {
-                                                                                setBlacklists(blacklists.filter(b => b.id !== bl.id)); deleteFromIDB('blacklists', bl.id);
-                                                                                if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/blacklists`).doc(bl.id).delete();
-                                                                            }} className="text-rose-500 hover:text-rose-700"><Icon name="x" size={14} /></button>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
+                                {currentAdminTab === 'apps' && (
+                                    <div className="space-y-6 fade-in">
+                                        {/* ✨ 삽입: 파트너 계정 초기 등록 버튼 (DB 세팅용) */}
+                                        <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-4">
+                                            <div className="flex items-center gap-2 border-b border-stone-200 dark:border-stone-700 pb-4">
+                                                <div className="w-8 h-8 bg-teal-100 dark:bg-teal-900/30 text-teal-600 rounded-xl flex items-center justify-center"><Icon name="users" size={16} /></div>
+                                                <p className="text-[12px] font-black text-teal-600 tracking-widest">파트너 계정 초기 등록</p>
                                             </div>
-                                        ) : (
-                                            /* --- 인증 후: 단일 통합 관리 패널 --- */
-                                            <div className="bg-white dark:bg-stone-900 p-6 md:p-8 rounded-[3.5rem] shadow-2xl border border-stone-200 dark:border-stone-800 space-y-6 fade-in">
+                                            <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed font-bold">최초 1회 테스트 매장 계정 3개를 DB에 등록합니다. 등록 후 매장 포스번호(1001 등)로 로그인이 가능합니다.</p>
+                                            <button onClick={() => { const testData = [{ posId: '1001', name: '아디다스 현대점', brands: ['아디다스'] }, { posId: '1002', name: '나이키 강남점', brands: ['나이키'] }, { posId: '2001', name: '비이커 통합매장', brands: ['비이커', '구호'] }]; uploadPartners(testData); }} className="w-full bg-teal-600 hover:bg-teal-700 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[12px] flex items-center justify-center gap-2 mt-2 transition-colors"><Icon name="plus" size={16} /> 테스트 계정 3개 즉시 등록 (DB 세팅)</button>
+                                        </div>
 
-                                                {/* ✅ 단일 탭 목록 (가로 스크롤) */}
-                                                <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide border-b border-stone-100 dark:border-stone-700 snap-x">
-                                                    {AVAILABLE_TABS.map((tab) => (
-                                                        <button
-                                                            key={tab.id}
-                                                            onClick={() => setAdminTab(tab.id)}
-                                                            className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${currentAdminTab === tab.id
-                                                                ? 'bg-stone-800 text-white shadow-md'
-                                                                : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
-                                                                }`}
-                                                        >
-                                                            {tab.name}
-                                                        </button>
-                                                    ))}
-                                                    <button
-                                                        onClick={() => {
-                                                            setIsAdminAuth(false);
-                                                            setIsHealthOnlyAdmin(false);
-                                                            setViewMode(appUser?.role === 'partner' ? 'shared' : 'daily');
-                                                            showToast('관리자 모드를 종료합니다.');
-                                                        }}
-                                                        className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 hover:bg-rose-500 hover:text-white transition-all btn-press shadow-sm"
-                                                        title="관리자 종료"
-                                                    >
-                                                        <Icon name="xCircle" size={18} />
-                                                    </button>
+                                        {/* 2. 앱 및 폴더 관리 섹션 (사라졌던 아이콘 선택 코드 복구 완료) */}
+                                        <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-5">
+                                            <p className="text-[12px] font-black text-teal-600 tracking-widest flex items-center gap-2"><Icon name="layout" size={18} /> 앱/폴더 생성 및 수정</p>
+                                            <div className="grid grid-cols-1 gap-4">
+                                                <input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500" placeholder="앱/폴더 이름" value={appManagerForm.name} onChange={e => setAppManagerForm({ ...appManagerForm, name: e.target.value })} />
+
+                                                {/* 아이콘 선택 영역 (모바일 친화적 스크롤) */}
+                                                <div>
+                                                    <p className="text-[10px] font-black text-stone-400 ml-2 mb-2">아이콘 선택 (좌우로 스와이프)</p>
+                                                    <div className="flex overflow-x-auto gap-3 bg-white dark:bg-stone-900 p-4 rounded-[1.5rem] border border-stone-100 dark:border-stone-700 scrollbar-hide snap-x">
+                                                        {ICON_OPTIONS.map(opt => (
+                                                            <button
+                                                                key={opt.v}
+                                                                onClick={() => setAppManagerForm({ ...appManagerForm, icon: opt.v })}
+                                                                className={`snap-center shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${appManagerForm.icon === opt.v ? 'bg-teal-500 text-white shadow-lg scale-110' : 'bg-stone-50 dark:bg-stone-800 text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-700'}`}
+                                                            >
+                                                                <Icon name={opt.v} size={24} />
+                                                            </button>
+                                                        ))}
+                                                    </div>
                                                 </div>
 
-                                                {/* ① 공지사항 관리 탭 컨텐츠 */}
-                                                {currentAdminTab === 'notice' && (
-                                                    <div className="max-w-3xl mx-auto space-y-3 fade-in mb-10">
-                                                        {(notices || []).length === 0 ? (
-                                                            <div className="flex flex-col items-center justify-center py-16 bg-white dark:bg-stone-900 rounded-[2.5rem] border-2 border-dashed border-stone-100 dark:border-stone-800">
-                                                                <Icon name="bellRing" size={32} className="text-stone-300 mb-3" />
-                                                                <p className="text-[12px] font-bold text-stone-400">등록된 공지사항이 없습니다.</p>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="space-y-2">
-                                                                {[...(notices || [])].sort((a, b) => (a.isPinned === b.isPinned ? 0 : a.isPinned ? -1 : 1)).map(n => (
-                                                                    <div key={n.id} className={`bg-white dark:bg-stone-900 p-4 rounded-2xl border shadow-sm flex items-start justify-between gap-3 ${n.isPinned ? 'border-rose-200 dark:border-rose-800' : 'border-stone-100 dark:border-stone-800'}`}>
-                                                                        <div className="flex-1 min-w-0">
-                                                                            {n.isPinned && <span className="inline-flex items-center gap-1 text-[9px] font-black text-rose-500 bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded-full mb-1.5"><Icon name="pin" size={9} /> 중요</span>}
-                                                                            <p className="text-[12px] font-black text-stone-800 dark:text-stone-200 whitespace-pre-wrap break-words">{n.content}</p>
-                                                                            <p className="text-[10px] text-stone-400 font-bold mt-1.5">{n.author} · {formatLocalTime(n.createdAt)}</p>
-                                                                        </div>
-                                                                        {(isAdminAuth || (appUser && n.author === appUser.name)) && (
-                                                                            <div className="flex gap-1 shrink-0">
-                                                                                <button onClick={() => { setEditingNoticeId(n.id); setNoticeForm({ content: n.content, photos: Array.isArray(n.photos) ? n.photos : [], isPinned: !!n.isPinned }); setIsNoticeModalOpen(true); }} className="p-1.5 text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/30 rounded-lg"><Icon name="edit" size={14} /></button>
-                                                                                <button onClick={() => handleDeleteNotice(n.id)} className="p-1.5 text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg"><Icon name="trash" size={14} /></button>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                        {(isAdminAuth || (appUser && canWrite((dynamicApps || []).find(a => a.actionType === 'widget_notices')))) && (
-                                                            <button
-                                                                onClick={() => { setEditingNoticeId(null); setNoticeForm({ content: '', photos: [], isPinned: false }); setIsNoticeModalOpen(true); }}
-                                                                className="w-full bg-rose-500 hover:bg-rose-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[13px] flex items-center justify-center gap-2 mt-2"
-                                                            >
-                                                                <Icon name="edit" size={16} /> 새 공지사항 작성
-                                                            </button>
-                                                        )}
+                                                {/* 색상 선택 영역 */}
+                                                <div>
+                                                    <p className="text-[10px] font-black text-stone-400 ml-2 mb-2">테마 색상</p>
+                                                    <div className="flex flex-wrap gap-2 bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-100 dark:border-stone-700">
+                                                        {COLOR_OPTIONS.map(opt => (
+                                                            <button key={opt.v} onClick={() => setAppManagerForm({ ...appManagerForm, color: opt.t, bg: opt.b })} className={`w-8 h-8 rounded-full border-2 ${opt.b} ${appManagerForm.color === opt.t ? 'border-teal-500 scale-110' : 'border-transparent'}`} title={opt.l}></button>
+                                                        ))}
                                                     </div>
-                                                )}
+                                                </div>
 
-                                                {/* ② 파트너(공용계정) 관리 전용 화면 */}
-                                                {currentAdminTab === 'partner' && (
-                                                    <div className="max-w-3xl mx-auto space-y-4 fade-in mb-10">
-                                                        {/* 검색/필터 바 */}
-                                                        <div className="flex justify-between items-center bg-white dark:bg-stone-900 p-4 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800">
-                                                            <div className="relative flex-1 max-w-xs">
-                                                                <input
-                                                                    type="text"
-                                                                    placeholder="매장명/포스번호 검색"
-                                                                    className="w-full bg-stone-100 dark:bg-stone-800 border-none rounded-full py-2 pl-10 pr-4 text-xs"
-                                                                    onChange={(e) => setPartnerSearch(e.target.value)}
-                                                                />
-                                                                <Icon name="search" size={14} className="absolute left-4 top-2.5 text-stone-400" />
-                                                            </div>
-                                                            <label className="flex items-center gap-2 text-[10px] font-bold text-stone-400 cursor-pointer">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={showClosed}
-                                                                    onChange={(e) => setShowClosed(e.target.checked)}
-                                                                    className="rounded-sm accent-teal-600"
-                                                                />
-                                                                퇴점 매장 포함
-                                                            </label>
-                                                        </div>
-
-                                                        {/* 파트너 테이블 */}
-                                                        <div className="bg-white dark:bg-stone-900 rounded-[2rem] border border-stone-100 dark:border-stone-800 overflow-hidden shadow-sm">
-                                                            <table className="w-full text-left text-[11px]">
-                                                                <thead className="bg-stone-50 dark:bg-stone-800/50 text-stone-500 font-bold">
-                                                                    <tr>
-                                                                        <th className="py-4 px-6">포스ID</th>
-                                                                        <th className="py-4 px-6">매장명</th>
-                                                                        <th className="py-4 px-6">상태</th>
-                                                                        <th className="py-4 px-6 text-right">관리</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody className="divide-y divide-stone-50 dark:divide-stone-800">
-                                                                    {partners
-                                                                        .filter((p) => (showClosed ? true : p.status === 'active'))
-                                                                        .filter((p) => p.name.includes(partnerSearch) || p.posId.includes(partnerSearch))
-                                                                        .map((p) => (
-                                                                            <tr
-                                                                                key={p.id}
-                                                                                className={`${p.status === 'closed' ? 'opacity-40 grayscale' : ''} hover:bg-stone-50/50 transition-colors`}
-                                                                            >
-                                                                                <td className="py-4 px-6 font-mono font-bold text-teal-600">{p.posId}</td>
-                                                                                <td className="py-4 px-6 font-black text-stone-700 dark:text-stone-200">{p.name}</td>
-                                                                                <td className="py-4 px-6">
-                                                                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${p.status === 'active' ? 'bg-green-100 text-green-600' : 'bg-stone-200 text-stone-500'}`}>
-                                                                                        {p.status === 'active' ? '영업중' : '퇴점'}
-                                                                                    </span>
-                                                                                </td>
-                                                                                <td className="py-4 px-6 text-right flex justify-end gap-2">
-                                                                                    <button onClick={() => handleEditPartner(p)} className="p-1.5 text-stone-400 hover:text-teal-600">
-                                                                                        <Icon name="edit2" size={14} />
-                                                                                    </button>
-                                                                                    {p.status === 'active' ? (
-                                                                                        <button onClick={() => handleToggleStatus(p.id, 'closed')} className="p-1.5 text-stone-400 hover:text-rose-500" title="퇴점처리">
-                                                                                            <Icon name="userMinus" size={14} />
-                                                                                        </button>
-                                                                                    ) : (
-                                                                                        <button onClick={() => handleToggleStatus(p.id, 'active')} className="p-1.5 text-stone-400 hover:text-green-600" title="부활시키기">
-                                                                                            <Icon name="userPlus" size={14} />
-                                                                                        </button>
-                                                                                    )}
-                                                                                </td>
-                                                                            </tr>
-                                                                        ))}
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* ③ 앱 관리 탭 컨텐츠 */}
-                                                {currentAdminTab === 'apps' && (
-                                                    <div className="space-y-5 fade-in">
-                                                        {isAdminAuth && (
-                                                            <div className="mb-6 p-6 bg-teal-50 dark:bg-teal-900/20 rounded-[2.5rem] border border-teal-100 dark:border-teal-800 shadow-sm">
-                                                                <div className="flex items-center gap-3 mb-4">
-                                                                    <div className="p-2 bg-teal-600 rounded-xl text-white">
-                                                                        <Icon name="user" size={18} />
-                                                                    </div>
-                                                                    <h3 className="font-black text-stone-800 dark:text-stone-200">파트너 계정 생성</h3>
-                                                                </div>
-                                                                <button
-                                                                    onClick={() => {
-                                                                        const testData = [
-                                                                            { posId: '1001', name: '아디다스 현대점', brands: ['아디다스'] },
-                                                                            { posId: '1002', name: '나이키 강남점', brands: ['나이키'] },
-                                                                            { posId: '2001', name: '비이커 통합매장', brands: ['비이커', '구호'] },
-                                                                        ];
-                                                                        uploadPartners(testData);
-                                                                    }}
-                                                                    className="w-full bg-teal-600 text-white font-bold py-4 rounded-2xl shadow-lg btn-press flex items-center justify-center gap-2 text-sm"
-                                                                >
-                                                                    <Icon name="plus" size={16} /> 테스트 계정 3개 즉시 등록
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                        {/* 나머지 apps 탭 컨텐츠 (사용자 코드 그대로 유지) */}
-                                                    </div>
-                                                )}
-
-                                                {/* health / schedules / security / members / posts 탭들 컨텐츠가 이곳에 위치합니다. (생략) */}
-
-
-                                                {/* ④ 게시글 영구 삭제 (posts 탭 전용) */}
-                                                {isAdminAuth && currentAdminTab === 'posts' && (
-                                                    <div className="pt-6 border-t border-stone-200 dark:border-stone-700 mt-2">
-                                                        <button
-                                                            onClick={handleClearAllPosts}
-                                                            className="w-full bg-rose-50 dark:bg-rose-900/20 text-rose-500 font-black px-5 py-3 rounded-2xl flex items-center justify-center gap-2 btn-press text-xs border border-rose-100 dark:border-rose-900/30 hover:bg-rose-100 transition-colors"
+                                                <div className="grid grid-cols-3 gap-3">
+                                                    <select
+                                                        className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-4 text-xs font-bold outline-none"
+                                                        value={appManagerForm.isFolder}
+                                                        onChange={e =>
+                                                            setAppManagerForm({
+                                                                ...appManagerForm,
+                                                                isFolder: e.target.value,
+                                                                parentId: e.target.value === 'true'
+                                                                    ? ''
+                                                                    : appManagerForm.parentId,
+                                                            })
+                                                        }
+                                                    >
+                                                        <option value="false">일반 앱 (기능)</option>
+                                                        <option value="true">폴더 (그룹)</option>
+                                                    </select>
+                                                    {appManagerForm.isFolder === 'false' && (
+                                                        <select
+                                                            className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-4 text-xs font-bold outline-none"
+                                                            value={appManagerForm.parentId}
+                                                            onChange={e =>
+                                                                setAppManagerForm({ ...appManagerForm, parentId: e.target.value })
+                                                            }
                                                         >
-                                                            <Icon name="trash" size={14} /> 모든 게시글/제출 데이터 영구 삭제
-                                                        </button>
-                                                        <p className="text-[9px] text-center text-stone-400 font-bold mt-3">
-                                                            ※ 삭제된 데이터는 복구할 수 없으니 주의하십시오.
-                                                        </p>
+                                                            <option value="">📁 최상위</option>
+                                                            {dynamicApps
+                                                                .filter(a => a.isFolder)
+                                                                .map(f => (
+                                                                    <option key={f.id} value={f.id}>{f.name}</option>
+                                                                ))}
+                                                        </select>
+                                                    )}
+                                                    <select className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-4 text-xs font-bold outline-none" value={appManagerForm.actionType} onChange={e => setAppManagerForm({ ...appManagerForm, actionType: e.target.value })} disabled={appManagerForm.isFolder === 'true'}>
+                                                        <option value="guide">📘 안내형</option>
+                                                        <option value="board">📝 게시판형</option>
+                                                        <option value="widget_board">🖼️ 위젯 게시판 (메인 노출)</option>
+                                                        <option value="form">📮 폼 제출형</option>
+                                                        <option value="reservation">📅 예약 시스템</option>
+                                                        <option value="link">🔗 외부 링크</option>
+                                                    </select>
+                                                </div>
+                                                {/* 외부 링크 선택 시 URL 입력 칸 등장 */}
+                                                {appManagerForm.actionType === 'link' && appManagerForm.isFolder === 'false' && (
+                                                    <input
+                                                        className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-teal-500 fade-in"
+                                                        placeholder="연결할 외부 링크 URL (예: https://...)"
+                                                        value={appManagerForm.url || ''}
+                                                        onChange={e => setAppManagerForm({ ...appManagerForm, url: e.target.value })}
+                                                    />
+                                                )}
+                                                {/* 1️⃣ 앱 기본 정보 (항상 노출되어야 함) */}
+                                                <div className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-3xl p-6 space-y-4 mb-4 shadow-sm">
+                                                    <div>
+                                                        <label className="text-[10px] font-black text-stone-400 ml-2 mb-1 block">앱 이름 (제목)</label>
+                                                        <input
+                                                            className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400"
+                                                            placeholder="예: 비품 신청서, 방문객 명단"
+                                                            value={appManagerForm.name || ''}
+                                                            onChange={e => setAppManagerForm({ ...appManagerForm, name: e.target.value })}
+                                                        />
                                                     </div>
+
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div>
+                                                            <label className="text-[10px] font-black text-stone-400 ml-2 mb-1 block">앱 종류</label>
+                                                            <select
+                                                                className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl px-4 py-4 text-xs font-bold outline-none"
+                                                                value={appManagerForm.actionType}
+                                                                onChange={e => setAppManagerForm({ ...appManagerForm, actionType: e.target.value })}
+                                                            >
+                                                                <option value="guide">📖 일반 게시판</option>
+                                                                <option value="form">✍️ 양식 제출형</option>
+                                                                <option value="reservation">⏰ 예약 시스템</option>
+                                                            </select>
+                                                        </div>
+                                                        {/* 아이콘 등 기타 설정... */}
+                                                    </div>
+                                                </div>
+
+                                                {/* 질문 추가 영역 (form 일 때만 보임) */}
+                                                {appManagerForm.actionType === 'form' && (
+                                                    <div className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 space-y-3">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <label className="text-[12px] font-black text-stone-800 dark:text-stone-200">
+                                                                질문 양식 설정 <span className="text-rose-500">*</span>
+                                                            </label>
+                                                            <button
+                                                                onClick={() => {
+                                                                    const newField = { id: 'q_' + Date.now(), type: 'text', label: '', isRequired: true };
+                                                                    setAppManagerForm({ ...appManagerForm, fields: [...(appManagerForm.fields || []), newField] });
+                                                                }}
+                                                                className="text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold px-3 py-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 btn-press"
+                                                            >
+                                                                + 질문 추가
+                                                            </button>
+                                                        </div>
+
+                                                        <div className="space-y-3">
+                                                            {appManagerForm.fields && appManagerForm.fields.length > 0 ? (
+                                                                appManagerForm.fields.map((field, idx) => (
+                                                                    <div key={field.id} className="relative bg-white dark:bg-stone-800 p-3 pt-10 rounded-xl border border-stone-200 dark:border-stone-700">
+
+                                                                        {/* ✨ 상단 컨트롤 바 (위/아래 이동 & 삭제) */}
+                                                                        <div className="absolute top-2 right-2 flex items-center gap-0.5 bg-stone-100 dark:bg-stone-900 rounded-md p-0.5 border border-stone-200 dark:border-stone-700">
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    if (idx === 0) return;
+                                                                                    const newFields = [...appManagerForm.fields];
+                                                                                    [newFields[idx - 1], newFields[idx]] = [newFields[idx], newFields[idx - 1]];
+                                                                                    setAppManagerForm({ ...appManagerForm, fields: newFields });
+                                                                                }}
+                                                                                disabled={idx === 0}
+                                                                                className={`p-1.5 rounded transition-colors ${idx === 0 ? 'text-stone-300 dark:text-stone-600 cursor-not-allowed' : 'text-stone-500 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30'}`}
+                                                                                title="위로 이동"
+                                                                            >
+                                                                                <Icon name="chevronUp" size={14} />
+                                                                            </button>
+
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    if (idx === appManagerForm.fields.length - 1) return;
+                                                                                    const newFields = [...appManagerForm.fields];
+                                                                                    [newFields[idx], newFields[idx + 1]] = [newFields[idx + 1], newFields[idx]];
+                                                                                    setAppManagerForm({ ...appManagerForm, fields: newFields });
+                                                                                }}
+                                                                                disabled={idx === appManagerForm.fields.length - 1}
+                                                                                className={`p-1.5 rounded transition-colors ${idx === appManagerForm.fields.length - 1 ? 'text-stone-300 dark:text-stone-600 cursor-not-allowed' : 'text-stone-500 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30'}`}
+                                                                                title="아래로 이동"
+                                                                            >
+                                                                                <Icon name="chevronDown" size={14} />
+                                                                            </button>
+
+                                                                            <div className="w-[1px] h-4 bg-stone-300 dark:bg-stone-700 mx-0.5"></div>
+
+                                                                            <button
+                                                                                onClick={() => setAppManagerForm({ ...appManagerForm, fields: appManagerForm.fields.filter(f => f.id !== field.id) })}
+                                                                                className="p-1.5 text-stone-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded transition-colors"
+                                                                                title="질문 삭제"
+                                                                            >
+                                                                                <Icon name="trash" size={14} />
+                                                                            </button>
+                                                                        </div>
+
+                                                                        {/* 질문 제목 입력칸 */}
+                                                                        <input
+                                                                            className="w-full bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg px-3 py-2 text-[11px] font-bold outline-none focus:border-indigo-400 mb-2"
+                                                                            placeholder="질문 제목 (예: 방문자 성함, 신청 사유 등)"
+                                                                            value={field.label}
+                                                                            onChange={e => {
+                                                                                const newFields = appManagerForm.fields.map(f => f.id === field.id ? { ...f, label: e.target.value } : f);
+                                                                                setAppManagerForm({ ...appManagerForm, fields: newFields });
+                                                                            }}
+                                                                        />
+
+                                                                        {/* 질문 유형 선택칸 */}
+                                                                        <select
+                                                                            className="w-full bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg px-3 py-2 text-[11px] font-bold outline-none focus:border-indigo-400"
+                                                                            value={field.type}
+                                                                            onChange={e => {
+                                                                                const newFields = appManagerForm.fields.map(f => f.id === field.id ? { ...f, type: e.target.value } : f);
+                                                                                setAppManagerForm({ ...appManagerForm, fields: newFields });
+                                                                            }}
+                                                                        >
+                                                                            <option value="text">단답형 (짧은 텍스트)</option>
+                                                                            <option value="textarea">설명형 (여러 줄 입력)</option>
+                                                                            <option value="number">숫자 입력</option>
+                                                                            <option value="date">날짜 선택</option>
+                                                                        </select>
+
+                                                                        {/* 필수 항목 체크박스 */}
+                                                                        <label className="flex items-center gap-1.5 mt-2 text-[10px] font-black text-stone-500 cursor-pointer">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={field.isRequired !== false}
+                                                                                onChange={(e) => {
+                                                                                    const newFields = appManagerForm.fields.map(f => f.id === field.id ? { ...f, isRequired: e.target.checked } : f);
+                                                                                    setAppManagerForm({ ...appManagerForm, fields: newFields });
+                                                                                }}
+                                                                                className="w-3.5 h-3.5 rounded border-stone-300 text-indigo-600 focus:ring-indigo-500"
+                                                                            />
+                                                                            필수 항목으로 지정
+                                                                        </label>
+                                                                    </div>
+                                                                ))
+                                                            ) : (
+                                                                <div className="py-10 text-center border-2 border-dashed border-stone-100 dark:border-stone-800 rounded-3xl">
+                                                                    <p className="text-[11px] text-stone-400 font-bold">등록된 질문이 없습니다.<br />[질문 추가] 버튼을 눌러 양식을 만드세요.</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {/* 권한 설정 (아코디언 형태) */}
+                                                <div className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl p-4 space-y-3">
+                                                    <div className="flex items-center justify-between cursor-pointer btn-press" onClick={() => setShowPerms(!showPerms)}>
+                                                        <p className="text-[11px] font-black text-stone-600 dark:text-stone-300">권한 설정 (작성/수정/삭제 통합)</p>
+                                                        <Icon name={showPerms ? "chevronDown" : "chevronRight"} size={16} className="text-stone-400" />
+                                                    </div>
+
+                                                    {showPerms && (
+                                                        <div className="space-y-4 pt-3 border-t border-stone-100 dark:border-stone-700 fade-in">
+                                                            <div className="flex items-center gap-4 bg-stone-50 dark:bg-stone-800 p-3 rounded-xl border border-stone-100 dark:border-stone-700">
+                                                                <label className="flex items-center gap-2 text-[11px] font-black text-stone-600 dark:text-stone-300 cursor-pointer">
+                                                                    <input type="checkbox" checked={Array.isArray(appManagerForm.writePermission) && appManagerForm.writePermission.includes('all')} onChange={(e) => togglePerm('all', e.target.checked)} className="w-4 h-4 text-teal-600 rounded cursor-pointer focus:ring-teal-500" />
+                                                                    모두 허용 (옵션)
+                                                                </label>
+                                                                <label className="flex items-center gap-2 text-[11px] font-black text-stone-600 dark:text-stone-300 cursor-pointer">
+                                                                    <input type="checkbox" checked={Array.isArray(appManagerForm.writePermission) && appManagerForm.writePermission.includes('admin_only')} onChange={(e) => togglePerm('admin_only', e.target.checked)} className="w-4 h-4 text-teal-600 rounded cursor-pointer focus:ring-teal-500" />
+                                                                    관리자 전용 (Only)
+                                                                </label>
+                                                            </div>
+
+                                                            {(!Array.isArray(appManagerForm.writePermission) || (!appManagerForm.writePermission.includes('all') && !appManagerForm.writePermission.includes('admin_only'))) && (
+                                                                <>
+                                                                    <div className="space-y-2">
+                                                                        <p className="text-[10px] font-black text-teal-600">🏢 파트 단위 다중 선택</p>
+                                                                        <div className="flex flex-wrap gap-1.5">
+                                                                            {uniqueParts.filter(p => p !== '미지정').map(p => (
+                                                                                <button key={p} onClick={() => togglePerm(`PART_${p}`)} className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${Array.isArray(appManagerForm.writePermission) && appManagerForm.writePermission.includes(`PART_${p}`) ? 'bg-teal-50 text-teal-600 border-teal-200 dark:bg-teal-900/30 dark:border-teal-800' : 'bg-white dark:bg-stone-900 text-stone-500 border-stone-200 dark:border-stone-700'} btn-press`}>
+                                                                                    {p}
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className="space-y-2 pt-3 border-t border-stone-100 dark:border-stone-700">
+                                                                        <p className="text-[10px] font-black text-teal-600">👤 개인 단위 다중 선택</p>
+                                                                        <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto scrollbar-hide pr-1">
+                                                                            {sortedUsers.map(u => (
+                                                                                <button key={u.empId} onClick={() => togglePerm(`USER_${u.empId}`)} className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${Array.isArray(appManagerForm.writePermission) && appManagerForm.writePermission.includes(`USER_${u.empId}`) ? 'bg-teal-50 text-teal-600 border-teal-200 dark:bg-teal-900/30 dark:border-teal-800' : 'bg-white dark:bg-stone-900 text-stone-500 border-stone-200 dark:border-stone-700'} btn-press flex items-center gap-1`}>
+                                                                                    {u.name} <span className="opacity-50 text-[9px]">({u.jobTitle !== '일반' ? u.jobTitle : u.position})</span>
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex gap-2">
+                                                    {editingAppId && <button onClick={handleCancelEditDynamicApp} className="flex-1 bg-stone-200 dark:bg-stone-700 text-stone-600 font-black py-4 rounded-2xl text-xs btn-press">취소</button>}
+                                                    <button onClick={handleSaveDynamicApp} className="flex-[2] bg-teal-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-xs">{editingAppId ? '수정 내용 저장' : '새 앱/폴더 생성'}</button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* 3. 등록된 앱 목록 관리 (모바일 친화적 바둑판 카드 배열) */}
+                                        <div className="bg-white dark:bg-stone-900 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-800 shadow-sm">
+                                            <p className="text-[12px] font-black text-stone-600 dark:text-stone-300 mb-4 flex items-center gap-2">
+                                                <Icon name="layout" size={16} /> 등록된 앱/폴더 목록
+                                            </p>
+
+                                            {/* ✅ 모바일 2열, 태블릿 3열 바둑판 배열 */}
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                                {dynamicApps
+                                                    .filter(app => app.actionType !== 'widget_managers' && !app.name.includes('헬스'))
+                                                    .sort((a, b) => (a.sortOrder || 99) - (b.sortOrder || 99))
+                                                    .map(app => (
+                                                        <div key={app.id} className="flex flex-col bg-stone-50 dark:bg-stone-800/80 p-4 rounded-[1.5rem] border border-stone-100 dark:border-stone-700 shadow-sm relative group transition-all hover:border-teal-300">
+
+                                                            <div className="flex flex-col items-center text-center gap-2 mb-3">
+                                                                <div className={`w-12 h-12 ${app.bg} ${app.color} rounded-2xl flex items-center justify-center shadow-sm`}>
+                                                                    <Icon name={app.icon} size={24} />
+                                                                </div>
+                                                                <div className="min-w-0 w-full px-1">
+                                                                    <span className="text-[12px] font-black text-stone-800 dark:text-stone-200 block truncate">{app.name}</span>
+                                                                    <span className="text-[9px] font-bold text-stone-400 block mt-0.5">
+                                                                        {app.isFolder ? '📁 폴더' : (app.actionType === 'board' ? '📝 게시판' : app.actionType === 'widget_board' ? '🖼️ 파트너스' : app.actionType === 'form' ? '📮 폼 제출' : app.actionType === 'reservation' ? '📅 예약' : app.actionType === 'guide' ? '📘 안내형' : '🔗 외부 링크')}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex gap-2 border-t border-stone-200/60 dark:border-stone-700/60 pt-3 mt-auto">
+                                                                <button onClick={() => { handleEditDynamicApp(app); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="flex-1 bg-white dark:bg-stone-700 text-teal-600 dark:text-teal-400 py-2 rounded-xl text-[11px] font-black btn-press shadow-sm border border-stone-100 dark:border-stone-600">수정</button>
+                                                                <button onClick={() => handleDeleteDynamicApp(app.id)} className="flex-1 bg-white dark:bg-stone-700 text-rose-500 dark:text-rose-400 py-2 rounded-xl text-[11px] font-black btn-press shadow-sm border border-stone-100 dark:border-stone-600">삭제</button>
+                                                            </div>
+
+                                                        </div>
+                                                    ))}
+                                            </div>
+
+                                            {dynamicApps.filter(app => app.actionType !== 'widget_managers' && !app.name.includes('헬스')).length === 0 && (
+                                                <p className="text-[11px] text-center text-stone-400 py-8 border-2 border-dashed border-stone-100 dark:border-stone-800 rounded-3xl">등록된 앱이 없습니다.</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                                    {/* ✨ 삽입: 공용계정(매장) 관리 탭 추가 */}
+                                {currentAdminTab === 'partner' && (
+                                    <div className="space-y-6 fade-in">
+                                        <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-5">
+                                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-stone-200 dark:border-stone-700 pb-4 gap-4">
+                                                <p className="text-[12px] font-black text-teal-600 tracking-widest flex items-center gap-2"><Icon name="users" size={18} /> 공용계정(매장) 관리</p>
+                                                <label className="flex items-center gap-2 text-[10px] font-bold text-stone-500 cursor-pointer">
+                                                    <input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} className="rounded-sm accent-teal-600" />
+                                                    퇴점 매장 포함
+                                                </label>
+                                            </div>
+                                            <div className="relative">
+                                                <input type="text" placeholder="매장명 또는 포스번호 검색" className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 pl-12 text-xs font-bold outline-none focus:border-teal-500 shadow-sm" onChange={(e) => setPartnerSearch(e.target.value)} />
+                                                <div className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-400"><Icon name="search" size={16} /></div>
+                                            </div>
+                                            <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-100 dark:border-stone-800 overflow-hidden shadow-sm mt-4">
+                                                <table className="w-full text-left text-[11px]">
+                                                    <thead className="bg-stone-50 dark:bg-stone-800/50 text-stone-500 font-bold border-b border-stone-100 dark:border-stone-700">
+                                                        <tr>
+                                                            <th className="py-4 px-5">포스ID</th>
+                                                            <th className="py-4 px-5">매장명</th>
+                                                            <th className="py-4 px-5">상태</th>
+                                                            <th className="py-4 px-5 text-right">관리</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-stone-50 dark:divide-stone-800">
+                                                        {partners.filter(p => showClosed ? true : p.status === 'active').filter(p => (p.name || '').includes(partnerSearch || '') || (p.posId || '').includes(partnerSearch || '')).map(p => (
+                                                            <tr key={p.id} className={`${p.status === 'closed' ? 'opacity-40 grayscale' : ''} hover:bg-stone-50/50 dark:hover:bg-stone-800/50 transition-colors`}>
+                                                                <td className="py-4 px-5 font-mono font-bold text-teal-600">{p.posId}</td>
+                                                                <td className="py-4 px-5 font-black text-stone-700 dark:text-stone-200">{p.name}</td>
+                                                                <td className="py-4 px-5">
+                                                                    <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold ${p.status === 'active' ? 'bg-teal-50 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400' : 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'}`}>
+                                                                        {p.status === 'active' ? '영업중' : '퇴점'}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="py-4 px-5 text-right flex justify-end gap-1.5">
+                                                                    <button onClick={() => handleEditPartner(p)} className="p-2 text-stone-400 hover:text-teal-600 bg-white dark:bg-stone-800 rounded-lg border border-stone-100 dark:border-stone-700 shadow-sm transition-colors"><Icon name="edit2" size={14} /></button>
+                                                                    {p.status === 'active' ? (
+                                                                        <button onClick={() => handleToggleStatus(p.id, 'closed')} className="p-2 text-stone-400 hover:text-rose-500 bg-white dark:bg-stone-800 rounded-lg border border-stone-100 dark:border-stone-700 shadow-sm transition-colors" title="퇴점처리"><Icon name="userMinus" size={14} /></button>
+                                                                    ) : (
+                                                                        <button onClick={() => handleToggleStatus(p.id, 'active')} className="p-2 text-stone-400 hover:text-green-500 bg-white dark:bg-stone-800 rounded-lg border border-stone-100 dark:border-stone-700 shadow-sm transition-colors" title="부활시키기"><Icon name="userPlus" size={14} /></button>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                                {partners.filter(p => showClosed ? true : p.status === 'active').filter(p => (p.name || '').includes(partnerSearch || '') || (p.posId || '').includes(partnerSearch || '')).length === 0 && (
+                                                    <div className="py-12 text-center text-stone-400 text-[11px] font-bold bg-stone-50/50 dark:bg-stone-900/50">검색된 매장이 없습니다.</div>
                                                 )}
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
                                 )}
+                                {currentAdminTab === 'extensions' && (
+                                    <div className="space-y-6 fade-in">
+                                        <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-5">
+                                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-stone-200 dark:border-stone-700 pb-4 gap-4">
+                                                <p className="text-[12px] font-black text-teal-600 tracking-widest flex items-center gap-2"><Icon name="phoneForwarded" size={18} /> 내선번호 대량 등록</p>
+                                                <button onClick={() => { const ws = XLSX.utils.aoa_to_sheet([['내선번호', '층수', '매장/사용자명'], ['6011', '8F', '홍길동']]); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Extensions"); XLSX.writeFile(wb, `내선번호양식.xlsx`); }} className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-teal-50 dark:bg-teal-900/30 text-teal-700 px-4 py-2.5 rounded-xl text-[11px] font-black shadow-sm btn-press"><Icon name="download" size={14} /> 양식 다운로드</button>
+                                            </div>
+                                            <label className="flex w-full bg-teal-600 text-white font-black px-6 py-4 rounded-2xl shadow-md text-[13px] cursor-pointer btn-press items-center justify-center gap-2 mt-2">
+                                                <Icon name="download" size={16} /> 엑셀 파일 업로드<input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleExtExcelUpload} />
+                                            </label>
+
+                                            <div className="flex items-center justify-between pt-4 border-t border-stone-200 dark:border-stone-700">
+                                                <p className="text-[12px] font-black text-teal-600 tracking-widest flex items-center gap-2"><Icon name="edit" size={18} /> 개별 수동 추가 / 수정</p>
+                                                {editingExtId && <span className="bg-amber-100 text-amber-600 text-[10px] font-black px-3 py-1 rounded-full shadow-sm">수정 모드</span>}
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-3">
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-500" placeholder="번호 (예: 6011)" value={extForm.number} onChange={e => setExtForm({ ...extForm, number: e.target.value })} />
+                                                    <input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-500" placeholder="층수 (예: 8F)" value={extForm.floor} onChange={e => setExtForm({ ...extForm, floor: e.target.value })} />
+                                                </div>
+                                                <input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-500" placeholder="사용자명 (예: 홍길동 매장)" value={extForm.user} onChange={e => setExtForm({ ...extForm, user: e.target.value })} />
+                                                {editingExtId ? (
+                                                    <div className="flex gap-2">
+                                                        <button onClick={handleCancelEditExt} className="flex-1 bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 font-black py-3 rounded-2xl text-xs btn-press">취소</button>
+                                                        <button onClick={handleSaveExt} className="flex-1 bg-teal-600 text-white font-black py-3 rounded-2xl text-xs btn-press shadow-md">수정 완료</button>
+                                                    </div>
+                                                ) : (
+                                                    <button onClick={handleSaveExt} className="w-full bg-stone-800 text-white font-black py-3 rounded-2xl text-xs btn-press shadow-md">추가</button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="bg-white dark:bg-stone-900 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-800">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <p className="text-[11px] font-black text-stone-500">내선번호 목록 ({filteredAdminExtensions.length}개)</p>
+                                                <input type="text" placeholder="번호 / 층 / 이름 검색" value={adminExtSearch} onChange={e => setAdminExtSearch(e.target.value)} className="bg-stone-50 dark:bg-stone-800 px-3 py-1.5 rounded-xl border border-stone-100 dark:border-stone-700 text-[11px] font-bold outline-none focus:border-teal-400 w-40" />
+                                            </div>
+                                            <div className="space-y-3 max-h-64 overflow-y-auto scrollbar-hide">
+                                                {filteredAdminExtensions.map(ext => (
+                                                    <div className="flex justify-between items-center bg-stone-50 dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm" key={ext.id}>
+                                                        <div className="flex items-center gap-3"><span className="text-sm font-black text-teal-600">{ext.number}</span><span className="text-xs font-black text-stone-700 dark:text-stone-300">{ext.floor} / {ext.user}</span></div>
+                                                        <div className="flex gap-2">
+                                                            <button onClick={() => { setExtForm({ number: ext.number, floor: ext.floor, user: ext.user }); setEditingExtId(ext.id); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="text-white bg-teal-500 hover:bg-teal-600 p-2 rounded-lg btn-press shadow-sm"><Icon name="edit" size={16} /></button>
+                                                            <button onClick={() => handleDeleteExt(ext.id)} className="text-white bg-rose-400 hover:bg-rose-500 p-2 rounded-lg btn-press shadow-sm"><Icon name="x" size={16} /></button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {currentAdminTab === 'security' && (
+                                    <div className="space-y-6 fade-in">
+                                        <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-5">
+                                            <p className="text-[12px] font-black text-rose-600 tracking-widest flex items-center gap-2"><Icon name="shield" size={18} /> 마스터 PIN(비밀번호) 변경</p>
+                                            <input type="password" placeholder="새로운 PIN 입력 (숫자 4자리 권장)" className="w-full bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-rose-400" id="newPinInput" />
+                                            <div className="grid grid-cols-2 gap-3 mt-4">
+                                                <button onClick={async () => { const val = document.getElementById('newPinInput').value; if (val) { const h = await hashPassword(val); setMasterPinHash(h); localStorage.setItem('hmood_master_pin_hash', h); localStorage.removeItem('hmood_master_pin'); showToast('변경되었습니다.'); document.getElementById('newPinInput').value = ''; } else { showToast('입력해주세요.', true); } }} className="w-full bg-stone-800 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[12px]">PIN 변경</button>
+                                                <button onClick={async () => { const h = await hashPassword(DEFAULT_PIN); setMasterPinHash(h); localStorage.setItem('hmood_master_pin_hash', h); localStorage.removeItem('hmood_master_pin'); showToast('초기화되었습니다. (기본: 6011)'); }} className="w-full bg-rose-50 dark:bg-rose-900/30 text-rose-500 font-black py-4 rounded-2xl border border-rose-100 dark:border-rose-800 shadow-sm btn-press text-[12px]">공장 초기화 (6011)</button>
+                                            </div>
+                                        </div>
+                                        <div className="bg-rose-50 dark:bg-rose-900/20 p-7 rounded-[2.5rem] border border-rose-200 dark:border-rose-800 space-y-5 mt-6">
+                                            <p className="text-[12px] font-black text-rose-600 dark:text-rose-400 tracking-widest flex items-center gap-2"><Icon name="alertCircle" size={18} /> 시스템 데이터 관리 (위험)</p>
+                                            <p className="text-[11px] text-stone-600 dark:text-stone-300 leading-relaxed">모든 데이터(구성원, 스케줄, 게시글 등)를 삭제하고 초기 상태(기본 메뉴 복구)로 되돌립니다. 이 작업은 되돌릴 수 없습니다.</p>
+                                            <button onClick={handleResetData} className="w-full bg-rose-500 hover:bg-rose-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[12px]">시스템 완전 초기화 (모든 데이터 삭제)</button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* 복원된 구성원/조직 관리 탭 */}
+                                {currentAdminTab === 'members' && (
+                                    <div className="space-y-6 fade-in">
+                                        <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-5">
+                                            <p className="text-[12px] font-black text-indigo-600 tracking-widest flex items-center gap-2"><Icon name="users" size={18} /> 구성원 수동 추가 및 강제 수정</p>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="사번 (필수)" value={memberForm.empId} onChange={e => setMemberForm({ ...memberForm, empId: e.target.value })} /><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="성명 (필수)" value={memberForm.name} onChange={e => setMemberForm({ ...memberForm, name: e.target.value })} /><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="소속 파트" value={memberForm.part} onChange={e => setMemberForm({ ...memberForm, part: e.target.value })} /><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="직급 (사원, 대리...)" value={memberForm.position} onChange={e => setMemberForm({ ...memberForm, position: e.target.value })} /><input className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="담당 카테고리 (예: C&P, LTSF)" value={memberForm.category} onChange={e => setMemberForm({ ...memberForm, category: e.target.value })} /><select className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-4 text-xs font-bold outline-none focus:border-indigo-400" value={memberForm.jobTitle} onChange={e => setMemberForm({ ...memberForm, jobTitle: e.target.value })}><option value="일반">일반 사원</option><option value="영업관리자">영업관리자</option><option value="파트장">파트장</option><option value="점장">점장</option></select><input className="col-span-1 sm:col-span-2 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="담당 브랜드 (예: 샤넬, 디올, 에스티로더)" value={memberForm.brands || ''} onChange={e => setMemberForm({ ...memberForm, brands: e.target.value })} /><input className="col-span-1 sm:col-span-2 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-700 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-indigo-400" placeholder="비밀번호 재설정 (비워둘 시 기존 유지 또는 사번)" value={memberForm.password || ''} onChange={e => setMemberForm({ ...memberForm, password: e.target.value })} /></div>
+                                            <button onClick={handleMemberSubmit} className="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-xs">저장</button>
+                                        </div>
+                                        <div className="pt-10 pb-2 flex flex-col items-center">
+                                            <p className="text-[10px] font-bold text-stone-400 mb-2">입력한 내용을 모두 지우고 싶으신가요?</p>
+                                            <button
+                                                onClick={() => {
+                                                    if (confirm('입력 중인 모든 내용을 지우고 초기화할까요?')) {
+                                                        setMemberForm({
+                                                            empId: '', name: '', part: '', position: '',
+                                                            category: '', jobTitle: '일반', brands: '', password: ''
+                                                        });
+                                                        showToast('입력창이 깨끗하게 비워졌습니다.');
+                                                    }
+                                                }}
+                                                className="text-[11px] font-black text-stone-400 underline underline-offset-4 hover:text-rose-400 transition-colors btn-press"
+                                            >
+                                                입력 폼 데이터 초기화하기
+                                            </button>
+                                        </div>
+                                        <div className="bg-white dark:bg-stone-900 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-800">
+                                            <div className="space-y-4 mb-4">
+                                                {/* ✨ 넓고 편리해진 검색창 */}
+                                                <div className="relative">
+                                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                                        <Icon name="search" size={16} className="text-stone-400" />
+                                                    </div>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl pl-11 pr-10 py-3.5 text-[12px] font-bold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-sm"
+                                                        placeholder="찾으시는 구성원의 이름이나 사번을 입력하세요..."
+                                                        value={adminMemberSearch}
+                                                        onChange={(e) => setAdminMemberSearch(e.target.value)}
+                                                    />
+                                                    {adminMemberSearch && (
+                                                        <button
+                                                            onClick={() => setAdminMemberSearch('')}
+                                                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-stone-400 hover:text-stone-600"
+                                                        >
+                                                            <Icon name="x" size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                {/* 검색 결과 및 상태 표시 */}
+                                                <div className="flex items-center justify-between px-1">
+                                                    <p className="text-[11px] font-black text-stone-500 flex items-center gap-2">
+                                                        <Icon name="users" size={14} className="text-indigo-500" />
+                                                        등록된 구성원 목록 <span className="text-indigo-600">({filteredAdminMembers.length}명)</span>
+                                                    </p>
+                                                    {adminMemberSearch && (
+                                                        <span className="text-[10px] font-bold text-indigo-500 animate-pulse">검색 필터 적용 중</span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2 pb-10">
+                                                {filteredAdminMembers
+                                                    .sort((a, b) => getMemberPriority(a) - getMemberPriority(b))
+                                                    .map(u => {
+                                                        const isManager = (u.jobTitle || '').includes('점장') || (u.part || '').includes('점장') || (u.jobTitle || '').includes('영업관리자');
+                                                        return (
+                                                            <div key={u.empId} className="flex flex-col sm:flex-row sm:items-center gap-3 bg-stone-50 dark:bg-stone-800 p-4 rounded-[1.5rem] border border-stone-100 dark:border-stone-700 shadow-sm hover:border-teal-200 transition-all">
+                                                                <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2 items-center">
+                                                                    <div className="min-w-0">
+                                                                        <span className="text-[10px] font-bold text-stone-400 block mb-0.5">소속 파트</span>
+                                                                        <span className="text-[12px] font-black text-stone-700 dark:text-stone-300 break-all leading-tight">{u.part}</span>
+                                                                    </div>
+                                                                    <div className="text-center sm:text-left">
+                                                                        <span className="text-[10px] font-bold text-stone-400 block mb-0.5">사번</span>
+                                                                        <span className="font-mono font-bold text-stone-500 text-[11px]">{u.empId}</span>
+                                                                    </div>
+                                                                    <div className="min-w-0">
+                                                                        <span className="text-[10px] font-bold text-stone-400 block mb-0.5">성명</span>
+                                                                        <span className="text-[14px] font-black text-stone-800 dark:text-stone-200 break-all">{u.name}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-start sm:justify-end">
+                                                                        {/* ✅ 직급과 직책을 동시에 표기 (예: 과장 / 영업관리자) */}
+                                                                        <span className={`inline-block text-[10px] font-black px-2.5 py-1 rounded-lg border ${isManager ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-teal-50 text-teal-600 border-teal-100'}`}>
+                                                                            {u.position}{u.jobTitle !== '일반' ? ` / ${u.jobTitle}` : ''}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 sm:border-l border-stone-200 dark:border-stone-600 pl-2">
+                                                                    <button onClick={() => handleResetPassword(u.empId)} className="text-white bg-amber-500 hover:bg-amber-600 p-2.5 rounded-xl btn-press shadow-sm"><Icon name="wrench" size={16} /></button>
+                                                                    <button onClick={() => { setMemberForm({ ...u, password: '' }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="text-white bg-teal-500 hover:bg-teal-600 p-2.5 rounded-xl btn-press shadow-sm"><Icon name="edit" size={16} /></button>
+                                                                    {/* --- 수정된 삭제 버튼 코드 --- */}
+                                                                    <button
+                                                                        type="button" // 👈 1. 폼 전송(새로고침)을 방지하는 핵심 설정입니다!
+                                                                        onClick={(e) => {
+                                                                            e.preventDefault();  // 👈 2. 브라우저의 기본 동작을 막습니다.
+                                                                            e.stopPropagation(); // 👈 3. 부모 요소의 클릭 이벤트가 실행되지 않게 막습니다.
+                                                                            handleDeleteMember(u.empId);
+                                                                        }}
+                                                                        className="text-white bg-rose-400 hover:bg-rose-500 p-2.5 rounded-xl btn-press shadow-sm"
+                                                                    >
+                                                                        <Icon name="trash" size={16} />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* 2. 관리자 탭 - 제출 데이터 섹션 */}
+                                {currentAdminTab === 'posts' && (
+                                    <div className="space-y-6 fade-in">
+                                        <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-4 shadow-inner">
+                                            <div className="flex items-center justify-between px-1">
+                                                <p className="text-[12px] font-black text-indigo-600 tracking-widest flex items-center gap-2">
+                                                    <Icon name="clipboardList" size={18} /> 게시판/폼 데이터 조회
+                                                </p>
+                                                <span className="text-[10px] text-stone-400 font-bold">총 {dynamicApps.filter(a => ['board', 'form', 'notice', 'reservation'].includes(a.actionType)).length}개 앱</span>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                {(dynamicApps || [])
+                                                    .filter(a => ['board', 'form', 'notice', 'reservation'].includes(a.actionType)
+                                                        && (a.actionType === 'form' || a.writePermission === 'all'))
+                                                    .map(app => {
+                                                        const postsCount = (dynamicPosts || []).filter(p => p.appId === app.id).length;
+                                                        const canView = canViewPosts(app);
+
+                                                        return (
+                                                            <div
+                                                                key={app.id}
+                                                                className={`group p-4 rounded-[1.8rem] border shadow-sm flex items-center justify-between transition-all ${canView
+                                                                    ? 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-700 cursor-pointer btn-press hover:border-indigo-400 hover:shadow-md'
+                                                                    : 'bg-stone-100 dark:bg-stone-800 border-transparent opacity-60'
+                                                                    }`}
+                                                                onClick={() => {
+                                                                    if (!canView) return showToast('열람 권한이 없습니다.', true);
+                                                                    if (app.actionType === 'notice') {
+                                                                        setOpenedAdminBoard(app);
+                                                                        setSelectedAdminPost(null);
+                                                                    } else if (app.actionType === 'reservation') {
+                                                                        setOpenedReservationApp(app);
+                                                                        setResSelectedDate(todayStr);
+                                                                        setResConfigMode(false);
+                                                                    } else {
+                                                                        setOpenedDynamicApp(app);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className={`w-10 h-10 ${app.bg} ${app.color} rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform`}>
+                                                                        <Icon name={app.icon} size={18} />
+                                                                    </div>
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-xs font-black text-stone-800 dark:text-stone-200">{app.name}</span>
+                                                                        <span className="text-[9px] font-bold text-stone-400">
+                                                                            {app.actionType === 'form' ? '신청/제출' : app.actionType === 'reservation' ? '예약시스템' : '게시판'}
+                                                                            {canView ? ` · ${postsCount}건` : ' · 🔒 권한필요'}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                                {canView && (
+                                                                    <div className="flex items-center gap-1 bg-stone-50 dark:bg-stone-800 px-3 py-1.5 rounded-full border border-stone-100 dark:border-stone-700">
+                                                                        <span className="text-indigo-600 dark:text-indigo-400 font-black text-[11px]">{postsCount}</span>
+                                                                        <Icon name="chevronRight" size={10} className="text-stone-300" />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                            </div>
+
+                                            {isAdminAuth && (
+                                                <div className="pt-6 border-t border-stone-200 dark:border-stone-700 mt-2">
+                                                    <button
+                                                        onClick={handleClearAllPosts}
+                                                        className="w-full bg-rose-50 dark:bg-rose-900/20 text-rose-500 font-black px-5 py-3 rounded-2xl flex items-center justify-center gap-2 btn-press text-xs border border-rose-100 dark:border-rose-900/30 hover:bg-rose-100 transition-colors"
+                                                    >
+                                                        <Icon name="trash" size={14} /> 모든 게시글/제출 데이터 영구 삭제
+                                                    </button>
+                                                    <p className="text-[9px] text-center text-stone-400 font-bold mt-3">※ 삭제된 데이터는 복구할 수 없으니 주의하십시오.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                                                
+
+
+                                            )}
                             </div>
                         </main>
 
