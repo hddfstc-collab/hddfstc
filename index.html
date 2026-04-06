@@ -2568,29 +2568,30 @@
 
                         {viewMode !== 'shared' && (
                             <header className="flex-none sticky top-0 z-50 bg-[#F9F8F6]/95 dark:bg-stone-900/95 backdrop-blur-md border-b border-stone-200/50 dark:border-stone-800/50 px-4 py-3 flex items-center justify-between shadow-sm">
-                                {/* 왼쪽: 로고 및 파트너스 채널 버튼 */}
+
+                                {/* 1. 왼쪽 영역: 로고 (로그인 여부 상관없이 항상 노출) */}
                                 <div className="flex items-center gap-2 min-w-0">
                                     <div className="w-8 h-8 bg-teal-600 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0">
                                         <Icon name="calendar" size={18} />
                                     </div>
-                                    <div className="flex items-center gap-2 overflow-hidden">
-                                        <h1 className="text-[14px] font-black text-stone-800 dark:text-stone-200 tracking-tighter truncate shrink-0">H무디</h1>
+                                    <h1 className="text-[14px] font-black text-stone-800 dark:text-stone-200 tracking-tighter truncate shrink-0">H무디</h1>
+
+                                    {/* 로그인 했을 때만 보여주는 '파트너스 채널' 링크 (선택사항) */}
+                                    {appUser && (
                                         <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-stone-200 dark:border-stone-700">
                                             <button
                                                 onClick={() => { setViewMode('shared'); setCurrentDate(new Date()); }}
                                                 className="flex items-center justify-center p-2 text-stone-500 hover:text-teal-600 transition-colors bg-white dark:bg-stone-800 rounded-full shadow-sm btn-press"
-                                                title="파트너스 채널"
                                             >
                                                 <Icon name="externalLink" size={16} />
-                                                <span className="hidden sm:inline text-[10px] font-bold ml-1">파트너스 채널</span>
                                             </button>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
 
-                                {/* 오른쪽: 버튼 영역 (다크모드 + 유저 정보 알약) */}
+                                {/* 2. 오른쪽 영역: 로그인 했을 때만 알약 버튼 노출 */}
                                 <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                                    {/* 다크모드 버튼 */}
+                                    {/* 다크모드 버튼 (공통) */}
                                     <button
                                         onClick={() => setIsDarkMode(!isDarkMode)}
                                         className="p-2 bg-white dark:bg-stone-800 text-stone-400 hover:text-amber-500 rounded-full shadow-sm btn-press transition-colors"
@@ -2598,51 +2599,35 @@
                                         {isDarkMode ? <Icon name="sun" size={14} /> : <Icon name="moon" size={14} />}
                                     </button>
 
-                                    {/* 유저 정보 알약 버튼 */}
-                                    {appUser && (
-                                        <div className="flex items-center gap-1.5 bg-white dark:bg-stone-800 px-3 py-1.5 rounded-full border border-stone-200 dark:border-stone-700 shadow-sm transition-all">
-                                            {/* 사용자 성함/매장명 클릭 (프로필 수정 창 연결) */}
+                                    {/* ✅ 핵심: appUser가 있을 때만 유저 정보 알약을 띄움 */}
+                                    {appUser ? (
+                                        <div className="flex items-center gap-1.5 bg-white dark:bg-stone-800 px-3 py-1.5 rounded-full border border-stone-200 dark:border-stone-700 shadow-sm transition-all ml-1">
+                                            {/* 사용자/매장 이름 */}
                                             <button
-                                                onClick={() => {
-                                                    setShowProfileEdit(true);
-                                                    setProfileTab('info');
-                                                    setProfileForm({
-                                                        ...appUser,
-                                                        brands: appUser.brands || '',
-                                                        jobTitle: appUser.jobTitle || '일반',
-                                                        password: '',
-                                                        targetEmpId: appUser.empId
-                                                    });
-                                                }}
-                                                className="flex items-center gap-1 text-[10px] font-black text-stone-600 dark:text-stone-300 hover:text-teal-600 transition-colors btn-press"
+                                                onClick={() => { setShowProfileEdit(true); setProfileTab('info'); }}
+                                                className="text-[10px] font-black text-stone-600 dark:text-stone-300 hover:text-teal-600 transition-colors btn-press"
                                             >
-                                                <span className="underline decoration-stone-300 dark:decoration-stone-600 underline-offset-2">
-                                                    {appUser.role === 'partner' ? (appUser.name || appUser.empId) : appUser.name}
+                                                <span className="underline decoration-stone-300 underline-offset-2">
+                                                    {appUser.role === 'partner' ? appUser.name : appUser.name}
                                                 </span>
-                                                <span className="hidden xs:inline">{appUser.role === 'partner' ? '' : '님'}</span>
+                                                {appUser.role !== 'partner' && <span className="ml-0.5">님</span>}
                                             </button>
 
-                                            {/* 세로 구분선 */}
                                             <div className="w-px h-3 bg-stone-200 dark:bg-stone-700 mx-0.5"></div>
 
-                                            {/* 내 정보 아이콘 버튼 */}
-                                            <button
-                                                onClick={() => { setShowProfileEdit(true); setProfileTab('pw'); }}
-                                                className="text-stone-400 hover:text-teal-500 transition-colors flex items-center gap-1"
-                                                title="내 정보"
-                                            >
+                                            {/* 내 정보 아이콘 */}
+                                            <button onClick={() => { setShowProfileEdit(true); setProfileTab('pw'); }} className="text-stone-400 hover:text-teal-500">
                                                 <Icon name="user" size={12} />
                                             </button>
 
-                                            {/* 로그아웃 버튼 (handleLogout 연동) */}
-                                            <button
-                                                onClick={handleLogout}
-                                                className="text-stone-400 hover:text-rose-500 transition-colors flex items-center gap-1 pl-1"
-                                                title="로그아웃"
-                                            >
-                                                <Icon name="logOut" size={12} />
+                                            {/* 로그아웃 아이콘 */}
+                                            <button onClick={handleLogout} className="text-stone-400 hover:text-rose-500 pl-1">
+                                                <Icon name="logout" size={12} />
                                             </button>
                                         </div>
+                                    ) : (
+                                        /* 로그인하지 않았을 때는 아무것도 안 띄우거나 간단한 텍스트만 표시 */
+                                        <span className="text-[10px] font-bold text-stone-400 mr-2">로그인이 필요합니다</span>
                                     )}
                                 </div>
                             </header>
@@ -2780,7 +2765,7 @@
                                                         onClick={handleLogout}
                                                         className="bg-rose-500 text-white px-4 py-2 rounded-xl text-[11px] font-black shadow-lg btn-press flex items-center gap-1"
                                                     >
-                                                        <Icon name="logOut" size={12} />
+                                                        <Icon name="logout" size={12} />
                                                         <span className="hidden sm:inline">로그아웃</span> {/* 👈 PC에서만 글자 보이고 모바일은 아이콘만! */}
                                                     </button>
                                                 )}
@@ -3355,24 +3340,66 @@
                                 {viewMode === 'admin' && (
                                     <>
                                         {/* ① 상단 탭 버튼 */}
-                                        <div className="flex gap-2 mb-6 max-w-3xl mx-auto">
+                                        <div className="flex gap-2 mb-6 max-w-3xl mx-auto overflow-x-auto scrollbar-hide">
                                             <button
                                                 onClick={() => setAdminTab('notice')}
-                                                className={`px-6 py-2 rounded-full text-xs font-black ${adminTab === 'notice' ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-400'
-                                                    }`}
+                                                className={`px-6 py-2 rounded-full text-xs font-black whitespace-nowrap shrink-0 ${adminTab === 'notice' ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-400'}`}
                                             >
                                                 공지사항 관리
                                             </button>
                                             <button
                                                 onClick={() => setAdminTab('partner')}
-                                                className={`px-6 py-2 rounded-full text-xs font-black ${adminTab === 'partner' ? 'bg-teal-600 text-white' : 'bg-stone-100 text-stone-400'
-                                                    }`}
+                                                className={`px-6 py-2 rounded-full text-xs font-black whitespace-nowrap shrink-0 ${adminTab === 'partner' ? 'bg-teal-600 text-white' : 'bg-stone-100 text-stone-400'}`}
                                             >
-                                                공용계정(파트너) 관리
+                                                공용계정 관리
+                                            </button>
+                                            <button
+                                                onClick={() => setAdminTab('apps')}
+                                                className={`px-6 py-2 rounded-full text-xs font-black whitespace-nowrap shrink-0 ${adminTab !== 'notice' && adminTab !== 'partner' ? 'bg-indigo-600 text-white' : 'bg-stone-100 text-stone-400'}`}
+                                            >
+                                                시스템 관리자
                                             </button>
                                         </div>
 
-                                        {/* ② 파트너 관리 전용 화면 */}
+                                        {/* ② 공지사항 관리 탭 컨텐츠 */}
+                                        {adminTab === 'notice' && (
+                                            <div className="max-w-3xl mx-auto space-y-3 fade-in mb-10">
+                                                {(notices || []).length === 0 ? (
+                                                    <div className="flex flex-col items-center justify-center py-16 bg-white dark:bg-stone-900 rounded-[2.5rem] border-2 border-dashed border-stone-100 dark:border-stone-800">
+                                                        <Icon name="bellRing" size={32} className="text-stone-300 mb-3" />
+                                                        <p className="text-[12px] font-bold text-stone-400">등록된 공지사항이 없습니다.</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-2">
+                                                        {[...(notices || [])].sort((a, b) => (a.isPinned === b.isPinned ? 0 : a.isPinned ? -1 : 1)).map(n => (
+                                                            <div key={n.id} className={`bg-white dark:bg-stone-900 p-4 rounded-2xl border shadow-sm flex items-start justify-between gap-3 ${n.isPinned ? 'border-rose-200 dark:border-rose-800' : 'border-stone-100 dark:border-stone-800'}`}>
+                                                                <div className="flex-1 min-w-0">
+                                                                    {n.isPinned && <span className="inline-flex items-center gap-1 text-[9px] font-black text-rose-500 bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded-full mb-1.5"><Icon name="pin" size={9} /> 중요</span>}
+                                                                    <p className="text-[12px] font-black text-stone-800 dark:text-stone-200 whitespace-pre-wrap break-words">{n.content}</p>
+                                                                    <p className="text-[10px] text-stone-400 font-bold mt-1.5">{n.author} · {formatLocalTime(n.createdAt)}</p>
+                                                                </div>
+                                                                {(isAdminAuth || (appUser && n.author === appUser.name)) && (
+                                                                    <div className="flex gap-1 shrink-0">
+                                                                        <button onClick={() => { setEditingNoticeId(n.id); setNoticeForm({ content: n.content, photos: Array.isArray(n.photos) ? n.photos : [], isPinned: !!n.isPinned }); setIsNoticeModalOpen(true); }} className="p-1.5 text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/30 rounded-lg"><Icon name="edit" size={14} /></button>
+                                                                        <button onClick={() => handleDeleteNotice(n.id)} className="p-1.5 text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg"><Icon name="trash" size={14} /></button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                {(isAdminAuth || (appUser && canWrite((dynamicApps || []).find(a => a.actionType === 'widget_notices')))) && (
+                                                    <button
+                                                        onClick={() => { setEditingNoticeId(null); setNoticeForm({ content: '', photos: [], isPinned: false }); setIsNoticeModalOpen(true); }}
+                                                        className="w-full bg-rose-500 hover:bg-rose-600 text-white font-black py-4 rounded-2xl shadow-xl btn-press text-[13px] flex items-center justify-center gap-2 mt-2"
+                                                    >
+                                                        <Icon name="edit" size={16} /> 새 공지사항 작성
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* ③ 파트너(공용계정) 관리 전용 화면 */}
                                         {adminTab === 'partner' && (
                                             <div className="max-w-3xl mx-auto space-y-4 fade-in mb-10">
                                                 {/* 검색/필터 바 */}
@@ -3460,7 +3487,8 @@
                                             </div>
                                         )}
 
-                                        {/* ③ 시스템 관리 전체 (PIN 인증 + 관리 패널) */}
+                                        {/* ④ 시스템 관리 전체 (시스템 관리자 탭) */}
+                                        {adminTab !== 'notice' && adminTab !== 'partner' && (
                                         <div className="max-w-3xl mx-auto pb-20 fade-in">
                                             {!isAdminAuth && !isHealthOnlyAdmin && !appUser ? (
                                                 /* --- 미인증: PIN 로그인 화면 --- */
@@ -3582,6 +3610,7 @@
                                                 </div>
                                             )}
                                         </div>
+                                        )}
                                     </>
                                 )}
                             </div>
