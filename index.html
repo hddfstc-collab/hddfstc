@@ -3788,6 +3788,15 @@
                                                 {/* ✨ 삽입: 파트너(공용계정) 관리 탭 추가 */}
                                                 {currentAdminTab === 'partner' && (
                                                     <div className="space-y-6 fade-in">
+                                                        {/* ✨ 삽입: 파트너 계정 초기 등록 버튼 */}
+                                                        <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-4">
+                                                            <div className="flex items-center gap-2 border-b border-stone-200 dark:border-stone-700 pb-4">
+                                                                <div className="w-8 h-8 bg-teal-100 dark:bg-teal-900/30 text-teal-600 rounded-xl flex items-center justify-center"><Icon name="users" size={16} /></div>
+                                                                <p className="text-[12px] font-black text-teal-600 tracking-widest">파트너 계정 초기 등록</p>
+                                                            </div>
+                                                            <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed font-bold">최초 1회 테스트 매장 계정 3개를 DB에 등록합니다. 등록 후 매장 포스번호(1001 등)로 로그인이 가능합니다.</p>
+                                                            <button onClick={() => { const testData = [{ posId: '1001', name: '아디다스 현대점', brands: ['아디다스'] }, { posId: '1002', name: '나이키 강남점', brands: ['나이키'] }, { posId: '2001', name: '비이커 통합매장', brands: ['비이커', '구호'] }]; uploadPartners(testData); }} className="w-full bg-teal-600 hover:bg-teal-700 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[12px] flex items-center justify-center gap-2 mt-2 transition-colors"><Icon name="plus" size={16} /> 테스트 계정 3개 즉시 등록 (DB 세팅)</button>
+                                                        </div>
                                                         <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-5">
                                                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-stone-200 dark:border-stone-700 pb-4 gap-4">
                                                                 <p className="text-[12px] font-black text-teal-600 tracking-widest flex items-center gap-2"><Icon name="users" size={18} /> 공용계정(매장) 관리</p>
@@ -3842,15 +3851,7 @@
 
                                                 {currentAdminTab === 'apps' && (
                                                     <div className="space-y-6 fade-in">
-                                                        {/* ✨ 삽입: 파트너 계정 초기 등록 버튼 */}
-                                                        <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-4">
-                                                            <div className="flex items-center gap-2 border-b border-stone-200 dark:border-stone-700 pb-4">
-                                                                <div className="w-8 h-8 bg-teal-100 dark:bg-teal-900/30 text-teal-600 rounded-xl flex items-center justify-center"><Icon name="users" size={16} /></div>
-                                                                <p className="text-[12px] font-black text-teal-600 tracking-widest">파트너 계정 초기 등록</p>
-                                                            </div>
-                                                            <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed font-bold">최초 1회 테스트 매장 계정 3개를 DB에 등록합니다. 등록 후 매장 포스번호(1001 등)로 로그인이 가능합니다.</p>
-                                                            <button onClick={() => { const testData = [{ posId: '1001', name: '아디다스 현대점', brands: ['아디다스'] }, { posId: '1002', name: '나이키 강남점', brands: ['나이키'] }, { posId: '2001', name: '비이커 통합매장', brands: ['비이커', '구호'] }]; uploadPartners(testData); }} className="w-full bg-teal-600 hover:bg-teal-700 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[12px] flex items-center justify-center gap-2 mt-2 transition-colors"><Icon name="plus" size={16} /> 테스트 계정 3개 즉시 등록 (DB 세팅)</button>
-                                                        </div>
+                                                        
 
                                                         <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-5">
                                                             <p className="text-[12px] font-black text-teal-600 tracking-widest flex items-center gap-2"><Icon name="layout" size={18} /> 앱/폴더 생성 및 수정</p>
