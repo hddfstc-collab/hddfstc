@@ -91,7 +91,7 @@
             -webkit-line-clamp: unset;
         }
 
-        .dark body {
+        html.dark body {
             background-color: #1c1917;
             color: #d6d3d1;
         }
@@ -498,17 +498,7 @@
                     showToast("엑셀 생성 중 오류가 발생했습니다.", true);
                 }
             };
-            const [dynamicApps, setDynamicApps] = useState([
-                {
-                    id: 'my_form_01',
-                    name: '커스텀 신청서',
-                    fields: [
-                        { id: 'user_name', label: '성함이 어떻게 되시나요?', type: 'text' },
-                        { id: 'user_age', label: '나이를 입력해주세요', type: 'number' },
-                        { id: 'user_reason', label: '신청 사유를 적어주세요', type: 'textarea' }
-                    ]
-                }
-            ]);
+            const [dynamicApps, setDynamicApps] = useState([]); // IDB 또는 Firebase에서 로드됨
             // 폼 양식 답변들을 임시로 저장할 바구니입니다.
             const [formValues, setFormValues] = useState({});
             const [dynamicPosts, setDynamicPosts] = useState([]);
@@ -744,7 +734,7 @@
             const [openedAdminBoard, setOpenedAdminBoard] = useState(null);
             const [selectedAdminPost, setSelectedAdminPost] = useState(null);
 
-            const [adminBoardForm, setAdminBoardForm] = useState({ title: '', content: '', photos: Array.isArray([]) ? [] : [] });
+            const [adminBoardForm, setAdminBoardForm] = useState({ title: '', content: '', photos: [] });
 
             const [openedReservationApp, setOpenedReservationApp] = useState(null);
             const [resSelectedDate, setResSelectedDate] = useState(todayStr);
@@ -768,6 +758,11 @@
             const [statusOptions, setStatusOptions] = useState([]);
             const [statusForm, setStatusForm] = useState({ label: '', bg: 'bg-stone-700 dark:bg-stone-600', text: 'text-white', isWork: 'true' });
             const [editingStatusId, setEditingStatusId] = useState(null);
+
+            // ✅ partners 관련 상태 - useEffect보다 앞에 선언해야 합니다
+            const [partners, setPartners] = useState([]);
+            const [partnerSearch, setPartnerSearch] = useState('');
+            const [showClosed, setShowClosed] = useState(false);
 
 
             const getMode = () => {
@@ -876,7 +871,7 @@
                     : checkPerm(String(permRaw).trim());
             }, [isAdminAuth, appUser]);
 
-            const canWrite = (app) => {
+            const canWrite = useCallback((app) => {
                 if (!app) return false;
                 // 1. 마스터 관리자(PIN 인증자)는 무조건 모든 권한 허용 (최우선)
                 if (isAdminAuth) return true;
@@ -901,7 +896,7 @@
                 const isManager = appUser.jobTitle === '영업관리자';
 
                 return hasPartPerm || hasUserPerm || isManager;
-            };
+            }, [isAdminAuth, appUser]);
 
             const canEdit = canWrite;
             const canDelete = canWrite;
@@ -1080,10 +1075,10 @@
                                 loadStore('blacklists'), loadStore('evtSettings'), loadStore('winHistory')
                             ]);
 
-                            if (lUsers.length > 0) setUsers(lUsers); else { saveToIDB('users', defaultUsers); setUsers(defaultUsers); }
-                            if (lScheds.length > 0) setSchedules(lScheds); else { saveToIDB('schedules', defaultSchedules); setSchedules(defaultSchedules); }
+                            if (lUsers.length > 0) setUsers(lUsers); // IDB가 비어있으면 빈 배열 유지 (Firebase 실시간 동기화로 채워짐)
+                            if (lScheds.length > 0) setSchedules(lScheds);
                             if (lNotices.length > 0) setNotices(lNotices.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')));
-                            if (lExts.length > 0) setExtensions(lExts); else { saveToIDB('extensions', defaultExtensions); setExtensions(defaultExtensions); }
+                            if (lExts.length > 0) setExtensions(lExts);
                             if (lBlacks.length > 0) setBlacklists(lBlacks);
 
                             if (lApps.length >= defaultDynamicApps.length) { setDynamicApps(lApps); }
@@ -1352,11 +1347,6 @@
                 showToast("로그아웃되었습니다.");
             };
 
-            // 2. 혹시 파트너 탭을 위해 필요한 '상태(State)' 변수들도 없다면 같이 넣어주세요
-            // (아까 "없어"라고 하신 부분이 여기일 수 있습니다)
-            const [partners, setPartners] = React.useState([]);      // 파트너 목록 저장용
-            const [partnerSearch, setPartnerSearch] = React.useState(''); // 검색어
-            const [showClosed, setShowClosed] = React.useState(false);   // 퇴점 매장 보기 토글
             // ✅ POS번호 기반 로그인 및 사용자 친화적 메시지 적용
             const handleLogin = async (e) => {
                 e.preventDefault();
@@ -2118,10 +2108,10 @@
                         setConfirmDialog({ isOpen: false });
                         try {
                             ['users', 'schedules', 'notices', 'extensions', 'dynamicApps', 'dynamicPosts', 'events', 'statusOptions', 'blacklists'].forEach(s => { try { window.localDB.transaction(s, 'readwrite').objectStore(s).clear(); } catch (e) { } });
-                            setUsers(defaultUsers); defaultUsers.forEach(x => saveToIDB('users', x));
-                            setSchedules(defaultSchedules); defaultSchedules.forEach(x => saveToIDB('schedules', x));
+                            setUsers([]); // 초기화: 빈 배열로 리셋 (Firebase 재동기화로 채워짐)
+                            setSchedules([]);
                             setDynamicApps(defaultDynamicApps); defaultDynamicApps.forEach(x => { saveToIDB('dynamicApps', x); if (db && fbUser) db.collection(`artifacts/${appId}/public/data/dynamic_apps`).doc(x.id).set(x); });
-                            setExtensions(defaultExtensions); defaultExtensions.forEach(x => saveToIDB('extensions', x));
+                            setExtensions([]);
                             setStatusOptions(defaultStatusOptions); defaultStatusOptions.forEach(x => saveToIDB('statusOptions', x));
                             setNotices([]); setDynamicPosts([]); setCurrentEvent(null); setBlacklists([]);
                             showToast("시스템이 완전 초기화되었습니다.");
