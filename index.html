@@ -2086,6 +2086,8 @@
                 }
             };
 
+            const handleClearAllMembers = () => { setConfirmDialog({ isOpen: true, message: '등록된 구성원 전체를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.', onConfirm: async () => { setConfirmDialog({ isOpen: false }); setUsers([]); try { window.localDB.transaction('users', 'readwrite').objectStore('users').clear(); } catch (e) { } try { if (db && fbUser) { const snap = await db.collection(`artifacts/${appId}/public/data/users`).get(); const batch = db.batch(); snap.docs.forEach(d => batch.delete(d.ref)); await batch.commit(); } } catch (e) { } showToast('구성원 전체 삭제 완료'); }, onCancel: () => setConfirmDialog({ isOpen: false }) }); };
+
             const handleClearAllPosts = () => { setConfirmDialog({ isOpen: true, message: '모든 게시글 데이터를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.', onConfirm: async () => { setConfirmDialog({ isOpen: false }); setDynamicPosts([]); try { window.localDB.transaction('dynamicPosts', 'readwrite').objectStore('dynamicPosts').clear(); } catch (e) { } try { if (db && fbUser) { const snap = await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).get(); const batch = db.batch(); snap.docs.forEach(d => batch.delete(d.ref)); await batch.commit(); } } catch (e) { } showToast('초기화 완료'); }, onCancel: () => setConfirmDialog({ isOpen: false }) }); };
             const handleArchiveEvent = async () => { setConfirmDialog({ isOpen: true, message: '이벤트를 종료하시겠습니까?', onConfirm: async () => { setConfirmDialog({ isOpen: false }); try { const archived = { ...currentEvent, isActive: false, status: 'closed' }; setCurrentEvent(archived); saveToIDB('events', archived); if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/events`).doc('current').update({ isActive: false, status: 'closed' }); showToast('이벤트가 종료되었습니다.'); } catch (e) { showToast('종료 실패', true); } }, onCancel: () => setConfirmDialog({ isOpen: false }) }); };
             const handleResetEvent = async () => {
@@ -3417,6 +3419,10 @@
                                                                     );
                                                                 })}
                                                             </div>
+                                                        </div>
+                                                        <div className="pt-6 border-t border-stone-100 dark:border-stone-800 mt-2">
+                                                            <button onClick={handleClearAllMembers} className="w-full bg-rose-50 dark:bg-rose-900/20 text-rose-500 font-black px-5 py-4 rounded-2xl flex items-center justify-center gap-2 btn-press text-xs border border-rose-100 dark:border-rose-900/30 hover:bg-rose-100 transition-colors"><Icon name="trash" size={14} /> 구성원 전체 초기화 (모든 직원 삭제)</button>
+                                                            <p className="text-[9px] text-center text-stone-400 font-bold mt-2">※ 삭제된 데이터는 복구할 수 없으니 주의하십시오.</p>
                                                         </div>
                                                     </div>
                                                 )}
