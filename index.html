@@ -786,6 +786,14 @@
                         ...doc.data()
                     }));
                     setPartners(list);
+                    // ✅ 노카드 앱 연동: 오프라인에서도 매장 목록 사용 가능하도록 localStorage 동기화
+                    try {
+                        const syncData = list
+                            .filter(p => p.status !== 'closed')
+                            .map(p => ({ posId: String(p.posId), name: p.name, brand: (p.brands || []).join(', ') }));
+                        localStorage.setItem('h_moody_partners', JSON.stringify(syncData));
+                        localStorage.setItem('h_moody_partners_updated', new Date().toISOString());
+                    } catch(e) {}
                 });
 
                 return () => unsubscribe();
