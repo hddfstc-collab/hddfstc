@@ -2440,70 +2440,7 @@
                 return el.scrollWidth > el.clientWidth;
             };
             const renderWidget = (app) => {
-                // 📞 2. 영업관리자 위젯 (조건부 클릭 & 상세 토스트)
-                if (app.actionType === 'widget_managers') {
-                    const todayStr = new Date().toLocaleDateString('sv-SE');
-                    const workingLabels = (statusOptions || []).filter(opt => opt.isWork === true || opt.isWork === 'true').map(opt => opt.label);
-
-                    const activeManagers = (users || [])
-                        .filter(u => {
-                            if (u.jobTitle !== '영업관리자') return false;
-                            const duty = scheduleMap[u.empId]?.[todayStr];
-                            const statusLabel = duty?.status || duty;
-                            return statusLabel && workingLabels.includes(statusLabel);
-                        })
-                        .sort((a, b) => getMemberPriority(a) - getMemberPriority(b));
-
-                    return (
-                        <div key={app.id} className="bg-white dark:bg-stone-900 rounded-[2.5rem] p-6 shadow-sm border border-stone-200/60 dark:border-stone-800 space-y-4 mt-4 fade-in">
-                            <h3 className={`text-xs font-black flex items-center gap-2 ${app.color}`}>
-                                <Icon name={app.icon} size={16} /> {app.name}
-                            </h3>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                {activeManagers.map(m => {
-                                    const isCatExpanded = expandedManagerId === m.empId;
-                                    const ext = (extensions || []).find(e => e?.user?.includes(m.name));
-                                    const dialNumber = ext?.number ? (String(ext.number).length === 4 ? `022142${ext.number}` : ext.number) : '';
-
-                                    return (
-                                        <div key={m.empId} className="bg-stone-50 dark:bg-stone-800 rounded-2xl p-4 border border-stone-100 dark:border-stone-700 flex flex-col justify-between min-h-[110px] shadow-sm">
-                                            <div className="min-w-0 w-full mb-2">
-                                                <div className="flex items-center gap-1.5 mb-1">
-                                                    <span className="text-[14px] font-black text-stone-800 dark:text-stone-200 truncate">{m.name}</span>
-                                                    <span className="text-[9px] text-stone-400 font-bold">[{m.position}]</span>
-                                                </div>
-                                                {/* ✅ 로직: 글자가 잘렸을 때만 클릭 가능 (isTextTruncated 활용) */}
-                                                <p
-                                                    onClick={(e) => {
-                                                        if (isTextTruncated(e.currentTarget) || isCatExpanded) {
-                                                            e.stopPropagation();
-                                                            setExpandedManagerId(isCatExpanded ? null : m.empId);
-                                                            if (!isCatExpanded) showToast(`[${m.name}] ${m.position} / ${m.category}`);
-                                                        }
-                                                    }}
-                                                    className={`text-[10px] font-bold text-teal-600 transition-all ${isCatExpanded ? 'whitespace-normal' : 'truncate'} ${isCatExpanded ? 'cursor-pointer' : 'hover:underline decoration-teal-300'}`}
-                                                >
-                                                    {m.category || '-'}
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center justify-between mt-auto pt-2 border-t border-stone-100 dark:border-stone-700/50">
-                                                <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black ${STATUS_THEME[scheduleMap[m.empId]?.[todayStr]?.status || '출근']}`}>
-                                                    {scheduleMap[m.empId]?.[todayStr]?.status || '출근'}
-                                                </span>
-                                                {ext && (
-                                                    <button onClick={(e) => { e.stopPropagation(); callExtension(dialNumber, m.name, e); }} className="text-stone-400 hover:text-teal-500 p-1.5 bg-white dark:bg-stone-800 rounded-full shadow-sm btn-press">
-                                                        <Icon name="phoneCall" size={12} />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    );
-                }
-
+                
                 // 🛠️ 1. 공지사항 위젯 (메인 화면 - 썸네일/관리 버튼 유지 + 팝업 연결 아이콘 추가)
                 if (app.actionType === 'widget_notices') {
                     return (
