@@ -793,7 +793,7 @@
                             .map(p => ({ posId: String(p.posId), name: p.name, brand: (p.brands || []).join(', ') }));
                         localStorage.setItem('h_moody_partners', JSON.stringify(syncData));
                         localStorage.setItem('h_moody_partners_updated', new Date().toISOString());
-                    } catch(e) {}
+                    } catch (e) { }
                 });
 
                 return () => unsubscribe();
@@ -1343,22 +1343,26 @@
             const toggleFavExt = (id) => { setFavoriteExts(prev => { const next = prev.includes(id) ? prev.filter(favId => favId !== id) : [...prev, id]; localStorage.setItem('hmood_fav_exts', JSON.stringify(next)); return next; }); };
             // 1. 로그아웃 함수 추가 (이게 없어서 에러가 났던 겁니다!)
             const handleLogout = () => {
-                if (!window.confirm("로그아웃 하시겠습니까?")) return;
+                // 문구 통일 (앞서 정한 정중한 문구)
+                if (!window.confirm("정말로 로그아웃하시겠습니까?\n안전한 이용을 위해 세션이 종료됩니다.")) return;
 
-                // 1. 유저 상태 초기화 (직영/공용 및 Firebase 유저 포함)
+                // 1. 모든 유저 및 권한 상태 초기화
                 setAppUser(null);
                 if (typeof setFbUser === 'function') setFbUser(null);
                 setIsAdminAuth(false);
+                setIsHealthOnlyAdmin(false); // 헬스키퍼 담당자 권한 해제 추가
 
-                // 2. 브라우저 저장소 데이터 삭제 (새로고침 방지용)
+                // 2. 브라우저 저장소 데이터 삭제
                 localStorage.removeItem('h_moody_auth');
                 localStorage.removeItem('hmood_session');
+                localStorage.removeItem('health_admin_active'); // 담당자 활성화 플래그 삭제
                 sessionStorage.removeItem('hmood_admin_auth');
+                sessionStorage.clear(); // 세션 스토리지 전체 삭제로 꼬임 방지
 
-                // 3. 화면 즉시 전환 (로그인 창으로)
+                // 3. 화면 즉시 전환
                 setViewMode('login');
 
-                showToast("로그아웃되었습니다.");
+                showToast("안전하게 로그아웃되었습니다.");
             };
             const handleEditPartner = (p) => {
                 // 기본 prompt 대신 앱 내 공통 스타일을 위해 간단한 안내 후 모달을 띄우거나 
@@ -2448,7 +2452,7 @@
                 return el.scrollWidth > el.clientWidth;
             };
             const renderWidget = (app) => {
-                
+
                 // 🛠️ 1. 공지사항 위젯 (메인 화면 - 썸네일/관리 버튼 유지 + 팝업 연결 아이콘 추가)
                 if (app.actionType === 'widget_notices') {
                     return (
@@ -2614,7 +2618,9 @@
                                 {viewMode === 'login' && (
                                     <div className="bg-white dark:bg-stone-900 p-8 sm:p-12 rounded-[3.5rem] sm:rounded-[4rem] shadow-2xl border border-stone-200 dark:border-stone-800 mt-4 sm:mt-10 max-w-md mx-auto fade-in">
                                         <div className="text-center mb-8 leading-none">
-                                            <div className="bg-teal-600 w-20 h-20 sm:w-24 sm:h-24 rounded-[2.5rem] sm:rounded-[3rem] mx-auto mb-6 flex items-center justify-center text-white shadow-xl"><Icon name="user" size={40} /></div>
+                                            <div className="bg-teal-600 w-20 h-20 sm:w-24 sm:h-24 rounded-[2.5rem] sm:rounded-[3rem] mx-auto mb-6 flex items-center justify-center text-white shadow-xl">
+                                                <Icon name="user" size={40} />
+                                            </div>
                                             <h2 className="text-2xl sm:text-3xl font-black tracking-tighter text-stone-800 dark:text-stone-200">H무디 로그인</h2>
                                         </div>
 
@@ -2626,6 +2632,7 @@
                                             </p>
                                         </div>
 
+                                        {/* --- 1. 일반 파트너 로그인 폼 --- */}
                                         <form className="space-y-5 sm:space-y-6" onSubmit={handleLogin}>
                                             <div className="space-y-2 text-left">
                                                 <label className="text-[11px] font-black text-stone-400 ml-4">포스번호</label>
@@ -2640,7 +2647,7 @@
                                             </div>
 
                                             <div className="space-y-2 text-left">
-                                                <label className="text-[11px] font-black text-stone-400 ml-4">PIN 번호</label> {/* 👈 '비밀번호'를 'PIN 번호'로 수정 (선택사항) */}
+                                                <label className="text-[11px] font-black text-stone-400 ml-4">PIN 번호</label>
                                                 <input
                                                     type="password"
                                                     className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-[2rem] px-6 py-4 sm:px-7 sm:py-5 font-bold text-[13px] shadow-inner outline-none focus:border-teal-500 transition-colors"
@@ -2660,19 +2667,35 @@
 
                                             <button className="w-full bg-stone-800 hover:bg-stone-900 text-white font-black py-4 sm:py-5 rounded-[2rem] shadow-xl mt-6 btn-press text-[14px] tracking-widest transition-colors">접속하기</button>
                                         </form>
-                                        {/* 🏥 헬스키퍼 전용 접속 버튼 */}
+
+                                        {/* --- 2. 🏥 헬스키퍼 담당자 전용 접속 (세션 연동 포함) --- */}
                                         <div className="mt-6 pt-6 border-t border-stone-100 dark:border-stone-800">
                                             <button
                                                 type="button"
                                                 onClick={() => {
-                                                    // 별도 비번 없이 바로 가거나, 필요시 prompt로 비번 확인
                                                     const hpw = prompt("헬스키퍼 전용 비밀번호를 입력하세요.");
-                                                    if (hpw === "1004") { // 비밀번호는 원하시는 걸로 수정하세요
-                                                        setIsAdminAuth(false); // 시스템 관리자 권한은 해제
-                                                        setIsHealthOnlyAdmin(true); // 헬스키퍼 전용 권한만 부여
+                                                    if (hpw === "1004") { // 비밀번호는 자유롭게 수정 가능
+                                                        // 담당자용 가상 세션 생성 (예약 증발 방지용)
+                                                        const healthStaff = {
+                                                            empId: resForm.operatorId || 'HK_STAFF',
+                                                            name: '헬스키퍼 담당자',
+                                                            jobTitle: '헬스키퍼',
+                                                            role: 'staff',
+                                                            isHealthOnlyAdmin: true
+                                                        };
+
+                                                        // 브라우저에 담당자 세션 저장
+                                                        localStorage.setItem('hmood_session', JSON.stringify(healthStaff));
+                                                        localStorage.setItem('health_admin_active', 'true');
+
+                                                        // 권한 및 탭 설정
+                                                        setIsHealthOnlyAdmin(true);
+                                                        setIsAdminAuth(false);
+                                                        setAppUser(healthStaff); // 현재 유저를 담당자로 설정하여 데이터 연동
                                                         setAdminTab('health');
                                                         setViewMode('admin');
-                                                        showToast('🏥 헬스키퍼 관리 모드로 접속했습니다.');
+
+                                                        showToast('🏥 헬스키퍼 관리 모드로 접속했습니다. (스케줄 관리 가능)');
                                                     } else {
                                                         showToast('비밀번호가 틀렸습니다.', true);
                                                     }
@@ -2687,6 +2710,7 @@
                                             <button type="button" onClick={() => setViewMode('shared')} className="text-[12px] text-stone-400 hover:text-teal-500 font-bold underline underline-offset-2 flex items-center justify-center gap-1.5 mx-auto btn-press"><Icon name="externalLink" size={14} /> 파트너스 채널로 이동</button>
                                         </div>
 
+                                        {/* --- 3. 시스템 마스터 전용 로그인 --- */}
                                         <div className="mt-6 text-center border-t border-stone-100 dark:border-stone-800 pt-5 fade-in">
                                             <button
                                                 type="button"
@@ -3114,8 +3138,8 @@
                                                         <button
                                                             onClick={() => setAdminTab('health')}
                                                             className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${adminTab === 'health'
-                                                                    ? 'bg-indigo-600 text-white shadow-md'
-                                                                    : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 border border-indigo-100 dark:border-indigo-900/50'
+                                                                ? 'bg-indigo-600 text-white shadow-md'
+                                                                : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 border border-indigo-100 dark:border-indigo-900/50'
                                                                 }`}
                                                         >
                                                             🏥 헬스키퍼 관리
@@ -3471,7 +3495,7 @@
 
                                                 {currentAdminTab === 'health' && (
                                                     <div className="space-y-6 fade-in" style={isLargeTextMode ? { zoom: '1.25' } : {}}>
-                                                        {/* 저시력자용 모드 토글 */}
+                                                        {/* 1. 저시력자용 모드 토글 */}
                                                         <div className="bg-indigo-50/50 dark:bg-indigo-900/20 p-6 rounded-[2.5rem] border border-indigo-100 dark:border-indigo-800 shadow-sm flex items-center justify-between">
                                                             <div className="flex items-center gap-3">
                                                                 <div className="w-10 h-10 bg-indigo-200 text-indigo-700 rounded-full flex items-center justify-center"><Icon name="search" size={20} /></div>
@@ -3485,10 +3509,56 @@
                                                             </button>
                                                         </div>
 
-                                                        {/* 예약 시스템 설정 */}
+                                                        {/* 📅 2. [신규 추가] 담당자 스케줄(휴무) 직접 관리 섹션 */}
+                                                        <div className="bg-white dark:bg-stone-900 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-800 shadow-sm">
+                                                            <h3 className="text-[13px] font-black text-stone-800 dark:text-stone-200 mb-4 flex items-center gap-2">
+                                                                <Icon name="calendar" size={18} className="text-teal-500" /> 담당자 스케줄(휴무) 직접 관리
+                                                            </h3>
+                                                            <p className="text-[10px] text-stone-400 mb-4 font-bold leading-relaxed">
+                                                                ※ 아래 날짜를 선택해 본인의 근무 상태를 변경하세요.<br />
+                                                                ※ <b>휴무/연차</b>로 설정된 날짜는 사용자들이 예약할 수 없습니다.
+                                                            </p>
+
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                                <div className="space-y-2">
+                                                                    <label className="text-[10px] font-black text-stone-500 ml-1">상태 변경 날짜</label>
+                                                                    <input
+                                                                        type="date"
+                                                                        className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-500"
+                                                                        value={adminSchedForm.date}
+                                                                        onChange={e => setAdminSchedForm({ ...adminSchedForm, date: e.target.value })}
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <label className="text-[10px] font-black text-stone-500 ml-1">근무 상태 선택</label>
+                                                                    <select
+                                                                        className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:border-teal-500"
+                                                                        value={adminSchedForm.status}
+                                                                        onChange={e => setAdminSchedForm({ ...adminSchedForm, status: e.target.value })}
+                                                                    >
+                                                                        {statusOptions.map(opt => (
+                                                                            <option key={opt.id} value={opt.label}>{opt.label} ({opt.isWork ? '출근' : '휴무'})</option>
+                                                                        ))}
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+
+                                                            <button
+                                                                onClick={() => {
+                                                                    const hkId = resForm.operatorId;
+                                                                    if (!hkId) return showToast('아래 설정에서 담당자 사번을 먼저 등록해주세요.', true);
+                                                                    handleUpdateDuty(hkId, adminSchedForm.date, adminSchedForm.status, true);
+                                                                }}
+                                                                className="w-full bg-teal-600 text-white font-black py-4 rounded-xl text-[12px] shadow-md btn-press mt-4 flex items-center justify-center gap-2 transition-colors hover:bg-teal-700"
+                                                            >
+                                                                <Icon name="checkCircle" size={16} /> 선택한 날짜 스케줄 반영하기
+                                                            </button>
+                                                        </div>
+
+                                                        {/* 3. 예약 시스템 설정 */}
                                                         <div className="bg-indigo-50/50 dark:bg-indigo-900/20 p-6 rounded-[2.5rem] border border-indigo-100 dark:border-indigo-800 shadow-sm">
                                                             <h3 className="text-[13px] font-black text-indigo-700 dark:text-indigo-400 mb-4 flex items-center gap-2">
-                                                                <Icon name="settings" size={18} /> 예약 시스템 설정 (담당자 및 시간 변경)
+                                                                <Icon name="settings" size={18} /> 예약 시스템 설정 (사번 및 시간)
                                                             </h3>
                                                             {(dynamicApps || []).filter(a => a.actionType === 'reservation').map(resApp => (
                                                                 <div key={resApp.id} className="space-y-4 border-t border-indigo-100 dark:border-indigo-800/50 pt-4 mt-2">
@@ -3498,7 +3568,7 @@
                                                                     <div>
                                                                         <label className="text-[10px] font-bold text-stone-500 ml-1">담당 헬스키퍼 사번 (Employee ID)</label>
                                                                         <div className="flex gap-2 mt-1">
-                                                                            <input className="flex-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400 shadow-inner" placeholder="사번을 입력하세요 (예: 123456)" value={resForm.operatorId} onChange={e => setResForm({ ...resForm, operatorId: e.target.value })} />
+                                                                            <input className="flex-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400 shadow-inner" placeholder="사번 입력" value={resForm.operatorId} onChange={e => setResForm({ ...resForm, operatorId: e.target.value })} />
                                                                             {userMap[resForm.operatorId] && (
                                                                                 <div className="bg-teal-50 dark:bg-teal-900/30 px-3 py-3 rounded-xl border border-teal-100 dark:border-teal-800 flex items-center shrink-0">
                                                                                     <span className="text-[10px] font-black text-teal-600">{userMap[resForm.operatorId].name} 님</span>
@@ -3507,20 +3577,20 @@
                                                                         </div>
                                                                     </div>
                                                                     <div>
-                                                                        <label className="text-[10px] font-bold text-stone-500 ml-1">운영 시간대 (콤마 구분 입력)</label>
+                                                                        <label className="text-[10px] font-bold text-stone-500 ml-1">운영 시간대 (콤마 구분)</label>
                                                                         <input className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400 shadow-inner" value={resForm.slots} onChange={e => setResForm({ ...resForm, slots: e.target.value })} />
                                                                     </div>
                                                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                                                        <div><label className="text-[10px] font-bold text-stone-500 ml-1">타임당 예약 허용 인원</label><input type="number" min="1" className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400 shadow-inner" value={resForm.max} onChange={e => setResForm({ ...resForm, max: parseInt(e.target.value) || 1 })} /></div>
-                                                                        <div><label className="text-[10px] font-bold text-stone-500 ml-1">예약 마감 (일 전)</label><input type="number" min="0" className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400 shadow-inner" value={resForm.lDays} onChange={e => setResForm({ ...resForm, lDays: parseInt(e.target.value) || 0 })} /></div>
-                                                                        <div><label className="text-[10px] font-bold text-stone-500 ml-1">예약 마감 (시간 전)</label><input type="number" min="0" className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400 shadow-inner" value={resForm.lHours} onChange={e => setResForm({ ...resForm, lHours: parseInt(e.target.value) || 0 })} /></div>
+                                                                        <div><label className="text-[10px] font-bold text-stone-500 ml-1">타임당 인원</label><input type="number" min="1" className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400 shadow-inner" value={resForm.max} onChange={e => setResForm({ ...resForm, max: parseInt(e.target.value) || 1 })} /></div>
+                                                                        <div><label className="text-[10px] font-bold text-stone-500 ml-1">예약 마감 (일)</label><input type="number" min="0" className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400 shadow-inner" value={resForm.lDays} onChange={e => setResForm({ ...resForm, lDays: parseInt(e.target.value) || 0 })} /></div>
+                                                                        <div><label className="text-[10px] font-bold text-stone-500 ml-1">예약 마감 (시간)</label><input type="number" min="0" className="w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-400 shadow-inner" value={resForm.lHours} onChange={e => setResForm({ ...resForm, lHours: parseInt(e.target.value) || 0 })} /></div>
                                                                     </div>
-                                                                    <button onClick={() => handleUpdateResApp(resApp.id)} className="w-full bg-indigo-600 text-white font-black py-4 rounded-xl text-[12px] shadow-md btn-press mt-2">담당자 및 설정 즉시 반영하기</button>
+                                                                    <button onClick={() => handleUpdateResApp(resApp.id)} className="w-full bg-indigo-600 text-white font-black py-4 rounded-xl text-[12px] shadow-md btn-press mt-2">담당자 및 설정 즉시 반영</button>
                                                                 </div>
                                                             ))}
                                                         </div>
 
-                                                        {/* 예약 리스트 및 통계 */}
+                                                        {/* 4. 예약 리스트 및 통계 (전체 예약 내역 및 취소) */}
                                                         <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-6 rounded-[2.5rem] border border-stone-200 dark:border-stone-700">
                                                             <div className="flex items-center justify-between mb-4">
                                                                 <h3 className="text-[13px] font-black text-stone-800 dark:text-stone-200 flex items-center gap-2">
@@ -3557,15 +3627,16 @@
                                                             </div>
                                                         </div>
 
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                            <div className="bg-indigo-50 dark:bg-indigo-900/20 p-6 rounded-[2.5rem] border border-indigo-100 dark:border-indigo-800">
+                                                        {/* 5. 하단 통계 및 블랙리스트 */}
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-10">
+                                                            <div className="bg-indigo-50 dark:bg-indigo-900/20 p-6 rounded-[2.5rem] border border-indigo-100 dark:border-indigo-800 shadow-sm">
                                                                 <h3 className="text-[13px] font-black text-indigo-700 dark:text-indigo-400 mb-4 flex items-center gap-2"><Icon name="barChart" size={18} /> 이용 횟수 통계 (Top 10)</h3>
                                                                 <div className="space-y-2">
                                                                     {(() => {
                                                                         const resCounts = {};
                                                                         dynamicPosts.filter(p => p.type === 'reservation').forEach(p => { resCounts[p.author] = (resCounts[p.author] || 0) + 1; });
                                                                         const sortedStats = Object.entries(resCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
-                                                                        if (sortedStats.length === 0) return <p className="text-[11px] text-center text-indigo-400 py-6">통계 데이터가 없습니다.</p>;
+                                                                        if (sortedStats.length === 0) return <p className="text-[11px] text-center text-indigo-400 py-6">데이터가 없습니다.</p>;
                                                                         return sortedStats.map(([name, count], idx) => (
                                                                             <div key={name} className="flex justify-between items-center text-[11px] font-bold bg-white/50 dark:bg-stone-900/50 p-2 rounded-xl border border-indigo-200/50">
                                                                                 <span className="text-stone-700 dark:text-stone-300">{idx + 1}. {name}</span><span className="text-indigo-600 bg-indigo-100 dark:bg-indigo-900 px-2 py-0.5 rounded-md">{count}회</span>
@@ -3574,17 +3645,18 @@
                                                                     })()}
                                                                 </div>
                                                             </div>
-                                                            <div className="bg-rose-50 dark:bg-rose-900/20 p-6 rounded-[2.5rem] border border-rose-100 dark:border-rose-800">
+
+                                                            <div className="bg-rose-50 dark:bg-rose-900/20 p-6 rounded-[2.5rem] border border-rose-100 dark:border-rose-800 shadow-sm">
                                                                 <h3 className="text-[13px] font-black text-rose-600 dark:text-rose-400 mb-4 flex items-center gap-2"><Icon name="shield" size={18} /> 악성 예약자 블랙리스트</h3>
                                                                 <div className="flex gap-2 mb-4">
                                                                     <input className="w-1/2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-2 text-[10px] font-bold outline-none focus:border-rose-400" placeholder="브랜드명" value={blacklistInput.brand} onChange={e => setBlacklistInput({ ...blacklistInput, brand: e.target.value })} />
                                                                     <input className="w-1/2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-2 text-[10px] font-bold outline-none focus:border-rose-400" placeholder="성명" value={blacklistInput.name} onChange={e => setBlacklistInput({ ...blacklistInput, name: e.target.value })} />
                                                                     <button onClick={async () => {
-                                                                        if (!blacklistInput.brand || !blacklistInput.name) return showToast('브랜드와 성명을 입력하세요', true);
+                                                                        if (!blacklistInput.brand || !blacklistInput.name) return showToast('정보를 입력하세요', true);
                                                                         const newBl = { id: `bl_${Date.now()}`, brand: blacklistInput.brand, name: blacklistInput.name, createdAt: new Date().toISOString() };
                                                                         setBlacklists([newBl, ...blacklists]); saveToIDB('blacklists', newBl);
                                                                         if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/blacklists`).doc(newBl.id).set(newBl);
-                                                                        setBlacklistInput({ brand: '', name: '' }); showToast('블랙리스트에 추가되었습니다.');
+                                                                        setBlacklistInput({ brand: '', name: '' }); showToast('추가되었습니다.');
                                                                     }} className="bg-rose-600 text-white px-3 py-2 rounded-xl text-[10px] font-black shrink-0">추가</button>
                                                                 </div>
                                                                 <div className="space-y-2 max-h-32 overflow-y-auto scrollbar-hide">
