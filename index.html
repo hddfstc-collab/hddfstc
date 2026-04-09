@@ -1354,19 +1354,29 @@
                 showToast("로그아웃되었습니다.");
             };
             const handleEditPartner = (p) => {
-                const newName = prompt("매장명을 수정하시겠습니까?", p.name);
-                const newPin = prompt("PIN 번호를 수정하시겠습니까?", p.pin);
-                if (!newName || !newPin) return;
-                const updated = { ...p, name: newName, pin: newPin };
-                db.collection('partners').doc(p.id).set(updated, { merge: true });
-                showToast("매장 정보가 수정되었습니다.");
+                // 기본 prompt 대신 앱 내 공통 스타일을 위해 간단한 안내 후 모달을 띄우거나 
+                // 여기서는 우선 통일감을 위해 안내 텍스트만이라도 정리합니다.
+                const newName = prompt(`[${p.name}] 매장의 새 이름을 입력하세요.`, p.name);
+                if (!newName) return;
+                const newPin = prompt(`[${newName}] 매장의 새 PIN 번호를 입력하세요.`, p.pin);
+                if (!newPin) return;
+
+                db.collection('partners').doc(p.id).set({ name: newName, pin: newPin }, { merge: true });
+                showToast("매장 정보가 변경되었습니다.");
             };
 
-            const handleToggleStatus = async (id, status) => {
-                const msg = status === 'closed' ? "해당 매장을 퇴점 처리하시겠습니까?" : "해당 매장을 영업 중으로 변경하시겠습니까?";
-                if (!confirm(msg)) return;
-                await db.collection('partners').doc(id).update({ status });
-                showToast(status === 'closed' ? "퇴점 처리되었습니다." : "영업 상태로 변경되었습니다.");
+            const handleToggleStatus = async (id, currentStatus) => {
+                const isClosing = currentStatus !== 'closed';
+                const confirmMsg = isClosing
+                    ? "⚠️ 해당 매장을 [퇴점] 처리하시겠습니까?\n퇴점 시 파트너 로그인이 차단됩니다."
+                    : "해당 매장을 다시 [영업 중]으로 변경하시겠습니까?";
+
+                if (!confirm(confirmMsg)) return;
+
+                await db.collection('partners').doc(id).update({
+                    status: isClosing ? 'closed' : 'active'
+                });
+                showToast(isClosing ? "퇴점 처리가 완료되었습니다." : "영업 상태로 복구되었습니다.");
             };
 
             // ✅ POS번호 기반 로그인 및 사용자 친화적 메시지 적용
@@ -2706,6 +2716,28 @@
 
                                             <button className="w-full bg-stone-800 hover:bg-stone-900 text-white font-black py-4 sm:py-5 rounded-[2rem] shadow-xl mt-6 btn-press text-[14px] tracking-widest transition-colors">접속하기</button>
                                         </form>
+                                        {/* 🏥 헬스키퍼 전용 접속 버튼 */}
+                                        <div className="mt-6 pt-6 border-t border-stone-100 dark:border-stone-800">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    // 별도 비번 없이 바로 가거나, 필요시 prompt로 비번 확인
+                                                    const hpw = prompt("헬스키퍼 전용 비밀번호를 입력하세요.");
+                                                    if (hpw === "1004") { // 비밀번호는 원하시는 걸로 수정하세요
+                                                        setIsAdminAuth(false); // 시스템 관리자 권한은 해제
+                                                        setIsHealthOnlyAdmin(true); // 헬스키퍼 전용 권한만 부여
+                                                        setAdminTab('health');
+                                                        setViewMode('admin');
+                                                        showToast('🏥 헬스키퍼 관리 모드로 접속했습니다.');
+                                                    } else {
+                                                        showToast('비밀번호가 틀렸습니다.', true);
+                                                    }
+                                                }}
+                                                className="w-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-black py-4 rounded-[2rem] shadow-sm btn-press text-[13px] border border-indigo-100 dark:border-indigo-800 flex items-center justify-center gap-2 transition-all hover:bg-indigo-100"
+                                            >
+                                                <Icon name="heartPulse" size={18} /> 헬스키퍼 담당자 접속
+                                            </button>
+                                        </div>
 
                                         <div className="text-center mt-6">
                                             <button type="button" onClick={() => setViewMode('shared')} className="text-[12px] text-stone-400 hover:text-teal-500 font-bold underline underline-offset-2 flex items-center justify-center gap-1.5 mx-auto btn-press"><Icon name="externalLink" size={14} /> 파트너스 채널로 이동</button>
@@ -3067,8 +3099,8 @@
                                 {viewMode === 'admin' && (
                                     <div className="max-w-3xl mx-auto pb-20 fade-in">
 
-                                        {/* 1. 로그인하지 않은 상태 (관리자 PIN 입력창) */}
-                                        {!isAdminAuth && !isHealthOnlyAdmin && !appUser && (
+                                        {/* 1. 인증 전 상태: 시스템 관리자 PIN 입력창 */}
+                                        {!isAdminAuth && !isHealthOnlyAdmin && (
                                             <div className="bg-white dark:bg-stone-900 p-10 rounded-[3rem] shadow-2xl border border-stone-200 dark:border-stone-800 text-center mt-10 max-w-sm mx-auto">
                                                 <h3 className="text-2xl font-black mb-2 text-stone-800 dark:text-stone-200">
                                                     시스템 관리자
@@ -3078,10 +3110,13 @@
                                                     onSubmit={async (e) => {
                                                         e.preventDefault();
                                                         const inputHash = await hashPassword(pinInput);
-                                                        const storedHash =
-                                                            masterPinHash || (await hashPassword(DEFAULT_PIN));
-                                                        if (inputHash === storedHash) setIsAdminAuth(true);
-                                                        else showToast('PIN이 일치하지 않습니다.', true);
+                                                        const storedHash = masterPinHash || (await hashPassword(DEFAULT_PIN));
+                                                        if (inputHash === storedHash) {
+                                                            setIsAdminAuth(true);
+                                                            setAdminTab('partner'); // 관리자는 매장관리 탭으로
+                                                        } else {
+                                                            showToast('PIN이 일치하지 않습니다.', true);
+                                                        }
                                                     }}
                                                 >
                                                     <input
@@ -3097,6 +3132,7 @@
                                                     </button>
                                                 </form>
 
+                                                {/* 🏥 헬스키퍼 담당자용 간이 접속 통로 (필요 시 노출) */}
                                                 {isHealthAdmin && (
                                                     <div className="mt-4 pt-4 border-t border-stone-200 dark:border-stone-800">
                                                         <button
@@ -3106,32 +3142,43 @@
                                                             }}
                                                             className="w-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 font-black py-3 rounded-xl shadow-sm btn-press text-[12px] border border-teal-200 dark:border-teal-800"
                                                         >
-                                                            🏥 헬스키퍼 관리자 메뉴 접속
+                                                            🏥 헬스키퍼 전용 메뉴 접속
                                                         </button>
                                                     </div>
                                                 )}
                                             </div>
                                         )}
 
-                                        {/* 2. 관리자 인증 완료 상태 */}
+                                        {/* 2. 관리자 인증 완료 상태 (관리자 전용 OR 헬스키퍼 전용) */}
                                         {(isAdminAuth || isHealthOnlyAdmin) && (
-                                            <div className="bg-white dark:bg-stone-900 p-6 md:p-10 rounded-[3.5rem] shadow-2xl border border-stone-200 dark:border-stone-800 space-y-6 fade-in">
+                                            <div className="bg-white dark:bg-stone-900 p-6 md:p-10 rounded-[3.5rem] shadow-2xl border border-stone-200 dark:border-stone-800 space-y-6 fade-in mt-10">
 
-                                                {/* 관리자 상단 네비게이션 */}
+                                                {/* 관리자 상단 네비게이션 (권한별 메뉴 분리) */}
                                                 <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide border-b border-stone-100 dark:border-stone-700 snap-x">
-                                                    {AVAILABLE_TABS.map(tab => (
+
+                                                    {/* 시스템 관리자(Full 권한)일 때만 보이는 메뉴 */}
+                                                    {isAdminAuth && !isHealthOnlyAdmin && (
+                                                        <>
+                                                            <button onClick={() => setAdminTab('partner')} className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${adminTab === 'partner' ? 'bg-stone-800 text-white shadow-md' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'}`}>매장 관리</button>
+                                                            <button onClick={() => setAdminTab('notice')} className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${adminTab === 'notice' ? 'bg-stone-800 text-white shadow-md' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'}`}>공지 관리</button>
+                                                            <button onClick={() => setAdminTab('data')} className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${adminTab === 'data' ? 'bg-stone-800 text-white shadow-md' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'}`}>데이터 조회</button>
+                                                        </>
+                                                    )}
+
+                                                    {/* 시스템 관리자 OR 헬스키퍼 담당자 공통 메뉴 */}
+                                                    {(isAdminAuth || isHealthOnlyAdmin) && (
                                                         <button
-                                                            key={tab.id}
-                                                            onClick={() => setAdminTab(tab.id)}
-                                                            className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${currentAdminTab === tab.id
-                                                                ? 'bg-stone-800 text-white shadow-md'
-                                                                : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
+                                                            onClick={() => setAdminTab('health')}
+                                                            className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${adminTab === 'health'
+                                                                    ? 'bg-indigo-600 text-white shadow-md'
+                                                                    : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 border border-indigo-100 dark:border-indigo-900/50'
                                                                 }`}
                                                         >
-                                                            {tab.name}
+                                                            🏥 헬스키퍼 관리
                                                         </button>
-                                                    ))}
+                                                    )}
 
+                                                    {/* 종료 버튼 */}
                                                     <button
                                                         onClick={() => {
                                                             setIsAdminAuth(false);
@@ -3139,9 +3186,9 @@
                                                             setViewMode('shared');
                                                             showToast('관리자 모드가 종료되었습니다.');
                                                         }}
-                                                        className="snap-center px-4 py-3 rounded-[1.2rem] font-black text-[11px] whitespace-nowrap bg-rose-50 dark:bg-rose-900/30 text-rose-500 border border-rose-200 dark:border-rose-800 shrink-0 flex items-center gap-1.5 ml-auto btn-press hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors"
+                                                        className="snap-center px-4 py-3 rounded-[1.2rem] font-black text-[11px] whitespace-nowrap bg-rose-50 dark:bg-rose-900/30 text-rose-500 border border-rose-200 dark:border-rose-800 shrink-0 flex items-center gap-1.5 ml-auto btn-press transition-colors"
                                                     >
-                                                        <Icon name="logout" size={14} /> 관리자 종료
+                                                        <Icon name="logout" size={14} /> 종료
                                                     </button>
                                                 </div>
 
@@ -3749,7 +3796,7 @@
                         {/* ✅ 수정: 로그인 상태이고, 파트너('partner')가 아닐 때만 하단 탭 노출 */}
                         {viewMode !== 'login' && appUser && appUser.role !== 'partner' && (
                             <nav className="flex-none w-full bg-[#F9F8F6]/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200 dark:border-stone-800 flex items-center justify-around z-50 px-2 md:px-12 shadow-[0_-10px_30px_rgba(0,0,0,0.03)] font-black pb-[env(safe-area-inset-bottom,1rem)] pt-2">
-                                <button onClick={() => setViewMode('directory')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${viewMode === 'directory' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-50'}`}><Icon name="phoneForwarded" size={24} /><span className="text-[10px] tracking-tighter">내선</span></button>
+                                <button onClick={() => setViewMode('directory')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${viewMode === 'directory' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><Icon name="phoneForwarded" size={24} /><span className="text-[10px] tracking-tighter">내선</span></button>
                                 <button onClick={() => setViewMode('event')} className={`relative flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${viewMode === 'event' ? 'text-rose-600 dark:text-rose-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><div className={currentEvent?.status === 'waiting' ? 'animate-bounce text-amber-500' : ''}><Icon name="gift" size={24} />{currentEvent?.status === 'waiting' && <div className="absolute top-0 right-2 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-[#F9F8F6] dark:border-stone-900"></div>}</div><span className="text-[10px] tracking-tighter">이벤트</span></button>
                                 <button onClick={() => setViewMode('admin')} className={`flex flex-col items-center gap-1.5 transition-colors w-12 sm:w-14 mt-2 mb-2 ${viewMode === 'admin' ? 'text-teal-700 dark:text-teal-400 scale-110 drop-shadow-md' : 'text-stone-500'}`}><Icon name="settings" size={24} /><span className="text-[10px] tracking-tighter">관리</span></button>
                             </nav>
