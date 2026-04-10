@@ -1341,27 +1341,22 @@
             };
 
             const toggleFavExt = (id) => { setFavoriteExts(prev => { const next = prev.includes(id) ? prev.filter(favId => favId !== id) : [...prev, id]; localStorage.setItem('hmood_fav_exts', JSON.stringify(next)); return next; }); };
-            // 1. 로그아웃 함수 추가 (이게 없어서 에러가 났던 겁니다!)
+            // 1. 로그아웃 함수 수정 (세션 꼬임 및 DB 통신 단절 방지)
             const handleLogout = () => {
-                // 문구 통일 (앞서 정한 정중한 문구)
                 if (!window.confirm("정말로 로그아웃하시겠습니까?\n안전한 이용을 위해 세션이 종료됩니다.")) return;
 
-                // 1. 모든 유저 및 권한 상태 초기화
                 setAppUser(null);
-                if (typeof setFbUser === 'function') setFbUser(null);
+                // ❌ 기존에 있던 setFbUser(null) 코드를 삭제했습니다! (이게 데이터 증발의 주범)
                 setIsAdminAuth(false);
-                setIsHealthOnlyAdmin(false); // 헬스키퍼 담당자 권한 해제 추가
+                setIsHealthOnlyAdmin(false);
 
-                // 2. 브라우저 저장소 데이터 삭제
                 localStorage.removeItem('h_moody_auth');
                 localStorage.removeItem('hmood_session');
-                localStorage.removeItem('health_admin_active'); // 담당자 활성화 플래그 삭제
+                localStorage.removeItem('health_admin_active');
                 sessionStorage.removeItem('hmood_admin_auth');
-                sessionStorage.clear(); // 세션 스토리지 전체 삭제로 꼬임 방지
+                sessionStorage.clear();
 
-                // 3. 화면 즉시 전환
                 setViewMode('login');
-
                 showToast("안전하게 로그아웃되었습니다.");
             };
             const handleEditPartner = (p) => {
@@ -1718,26 +1713,22 @@
             };
 
             const submitCustomRes = async () => {
-                // 1. 기본 입력값 체크
+                // 1. 기본 입력값 체크 (비밀번호 확인 로직 싹 삭제)
                 if (!resInput.brand || !resInput.name) return showToast('브랜드명과 이름을 입력해주세요.', true);
 
-                // 2. 비회원(로그아웃 상태)일 경우 비밀번호 4자리 필수 체크
-                if (!appUser && (!resInput.password || resInput.password.length < 4)) {
-                    return showToast('취소 시 필요한 비밀번호 4자리를 입력해주세요.', true);
-                }
-
-                // 3. 블랙리스트 체크
+                // 2. 블랙리스트 체크
                 const isBlacklisted = blacklists.some(b => b.name === resInput.name && b.brand === resInput.brand);
                 if (isBlacklisted) return showToast('해당 정보로는 예약할 수 없습니다. 관리자에게 문의하세요.', true);
 
                 const isResAdmin = isAdminAuth || (appUser && appUser.empId === openedReservationApp?.resOperatorId);
 
-                // 4. 예약 가능 여부 및 시간 체크 (관리자 아닐 때만)
+                // 3. 예약 가능 여부 및 시간 체크 (관리자 아닐 때만)
                 if (!isResAdmin) {
                     const maxPerSlot = openedReservationApp?.resMaxPerSlot || 1;
                     try {
                         let liveCount = 0;
-                        if (db && fbUser) {
+                        // ✨ DB가 연결되어 있으면 인원 꽉 찼는지 확인
+                        if (db) {
                             const snap = await db.collection(`artifacts/${appId}/public/data/dynamic_posts`)
                                 .where('appId', '==', openedReservationApp.id)
                                 .where('type', '==', 'reservation')
@@ -1762,7 +1753,7 @@
                     if (slotTime.getTime() - leadTimeMs <= Date.now()) return showToast('예약 마감 시간이 지났습니다.', true);
                 }
 
-                // 5. 새 예약 객체 생성 (비회원일 경우만 cancelPassword 포함)
+                // 4. 새 예약 객체 생성 (포스번호 로그인 유저 정보로 확실하게 고정)
                 const authorName = `${resInput.brand} ${resInput.name}`;
                 const newRes = {
                     id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5),
@@ -1773,21 +1764,21 @@
                     author: authorName,
                     ext: resInput.ext,
                     content: resInput.note,
-                    authorId: appUser ? appUser.empId : `guest_${Date.now()}`,
-                    cancelPassword: appUser ? null : resInput.password, // ✨ 비회원만 비번 저장
+                    authorId: appUser.empId, // 👈 무조건 로그인한 파트너의 포스번호(ID)가 들어감
                     createdAt: new Date().toISOString()
                 };
 
-                // 6. 데이터 저장 및 상태 업데이트
+                // 5. 데이터 저장 및 상태 업데이트 (예약 증발 버그 해결됨)
                 try {
-                    setDynamicPosts([newRes, ...(dynamicPosts || [])]);
+                    setDynamicPosts(prev => [newRes, ...(prev || [])]);
                     saveToIDB('dynamicPosts', newRes);
-                    if (db && fbUser) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newRes.id).set(newRes);
+
+                    // 👈 fbUser 조건 없애고 서버에 무조건 강제 저장!
+                    if (db) await db.collection(`artifacts/${appId}/public/data/dynamic_posts`).doc(newRes.id).set(newRes);
 
                     showToast(`[${resSelectedDate} ${resPrompt}] 예약이 완료되었습니다!`);
                     setResPrompt(null);
-                    // 성공 시 입력창 싹 비우기 (비밀번호 포함)
-                    setResInput({ brand: '', name: '', ext: '', note: '', password: '' });
+                    setResInput({ brand: '', name: '', ext: '', note: '' });
                 } catch (e) {
                     showToast('예약 실패', true);
                 }
