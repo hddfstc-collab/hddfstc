@@ -3124,27 +3124,25 @@
                                                 {/* 관리자 상단 네비게이션 (권한별 메뉴 분리) */}
                                                 <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide border-b border-stone-100 dark:border-stone-700 snap-x">
 
-                                                    {/* 시스템 관리자(Full 권한)일 때만 보이는 메뉴 */}
-                                                    {isAdminAuth && !isHealthOnlyAdmin && (
-                                                        <>
-                                                            <button onClick={() => setAdminTab('partner')} className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${adminTab === 'partner' ? 'bg-stone-800 text-white shadow-md' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'}`}>매장 관리</button>
-                                                            <button onClick={() => setAdminTab('notice')} className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${adminTab === 'notice' ? 'bg-stone-800 text-white shadow-md' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'}`}>공지 관리</button>
-                                                            <button onClick={() => setAdminTab('data')} className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${adminTab === 'data' ? 'bg-stone-800 text-white shadow-md' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'}`}>데이터 조회</button>
-                                                        </>
-                                                    )}
+                                                    {/* 시스템 관리자: 모든 탭 노출 / 헬스키퍼 담당자: health 탭만 노출 */}
+                                                    {AVAILABLE_TABS.map(tab => {
+                                                        // 헬스키퍼 전용 관리자인데, 현재 탭이 health가 아니면 그리지 않음
+                                                        if (isHealthOnlyAdmin && tab.id !== 'health') return null;
 
-                                                    {/* 시스템 관리자 OR 헬스키퍼 담당자 공통 메뉴 */}
-                                                    {(isAdminAuth || isHealthOnlyAdmin) && (
-                                                        <button
-                                                            onClick={() => setAdminTab('health')}
-                                                            className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${adminTab === 'health'
-                                                                ? 'bg-indigo-600 text-white shadow-md'
-                                                                : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 border border-indigo-100 dark:border-indigo-900/50'
-                                                                }`}
-                                                        >
-                                                            🏥 헬스키퍼 관리
-                                                        </button>
-                                                    )}
+                                                        return (
+                                                            <button
+                                                                key={tab.id}
+                                                                onClick={() => setAdminTab(tab.id)}
+                                                                className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${currentAdminTab === tab.id
+                                                                        ? (tab.id === 'health' ? 'bg-indigo-600 text-white shadow-md' : 'bg-stone-800 text-white shadow-md')
+                                                                        : (tab.id === 'health' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 border border-indigo-100 dark:border-indigo-900/50' : 'bg-stone-100 dark:bg-stone-800 text-stone-500')
+                                                                    }`}
+                                                            >
+                                                                {/* 헬스키퍼 탭은 앞에 이모지 추가 */}
+                                                                {tab.id === 'health' ? `🏥 ${tab.name}` : tab.name}
+                                                            </button>
+                                                        );
+                                                    })}
 
                                                     {/* 종료 버튼 */}
                                                     <button
