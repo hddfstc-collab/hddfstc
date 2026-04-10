@@ -3134,8 +3134,8 @@
                                                                 key={tab.id}
                                                                 onClick={() => setAdminTab(tab.id)}
                                                                 className={`snap-center px-5 py-3 rounded-[1.2rem] font-black text-[13px] whitespace-nowrap transition-all ${currentAdminTab === tab.id
-                                                                        ? (tab.id === 'health' ? 'bg-indigo-600 text-white shadow-md' : 'bg-stone-800 text-white shadow-md')
-                                                                        : (tab.id === 'health' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 border border-indigo-100 dark:border-indigo-900/50' : 'bg-stone-100 dark:bg-stone-800 text-stone-500')
+                                                                    ? (tab.id === 'health' ? 'bg-indigo-600 text-white shadow-md' : 'bg-stone-800 text-white shadow-md')
+                                                                    : (tab.id === 'health' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 border border-indigo-100 dark:border-indigo-900/50' : 'bg-stone-100 dark:bg-stone-800 text-stone-500')
                                                                     }`}
                                                             >
                                                                 {/* 헬스키퍼 탭은 앞에 이모지 추가 */}
@@ -3236,14 +3236,82 @@
                                                                 )}
                                                             </div>
 
-                                                            {/* ✨ 삽입: 파트너 계정 초기 등록 버튼 */}
-                                                            <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-4">
+                                                            {/* ✨ 수정: 매장 일괄 등록 및 초기 세팅 영역 */}
+                                                            <div className="bg-[#F9F8F6] dark:bg-stone-800/50 p-7 rounded-[2.5rem] border border-stone-200 dark:border-stone-700 space-y-4 mt-6">
                                                                 <div className="flex items-center gap-2 border-b border-stone-200 dark:border-stone-700 pb-4">
                                                                     <div className="w-8 h-8 bg-teal-100 dark:bg-teal-900/30 text-teal-600 rounded-xl flex items-center justify-center"><Icon name="users" size={16} /></div>
-                                                                    <p className="text-[12px] font-black text-teal-600 tracking-widest">파트너 계정 초기 등록</p>
+                                                                    <p className="text-[12px] font-black text-teal-600 tracking-widest">매장 일괄 등록 및 초기 세팅</p>
                                                                 </div>
-                                                                <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed font-bold">최초 1회 테스트 매장 계정 3개를 DB에 등록합니다. 등록 후 매장 포스번호(1001 등)로 로그인이 가능합니다.</p>
-                                                                <button onClick={() => { const testData = [{ posId: '1001', name: '아디다스 현대점', brands: ['아디다스'] }, { posId: '1002', name: '나이키 강남점', brands: ['나이키'] }, { posId: '2001', name: '비이커 통합매장', brands: ['비이커', '구호'] }]; uploadPartners(testData); }} className="w-full bg-teal-600 hover:bg-teal-700 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[12px] flex items-center justify-center gap-2 mt-2 transition-colors"><Icon name="plus" size={16} /> 테스트 계정 3개 즉시 등록 (DB 세팅)</button>
+                                                                <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed font-bold">
+                                                                    엑셀 파일을 업로드하여 수십 개의 매장을 한 번에 등록하거나, 테스트용 초기 계정을 세팅할 수 있습니다. <br />
+                                                                    (엑셀 양식: A열 포스번호, B열 매장명 / 1행은 제목, 2행부터 데이터 작성)
+                                                                </p>
+
+                                                                <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                                                                    {/* 1. 엑셀 일괄 등록 버튼 */}
+                                                                    <label className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[12px] flex items-center justify-center gap-2 transition-colors cursor-pointer">
+                                                                        <Icon name="fileText" size={16} /> 엑셀 파일로 매장 일괄 등록 (.xlsx)
+                                                                        <input
+                                                                            type="file"
+                                                                            accept=".xlsx, .xls"
+                                                                            className="hidden"
+                                                                            onChange={(e) => {
+                                                                                const file = e.target.files[0];
+                                                                                if (!file) return;
+
+                                                                                const reader = new FileReader();
+                                                                                reader.onload = async (evt) => {
+                                                                                    try {
+                                                                                        const bstr = evt.target.result;
+                                                                                        const wb = XLSX.read(bstr, { type: 'binary' });
+                                                                                        const wsname = wb.SheetNames[0];
+                                                                                        const ws = wb.Sheets[wsname];
+                                                                                        const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+                                                                                        if (data.length < 2) return showToast('엑셀에 등록할 데이터가 없습니다.', true);
+                                                                                        if (!window.confirm(`${data.length - 1}개의 매장을 일괄 등록하시겠습니까?`)) return;
+
+                                                                                        let successCount = 0;
+                                                                                        const batch = db.batch();
+
+                                                                                        for (let i = 1; i < data.length; i++) {
+                                                                                            const row = data[i];
+                                                                                            const posId = String(row[0] || '').trim();
+                                                                                            const storeName = String(row[1] || '').trim();
+
+                                                                                            if (posId && storeName) {
+                                                                                                const docRef = db.collection(`artifacts/${appId}/public/data/partners`).doc(posId);
+                                                                                                batch.set(docRef, {
+                                                                                                    id: posId,
+                                                                                                    name: storeName,
+                                                                                                    posId: posId,
+                                                                                                    status: 'active',
+                                                                                                    createdAt: new Date().toISOString()
+                                                                                                });
+                                                                                                successCount++;
+                                                                                            }
+                                                                                        }
+
+                                                                                        await batch.commit();
+                                                                                        showToast(`${successCount}개의 매장이 성공적으로 등록되었습니다.`);
+                                                                                        e.target.value = '';
+                                                                                        if (typeof fetchPartners === 'function') fetchPartners();
+
+                                                                                    } catch (err) {
+                                                                                        console.error(err);
+                                                                                        showToast('엑셀 파일 파싱 중 오류가 발생했습니다.', true);
+                                                                                    }
+                                                                                };
+                                                                                reader.readAsBinaryString(file);
+                                                                            }}
+                                                                        />
+                                                                    </label>
+
+                                                                    {/* 2. 테스트 계정 등록 버튼 */}
+                                                                    <button onClick={() => { const testData = [{ posId: '1001', name: '아디다스 현대점', brands: ['아디다스'] }, { posId: '1002', name: '나이키 강남점', brands: ['나이키'] }, { posId: '2001', name: '비이커 통합매장', brands: ['비이커', '구호'] }]; uploadPartners(testData); }} className="flex-1 bg-stone-800 hover:bg-stone-900 text-white font-black py-4 rounded-2xl shadow-md btn-press text-[12px] flex items-center justify-center gap-2 transition-colors">
+                                                                        <Icon name="plus" size={16} /> 테스트 매장 3개 등록
+                                                                    </button>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
